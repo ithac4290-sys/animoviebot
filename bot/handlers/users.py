@@ -121,14 +121,22 @@ async def show_anime_by_id(message_or_query, anime_id: int, bot: Bot, bot_userna
     await db.increment_anime_views(anime_id)
 
     caption = format_anime_caption(anime, bot_username)
-    episodes_count = anime.get("episodes_count", "12")
-    kb = get_anime_keyboard(anime_id, episodes_count)
+
+    # Faqat admin yuklagan qismlar ro'yxatini olish
+    episodes = await db.get_anime_episodes(anime_id)
+    uploaded_ep_nums = [ep["episode_num"] for ep in episodes]
+    kb = get_anime_keyboard(anime_id, uploaded_ep_nums)
 
     poster = anime.get("poster")
     if isinstance(message_or_query, Message):
         await message_or_query.answer_photo(photo=poster, caption=caption, reply_markup=kb, parse_mode="HTML")
     else:
         await message_or_query.message.answer_photo(photo=poster, caption=caption, reply_markup=kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data == "episodes_coming_soon")
+async def handle_episodes_coming_soon(callback: CallbackQuery):
+    await callback.answer("⏳ Ushbu animening qismlari tez kunda yuklanadi!", show_alert=True)
 
 
 # ================= QISM TUGMASI BOSILGANDA =================

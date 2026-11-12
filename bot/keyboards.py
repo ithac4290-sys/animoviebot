@@ -36,34 +36,38 @@ def get_main_menu_keyboard(bot_username: str) -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def get_anime_keyboard(anime_id: int, episodes_count_str: str) -> InlineKeyboardMarkup:
+def get_anime_keyboard(anime_id: int, episodes_list: Optional[List[int]] = None) -> InlineKeyboardMarkup:
     """
     3. ANIME MENYUSI VA QISMLAR RO'YXATI (2-rasm dizayni):
-    - Qismlar soniga qarab tugmalar 4 tadan ustun (grid) ko'rinishida joylashsin.
+    - Faqat admin yuklagan qismlar chiqadi (masalan admin 1-qismni qo'shganda 1-qism paydo bo'ladi).
+    - Qismlar 4 tadan ustun (grid) ko'rinishida joylashadi.
     - Eng pastki qatorda alohida keng tugma: ❌ Yopish
     """
     builder = InlineKeyboardBuilder()
 
-    # Qismlar sonini aniqlash (masalan "6 qism", "12", "24 qism" dan raqamni ajratib olish)
-    match = re.search(r'\d+', str(episodes_count_str))
-    total_episodes = int(match.group()) if match else 12
+    if episodes_list and len(episodes_list) > 0:
+        # Faqat admin yuklagan qismlarni tartib bilan chiqarish
+        sorted_episodes = sorted(list(set(episodes_list)))
+        episode_buttons = []
+        for ep in sorted_episodes:
+            episode_buttons.append(
+                InlineKeyboardButton(
+                    text=f"{ep} - qism",
+                    callback_data=f"play_{anime_id}_{ep}"
+                )
+            )
 
-    # Agar qismlar soni juda ko'p bo'lsa (masalan 100+), me'yorida cheklash yoki barchasini ko'rsatish
-    total_episodes = max(1, min(total_episodes, 200))
-
-    episode_buttons = []
-    for ep in range(1, total_episodes + 1):
-        episode_buttons.append(
+        # 4 tadan ustun (grid) qilib joylashtirish (2-rasmdagi ko'rinish)
+        builder.add(*episode_buttons)
+        builder.adjust(4)
+    else:
+        # Agar admin hali hech qanday qism yuklamagan bo'lsa
+        builder.row(
             InlineKeyboardButton(
-                text=f"{ep} - qism",
-                callback_data=f"play_{anime_id}_{ep}"
+                text="⏳ Qismlar tez orada yuklanadi",
+                callback_data="episodes_coming_soon"
             )
         )
-
-    # 4 tadan ustun (grid) qilib joylashtirish
-    # Oxirgi qatordagi tugmalar avtomatik qolgan songa mos kengayadi
-    builder.add(*episode_buttons)
-    builder.adjust(4)
 
     # Eng pastki qatorda alohida keng tugma: ❌ Yopish
     builder.row(

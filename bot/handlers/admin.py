@@ -188,13 +188,14 @@ async def process_anime_channel_finish(message: Message, state: FSMContext, bot:
     bot_info = await bot.get_me()
     bot_username = bot_info.username or config.bot_username
 
-    # 2. 1-rasmdagi dizaynda kanal postini tayyorlash
+    # 2. 1-rasmdagi aniq dizaynda kanal postini tayyorlash
+    clean_title = title.replace(r"\'", "'")
     channel_post_caption = (
-        f"{html.escape(title)}\n\n"
-        f"<blockquote>• Holati: {html.escape(status)}\n"
-        f"• Anime: {html.escape(episodes_count)}\n"
-        f"• Janrlari: {html.escape(genres)}\n"
-        f"• Kanal: {html.escape(target_channel)}</blockquote>"
+        f"{html.escape(clean_title)}\n\n"
+        f"<blockquote>├• Holati: {html.escape(status)}\n"
+        f"├• Anime: {html.escape(episodes_count)}\n"
+        f"├• Janrlari: {html.escape(genres)}\n"
+        f"├• Kanal: {html.escape(target_channel)}</blockquote>"
     )
 
     channel_kb = get_channel_post_keyboard(bot_username, anime_id)
@@ -285,11 +286,11 @@ async def handle_repost_to_channel(callback: CallbackQuery, bot: Bot):
     channel = format_channel_target(anime.get("channel", config.default_channel_id))
 
     channel_post_caption = (
-        f"{html.escape(title)}\n\n"
-        f"<blockquote>• Holati: {html.escape(status)}\n"
-        f"• Anime: {html.escape(episodes_count)}\n"
-        f"• Janrlari: {html.escape(anime.get('genres', ''))}\n"
-        f"• Kanal: {html.escape(channel)}</blockquote>"
+        f"{html.escape(title.replace(r'''\' ''', ''' ' '''))}\n\n"
+        f"<blockquote>├• Holati: {html.escape(status)}\n"
+        f"├• Anime: {html.escape(episodes_count)}\n"
+        f"├• Janrlari: {html.escape(anime.get('genres', ''))}\n"
+        f"├• Kanal: {html.escape(channel)}</blockquote>"
     )
     channel_kb = get_channel_post_keyboard(bot_username, anime_id)
 

@@ -45,7 +45,9 @@ async def handle_inline_search(inline_query: InlineQuery, bot: Bot):
             f"📎 Link: https://t.me/{bot_username}?start={anime_id}"
         )
 
-        reply_markup = get_anime_keyboard(anime_id, episodes_count)
+        episodes = await db.get_anime_episodes(anime_id)
+        uploaded_ep_nums = [ep["episode_num"] for ep in episodes]
+        reply_markup = get_anime_keyboard(anime_id, uploaded_ep_nums)
 
         # Agar poster mavjud bo'lsa InlineQueryResultPhoto, aks holda Article
         if poster and not poster.startswith("http"):
