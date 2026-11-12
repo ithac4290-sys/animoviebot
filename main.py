@@ -1,6 +1,14 @@
+import sys
+from pathlib import Path
+
+# Loyihadagi .venv kutubxonalarini har qanday Python orqali ishga tushganda avtomatik ulash
+_base_dir = Path(__file__).parent.resolve()
+_venv_pkgs = list(_base_dir.glob(".venv/lib/python*/site-packages"))
+if _venv_pkgs and str(_venv_pkgs[0]) not in sys.path:
+    sys.path.insert(0, str(_venv_pkgs[0]))
+
 import asyncio
 import logging
-import sys
 import aiohttp
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
