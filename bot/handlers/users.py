@@ -1,8 +1,9 @@
 import html
 from aiogram import Router, F, Bot
-from aiogram.types import Message, CallbackQuery
-from aiogram.filters import CommandStart, Command, CommandObject
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton
+from aiogram.filters import CommandStart, Command, CommandObject, StateFilter
 from aiogram.fsm.context import FSMContext
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.config import config
 from bot.database import db
@@ -91,7 +92,15 @@ async def show_anime_by_id(message_or_query, anime_id: int, bot: Bot, bot_userna
             "⚠️ <b>Kechirasiz, anime tomosha qilish uchun quyidagi homiy kanallarimizga obuna bo'lishingiz kerak:</b>\n\n"
             "<i>Iltimos, kanallarga a'zo bo'lib, '✅ Obunani tekshirish' tugmasini bosing!</i>"
         )
-        kb = get_subscription_keyboard(unsubbed)
+        # Obuna tekshirilgandan so'ng to'g'ridan-to'g'ri o'sha anime ochilishi uchun
+        builder = InlineKeyboardBuilder()
+        for idx, ch in enumerate(unsubbed, 1):
+            title = ch.get("title", f"Kanal #{idx}")
+            link = ch.get("invite_link", "https://t.me")
+            builder.row(InlineKeyboardButton(text=f"📢 {title}", url=link))
+        builder.row(InlineKeyboardButton(text="✅ Obunani tekshirish", callback_data=f"check_sub_{anime_id}"))
+        kb = builder.as_markup()
+
         if isinstance(message_or_query, Message):
             await message_or_query.answer(text=text, reply_markup=kb, parse_mode="HTML")
         else:
@@ -197,7 +206,7 @@ async def handle_close_view(callback: CallbackQuery):
 
 # ================= MATN ORQALI ANIME QIDIRISH (ID yoki NOM) =================
 
-@router.message(F.text & ~F.text.startswith("/"))
+@router.message(StateFilter(None), F.text & ~F.text.startswith("/"))
 async def handle_text_search(message: Message, bot: Bot):
     query = message.text.strip()
     bot_info = await bot.get_me()
@@ -226,12 +235,23 @@ async def handle_text_search(message: Message, bot: Bot):
 
     # Bir nechta anime topilgan bo'lsa, ro'yxatini chiqarish
     text = f"🔎 <b>'{html.escape(query)}'</b> bo'yicha topilgan animelar:\n\n"
+    builder = InlineKeyboardBuilder()
     for anime in results:
         text += f"▪️ <b>{html.escape(anime['title'])}</b>\n"
         text += f"   Kod: <code>{anime['id']}</code> | Tomosha: /start_{anime['id']}\n\n"
+        builder.row(InlineKeyboardButton(text=f"🎬 {anime['title'][:28]}", callback_data=f"open_anime_{anime['id']}"))
 
-    text += "<i>Ko'rmoqchi bo'lgan animengiz kodini yozing yoki /start_ID ustiga bosing.</i>"
-    await message.answer(text, parse_mode="HTML")
+    text += "<i>Ko'rmoqchi bo'lgan animengiz ustiga bosing yoki kodini yozing.</i>"
+    await message.answer(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("open_anime_"))
+async def handle_open_anime_callback(callback: CallbackQuery, bot: Bot):
+    anime_id = int(callback.data.replace("open_anime_", ""))
+    bot_info = await bot.get_me()
+    bot_username = bot_info.username or config.bot_username
+    await callback.answer()
+    await show_anime_by_id(callback, anime_id, bot, bot_username)
 
 
 @router.message(F.text.regexp(r"^/start_(\d+)$"))
@@ -314,14 +334,17 @@ async def handle_top_animes(message: Message):
         return
 
     text = "🔥 <b>TOP-10 Eng ko'p ko'rilgan animelar:</b>\n\n"
+    builder = InlineKeyboardBuilder()
     for i, a in enumerate(top_list, 1):
         views = a.get("views", 0)
         title = html.escape(a.get("title", ""))
         anime_id = a.get("id")
         text += f"<b>{i}.</b> {title}\n"
-        text += f"   👁 {views} ko'rish | Kod: <code>{anime_id}</code> | /start_{anime_id}\n\n"
+        text += f"   👁 {views} ko'rish | Kod: <code>{anime_id}</code>\n\n"
+        builder.row(InlineKeyboardButton(text=f"{i}. 🎬 {a['title'][:25]}", callback_data=f"open_anime_{anime_id}"))
 
-    await message.answer(text, parse_mode="HTML")
+    text += "<i>Tomosha qilish uchun animeni tanlang:</i>"
+    await message.answer(text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
 
 # 4. /help - Qo'llab-quvvatlash
@@ -386,19 +409,43 @@ async def handle_back_home(callback: CallbackQuery, bot: Bot):
 
 
 # 9. ✅ Obunani tekshirish callback
-@router.callback_query(F.data == "check_subscription")
+@router.callback_query(F.data.startswith("check_sub"))
 async def handle_check_subscription(callback: CallbackQuery, bot: Bot):
     user_id = callback.from_user.id
     is_subbed, unsubbed = await check_user_subscriptions(bot, user_id)
+    bot_info = await bot.get_me()
+    bot_username = bot_info.username or config.bot_username
+
+    target_anime_id = None
+    if callback.data.startswith("check_sub_"):
+        raw_id = callback.data.replace("check_sub_", "")
+        if raw_id.isdigit():
+            target_anime_id = int(raw_id)
 
     if is_subbed:
         await callback.answer("✅ Barcha kanallarga a'zo bo'lgansiz! Rahmat.", show_alert=True)
-        bot_info = await bot.get_me()
-        bot_username = bot_info.username or config.bot_username
-        text = get_welcome_text(callback.from_user.full_name)
-        kb = get_main_menu_keyboard(bot_username)
-        await callback.message.edit_text(text=text, reply_markup=kb, parse_mode="HTML")
+        try:
+            await callback.message.delete()
+        except Exception:
+            pass
+
+        # Agar foydalanuvchi anime ko'rish uchun tekshirgan bo'lsa, o'sha animeni darhol ochish!
+        if target_anime_id:
+            await show_anime_by_id(callback, target_anime_id, bot, bot_username)
+        else:
+            text = get_welcome_text(callback.from_user.full_name)
+            kb = get_main_menu_keyboard(bot_username)
+            await callback.message.answer(text=text, reply_markup=kb, parse_mode="HTML")
     else:
         await callback.answer("❌ Hali barcha kanallarga a'zo bo'lmadingiz!", show_alert=True)
-        kb = get_subscription_keyboard(unsubbed)
-        await callback.message.edit_reply_markup(reply_markup=kb)
+        if target_anime_id:
+            builder = InlineKeyboardBuilder()
+            for idx, ch in enumerate(unsubbed, 1):
+                title = ch.get("title", f"Kanal #{idx}")
+                link = ch.get("invite_link", "https://t.me")
+                builder.row(InlineKeyboardButton(text=f"📢 {title}", url=link))
+            builder.row(InlineKeyboardButton(text="✅ Obunani tekshirish", callback_data=f"check_sub_{target_anime_id}"))
+            await callback.message.edit_reply_markup(reply_markup=builder.as_markup())
+        else:
+            kb = get_subscription_keyboard(unsubbed)
+            await callback.message.edit_reply_markup(reply_markup=kb)

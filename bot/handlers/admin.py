@@ -150,11 +150,21 @@ async def process_anime_genres(message: Message, state: FSMContext):
     )
 
 
+def format_channel_target(raw: str) -> str:
+    """Kanal havolasi yoki nomini Telegram chat_id formatiga tozalash"""
+    raw = raw.strip()
+    raw = raw.replace("https://t.me/", "").replace("http://t.me/", "").replace("t.me/", "").strip("/")
+    if raw.startswith("-100") or (raw.startswith("-") and raw[1:].isdigit()):
+        return raw
+    if not raw.startswith("@"):
+        raw = f"@{raw}"
+    return raw
+
+
 @router.message(AddAnimeState.channel)
 async def process_anime_channel_finish(message: Message, state: FSMContext, bot: Bot):
-    channel = message.text.strip()
-    if not channel.startswith("@") and not channel.startswith("-100"):
-        channel = f"@{channel}"
+    user_channel_input = message.text.strip()
+    target_channel = format_channel_target(user_channel_input)
 
     data = await state.get_data()
     title = data["title"]
@@ -170,7 +180,7 @@ async def process_anime_channel_finish(message: Message, state: FSMContext, bot:
         status=status,
         episodes_count=episodes_count,
         genres=genres,
-        channel=channel
+        channel=target_channel
     )
 
     await state.clear()
@@ -184,14 +194,17 @@ async def process_anime_channel_finish(message: Message, state: FSMContext, bot:
         f"<blockquote>• Holati: {html.escape(status)}\n"
         f"• Anime: {html.escape(episodes_count)}\n"
         f"• Janrlari: {html.escape(genres)}\n"
-        f"• Kanal: {html.escape(channel)}</blockquote>"
+        f"• Kanal: {html.escape(target_channel)}</blockquote>"
     )
 
     channel_kb = get_channel_post_keyboard(bot_username, anime_id)
 
     # 3. Kanalga avtomatik post yuborish
-    post_channel_target = config.default_channel_id or channel
+    # Birinchi admin kiritgan kanalga yuborish
+    post_channel_target = target_channel
     posted_to_channel = False
+    error_msg = ""
+
     try:
         await bot.send_photo(
             chat_id=post_channel_target,
@@ -203,25 +216,99 @@ async def process_anime_channel_finish(message: Message, state: FSMContext, bot:
         posted_to_channel = True
     except Exception as e:
         error_msg = str(e)
+        # Agar admin kiritgan kanalga yuborilmasa va configda boshqa kanal bo'lsa
+        if config.default_channel_id and config.default_channel_id != post_channel_target:
+            try:
+                await bot.send_photo(
+                    chat_id=config.default_channel_id,
+                    photo=poster,
+                    caption=channel_post_caption,
+                    reply_markup=channel_kb,
+                    parse_mode="HTML"
+                )
+                posted_to_channel = True
+                post_channel_target = config.default_channel_id
+            except Exception as e2:
+                error_msg = f"{error_msg} | Zaxira kanal: {e2}"
 
     # 4. Adminga hisobot berish
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from aiogram.types import InlineKeyboardButton
+    builder = InlineKeyboardBuilder()
+
     success_text = (
         f"✅ <b>Yangi anime muvaffaqiyatli saqlandi!</b>\n\n"
         f"🆔 <b>Anime ID:</b> <code>{anime_id}</code>\n"
         f"📌 <b>Nomi:</b> {html.escape(title)}\n"
-        f"📎 <b>Link:</b> https://t.me/{bot_username}?start={anime_id}\n\n"
+        f"📎 <b>Bot havolasi:</b> https://t.me/{bot_username}?start={anime_id}\n\n"
     )
 
     if posted_to_channel:
-        success_text += f"📢 <b>{post_channel_target} kanaliga avtomatik post joylandi!</b>"
+        success_text += f"📢 <b>{post_channel_target} kanaliga 1-rasm dizaynida post muvaffaqiyatli joylandi!</b>"
+        builder.row(InlineKeyboardButton(text="⬅️ Admin panel", callback_data="admin_home"))
     else:
-        success_text += (
-            f"⚠️ <i>Kanalga ({post_channel_target}) avtomatik post joylanmadi.</i>\n"
-            f"Sababi: Bot kanalda administrator qilinmagan bo'lishi mumkin.\n"
-            f"Xatolik: {html.escape(error_msg if 'error_msg' in locals() else 'Noma\'lum')}"
-        )
+        cause_tip = ""
+        lowered = error_msg.lower()
+        if "chat not found" in lowered:
+            cause_tip = "\n💡 <i>Tavsiya: Kanal topilmadi. Kanal username to'g'riligini va kanal ommaviy (public) ekanligini tekshiring.</i>"
+        elif "not a member" in lowered or "administrator" in lowered or "not enough rights" in lowered or "restricted" in lowered:
+            cause_tip = f"\n💡 <i>Tavsiya: Bot (@{bot_username}) ushbu kanalda <b>administrator</b> qilinmagan! Botni kanalingizga admin qilib qo'shing va xabar yozish ruxsatini bering.</i>"
 
-    await message.answer(success_text, reply_markup=get_admin_main_keyboard(), parse_mode="HTML")
+        success_text += (
+            f"⚠️ <b>Kanalga post joylanmadi!</b>\n"
+            f"Kanal: <code>{post_channel_target}</code>\n"
+            f"Xatolik: <code>{html.escape(error_msg)}</code>"
+            f"{cause_tip}\n\n"
+            f"<i>Botni kanalga admin qilib qo'shgach, quyidagi tugma orqali qayta urinib ko'rishingiz mumkin:</i>"
+        )
+        builder.row(InlineKeyboardButton(text="🔄 Qayta kanalga postlash", callback_data=f"repost_{anime_id}"))
+        builder.row(InlineKeyboardButton(text="⬅️ Admin panel", callback_data="admin_home"))
+
+    await message.answer(success_text, reply_markup=builder.as_markup(), parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("repost_"))
+async def handle_repost_to_channel(callback: CallbackQuery, bot: Bot):
+    anime_id = int(callback.data.replace("repost_", ""))
+    anime = await db.get_anime(anime_id)
+    if not anime:
+        await callback.answer("Anime topilmadi!", show_alert=True)
+        return
+
+    bot_info = await bot.get_me()
+    bot_username = bot_info.username or config.bot_username
+
+    title = anime["title"]
+    poster = anime["poster"]
+    status = anime.get("status", "Davom etmoqda")
+    episodes_count = anime.get("episodes_count", "12")
+    channel = format_channel_target(anime.get("channel", config.default_channel_id))
+
+    channel_post_caption = (
+        f"{html.escape(title)}\n\n"
+        f"<blockquote>• Holati: {html.escape(status)}\n"
+        f"• Anime: {html.escape(episodes_count)}\n"
+        f"• Janrlari: {html.escape(anime.get('genres', ''))}\n"
+        f"• Kanal: {html.escape(channel)}</blockquote>"
+    )
+    channel_kb = get_channel_post_keyboard(bot_username, anime_id)
+
+    try:
+        await bot.send_photo(
+            chat_id=channel,
+            photo=poster,
+            caption=channel_post_caption,
+            reply_markup=channel_kb,
+            parse_mode="HTML"
+        )
+        await callback.answer("✅ Kanalga muvaffaqiyatli joylandi!", show_alert=True)
+        await callback.message.edit_text(
+            f"✅ <b>{html.escape(title)}</b> animesi <b>{channel}</b> kanaliga muvaffaqiyatli joylandi!",
+            reply_markup=get_admin_main_keyboard(),
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        await callback.answer(f"❌ Xatolik: {str(e)[:100]}", show_alert=True)
 
 
 # ================= 2. QISM YUKLASH =================
