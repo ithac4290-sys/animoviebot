@@ -1,14 +1,37 @@
 import asyncio
 import logging
 import sys
+import aiohttp
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
+from aiogram.exceptions import TelegramNetworkError
 
 from bot.config import config
 from bot.database import db
 from bot.handlers import setup_routers
 from bot.middlewares import UserRegisterMiddleware
+
+
+class RetryAiohttpSession(AiohttpSession):
+    """
+    Internet sifati past bo'lganda yoki Telegram API ulanishni uzganda (ConnectionResetError)
+    avtomatik ravishda so'rovni qayta yuboruvchi mustahkam sessiya.
+    """
+    async def make_request(self, bot, method, timeout=None):
+        max_retries = 3
+        for attempt in range(1, max_retries + 1):
+            try:
+                return await super().make_request(bot, method, timeout=timeout)
+            except (TelegramNetworkError, aiohttp.ClientError, asyncio.TimeoutError, ConnectionResetError) as e:
+                logging.warning(
+                    f"Telegram API ulanishida vaqtinchalik uzilish ({e}). "
+                    f"Qayta urinish: {attempt}/{max_retries}..."
+                )
+                if attempt == max_retries:
+                    raise
+                await asyncio.sleep(attempt * 1.5)
 
 
 async def main():
@@ -27,24 +50,28 @@ async def main():
     logger.info("Ma'lumotlar bazasi ishga tushirilmoqda...")
     await db.init_db()
 
-    # 2. Bot va Dispatcher yaratish
+    # 2. Xatoliklarga chidamli sessiya yaratish
+    session = RetryAiohttpSession(timeout=60.0)
+
+    # 3. Bot va Dispatcher yaratish
     bot = Bot(
         token=config.bot_token,
+        session=session,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
     dp = Dispatcher()
 
-    # 3. Middleware ulash
+    # 4. Middleware ulash
     dp.update.outer_middleware(UserRegisterMiddleware())
 
-    # 4. Handlerlarni ulash
+    # 5. Handlerlarni ulash
     dp.include_router(setup_routers())
 
     # Bot ma'lumotlarini olish
     bot_info = await bot.get_me()
     logger.info(f"Bot muvaffaqiyatli ishga tushdi: @{bot_info.username} (ID: {bot_info.id})")
 
-    # 5. Pollingni boshlash
+    # 6. Pollingni boshlash
     try:
         await bot.delete_webhook(drop_pending_updates=True)
         await dp.start_polling(bot)
