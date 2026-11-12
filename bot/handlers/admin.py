@@ -144,7 +144,7 @@ async def process_anime_genres(message: Message, state: FSMContext):
     await state.update_data(genres=message.text.strip())
     await state.set_state(AddAnimeState.channel)
     await message.answer(
-        f"6-qadam: Asosiy kanal username'ini yozing:\n<i>(Masalan: {config.default_channel_id} yoki @QorakleverS2)</i>",
+        f"6-qadam: Asosiy kanal username'ini yozing:\n<i>(Masalan: {config.default_channel_id} yoki @Ani_Movei_UZ)</i>",
         reply_markup=get_admin_cancel_keyboard(),
         parse_mode="HTML"
     )

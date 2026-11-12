@@ -24,7 +24,7 @@ def get_welcome_text(full_name: str) -> str:
     escaped_name = html.escape(full_name or "Анимешник")
     return (
         f"✋🏻 <b>Assalomu aleykum hurmatli '{escaped_name}' botimizga xush kelibsiz.</b>\n\n"
-        f"📄 <i>Botimizda barcha animelarni osongina @animelar_uzbekcha_si kanalidan yuklab olib tomosha qilishingiz mumkin.</i>\n\n"
+        f"📄 <i>Botimizda barcha animelarni osongina @Ani_Movei_UZ kanalidan yuklab olib tomosha qilishingiz mumkin.</i>\n\n"
         f"<u>Botimizdagi ba'zi buyruqlar:</u>\n"
         f"<blockquote>/top - 📄 Animelar ro'yxati.\n"
         f"/help - ☎️ Qo'llab-quvvatlash.\n"
@@ -321,9 +321,9 @@ async def handle_vip_info(event: Message | CallbackQuery):
         "• 🎖 Maxsus VIP maqomi va nishoni\n\n"
         "💵 <b>VIP Obuna narxlari:</b>\n"
         "• 1 oylik: 15,000 so'm\n"
-        "• 3 oylik: 35,000 so'm\n"
-        "• Doimiy (cheksiz): 70,000 so'm\n\n"
-        "📞 VIP obunani faollashtirish uchun admin bilan bog'laning: @animelar_admini"
+        "• 3 oylik: 50,000 so'm\n"
+        "• Doimiy (cheksiz): 100,000 so'm\n\n"
+        "📞 VIP obunani faollashtirish uchun admin bilan bog'laning: @Jahongir02_02"
     )
     kb = get_back_home_keyboard()
     if isinstance(event, CallbackQuery):
@@ -360,10 +360,9 @@ async def handle_top_animes(message: Message):
 async def handle_help(message: Message):
     text = (
         "☎️ <b>Qo'llab-quvvatlash xizmati</b>\n\n"
-        "Botda biror muammo, xatolik yoki savollaringiz bo'lsa, adminlarimiz bilan bog'lanishingiz mumkin:\n\n"
-        "👨🏻‍💻 <b>Admin:</b> @animelar_admini\n"
-        "📢 <b>Kanalimiz:</b> @animelar_uzbekcha_si\n"
-        "💬 <b>Guruhimiz:</b> @animelar_uzbekcha_chat"
+        "Botda biror muammo, xatolik yoki savollaringiz bo'lsa, adminimiz bilan bog'lanishingiz mumkin:\n\n"
+        "👨🏻‍💻 <b>Admin:</b> @Jahongir02_02\n"
+        "📢 <b>Kanalimiz:</b> @Ani_Movei_UZ"
     )
     await message.answer(text, parse_mode="HTML")
 
@@ -388,7 +387,7 @@ async def handle_manga(callback: CallbackQuery):
     text = (
         "📄 <b>Manga mutolaa bo'limi</b>\n\n"
         "Tez kunda botimizda eng sara o'zbekcha tarjima qilingan mangalarni ham o'qishingiz mumkin bo'ladi!\n\n"
-        "Yangiliklarni kanalimizda kuzatib boring: @animelar_uzbekcha_si"
+        "Yangiliklarni kanalimizda kuzatib boring: @Ani_Movei_UZ"
     )
     await callback.message.edit_text(text, reply_markup=get_back_home_keyboard(), parse_mode="HTML")
 
@@ -400,7 +399,7 @@ async def handle_shorts(callback: CallbackQuery):
     text = (
         "🔴 <b>Anime Shorts & Lavhalar</b>\n\n"
         "Eng qiziqarli anime qisqa videolari va lahzalarini bizning maxsus kanalimizda tomosha qiling:\n\n"
-        "👉 https://t.me/animelar_uzbekcha_si"
+        "👉 https://t.me/Ani_Movei_UZ"
     )
     await callback.message.edit_text(text, reply_markup=get_back_home_keyboard(), parse_mode="HTML")
 
