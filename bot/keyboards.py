@@ -192,3 +192,52 @@ def get_back_home_keyboard() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="btn_home")
     )
     return builder.as_markup()
+
+
+def get_vip_plans_keyboard() -> InlineKeyboardMarkup:
+    """VIP tariflarini tanlash tugmalari"""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="💎 1 oylik — 15,000 so'm", callback_data="buy_vip_1")
+    )
+    builder.row(
+        InlineKeyboardButton(text="💎 3 oylik — 50,000 so'm", callback_data="buy_vip_3")
+    )
+    builder.row(
+        InlineKeyboardButton(text="👑 Doimiy (cheksiz) — 100,000 so'm", callback_data="buy_vip_unlimited")
+    )
+    builder.row(
+        InlineKeyboardButton(text="👨🏻‍💻 Admin bilan bog'lanish", url="https://t.me/Jahongir02_02")
+    )
+    builder.row(
+        InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="btn_home")
+    )
+    return builder.as_markup()
+
+
+def get_vip_payment_keyboard(plan_id: str, user_id: int) -> InlineKeyboardMarkup:
+    """To'lov qilish va chek yuborish tugmalari"""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="📤 Chek (skrinshot) yuborish", callback_data=f"send_receipt_{plan_id}")
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text="👨🏻‍💻 Adminga to'g'ridan-to'g'ri yozish",
+            url=f"https://t.me/Jahongir02_02"
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(text="⬅️ Boshqa tarif tanlash", callback_data="btn_vip")
+    )
+    return builder.as_markup()
+
+
+def get_admin_vip_approval_keyboard(user_id: int, days: int) -> InlineKeyboardMarkup:
+    """Admin uchun chekni tasdiqlash yoki rad etish tugmalari"""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="✅ Tasdiqlash (VIP berish)", callback_data=f"approve_vip_{user_id}_{days}"),
+        InlineKeyboardButton(text="❌ Rad etish", callback_data=f"reject_vip_{user_id}")
+    )
+    return builder.as_markup()

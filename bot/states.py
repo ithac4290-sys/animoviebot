@@ -38,3 +38,7 @@ class DeleteAnimeState(StatesGroup):
 
 class SearchAnimeState(StatesGroup):
     query = State()           # Qidiruv so'zi
+
+
+class VipPaymentState(StatesGroup):
+    receipt = State()         # To'lov cheki (rasm)

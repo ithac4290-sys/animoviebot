@@ -12,8 +12,12 @@ from bot.keyboards import (
     get_anime_keyboard,
     get_subscription_keyboard,
     get_cabinet_keyboard,
-    get_back_home_keyboard
+    get_back_home_keyboard,
+    get_vip_plans_keyboard,
+    get_vip_payment_keyboard,
+    get_admin_vip_approval_keyboard
 )
+from bot.states import VipPaymentState
 from bot.utils import check_user_subscriptions
 
 router = Router()
@@ -311,26 +315,121 @@ async def handle_cabinet(event: Message | CallbackQuery):
 # 2. 💎 VIP Obuna (/vip)
 @router.message(Command("vip"))
 @router.callback_query(F.data == "btn_vip")
-async def handle_vip_info(event: Message | CallbackQuery):
+async def handle_vip_info(event: Message | CallbackQuery, state: FSMContext):
+    await state.clear()
     text = (
-        "💎 <b>VIP OBUNA HAQIDA MA'LUMOT</b>\n\n"
-        "VIP a'zolik sizga qanday imkoniyatlarni beradi?\n"
-        "• 🚫 Barcha majburiy obuna va homiy kanallardan ozod bo'lish\n"
+        "💎 <b>VIP OBUNA BO'LIMI</b>\n\n"
+        "VIP a'zolik sizga qanday afzalliklarni beradi?\n"
+        "• 🚫 Barcha majburiy obuna va homiy kanallarsiz tomosha qilish\n"
         "• ⚡️ Animelarni yuqori tezlikda yuklab olish\n"
-        "• 🍿 Premyeralarni birinchilardan bo'lib ko'rish\n"
-        "• 🎖 Maxsus VIP maqomi va nishoni\n\n"
+        "• 🍿 Yangi qismlarni birinchilardan bo'lib ko'rish\n"
+        "• 🎖 Maxsus VIP nishoni va maqomi\n\n"
         "💵 <b>VIP Obuna narxlari:</b>\n"
         "• 1 oylik: 15,000 so'm\n"
         "• 3 oylik: 50,000 so'm\n"
         "• Doimiy (cheksiz): 100,000 so'm\n\n"
-        "📞 VIP obunani faollashtirish uchun admin bilan bog'laning: @Jahongir02_02"
+        "<i>Sotib olish uchun quyidagi tariflardan birini tanlang:</i>"
     )
-    kb = get_back_home_keyboard()
+    kb = get_vip_plans_keyboard()
     if isinstance(event, CallbackQuery):
         await event.answer()
         await event.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
     else:
         await event.answer(text, reply_markup=kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data.in_(["buy_vip_1", "buy_vip_3", "buy_vip_unlimited"]))
+async def handle_select_vip_plan(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    plan_key = callback.data
+
+    plans = {
+        "buy_vip_1": {"name": "1 oylik VIP", "days": 30, "price": "15,000 so'm"},
+        "buy_vip_3": {"name": "3 oylik VIP", "days": 90, "price": "50,000 so'm"},
+        "buy_vip_unlimited": {"name": "Doimiy (cheksiz) VIP", "days": 3650, "price": "100,000 so'm"}
+    }
+    selected = plans.get(plan_key)
+    await state.update_data(
+        plan_key=plan_key,
+        plan_name=selected["name"],
+        days=selected["days"],
+        price=selected["price"]
+    )
+
+    text = (
+        f"💎 <b>Tanlangan tarif:</b> {selected['name']}\n"
+        f"💵 <b>To'lov summasi:</b> {selected['price']}\n\n"
+        f"💳 <b>To'lov uchun karta / rekvizitlar:</b>\n"
+        f"Hozirda to'lovni adminimiz orqali amalga oshirishingiz mumkin:\n\n"
+        f"👨🏻‍💻 <b>Admin:</b> @Jahongir02_02\n\n"
+        f"<i>To'lov chekini (skrinshotini) to'g'ridan-to'g'ri botga yuborish uchun quyidagi <b>'📤 Chek yuborish'</b> tugmasini bosing:</i>"
+    )
+
+    kb = get_vip_payment_keyboard(plan_key, callback.from_user.id)
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("send_receipt_"))
+async def handle_start_send_receipt(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await state.set_state(VipPaymentState.receipt)
+    text = (
+        "📤 <b>To'lov chekini yuborish</b>\n\n"
+        "Iltimos, to'lov amalga oshirilganligini tasdiqlovchi <b>chek rasmini (skrinshot)</b> chatga yuboring:\n\n"
+        "<i>(Bekor qilish uchun /start buyrug'ini yozing)</i>"
+    )
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from aiogram.types import InlineKeyboardButton
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="btn_vip"))
+    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+
+
+@router.message(VipPaymentState.receipt, F.photo)
+async def process_vip_receipt(message: Message, state: FSMContext, bot: Bot):
+    data = await state.get_data()
+    plan_name = data.get("plan_name", "1 oylik VIP")
+    days = data.get("days", 30)
+    price = data.get("price", "15,000 so'm")
+
+    user = message.from_user
+    photo_file_id = message.photo[-1].file_id
+
+    await state.clear()
+
+    # Foydalanuvchiga tasdiq xabari
+    await message.answer(
+        "✅ <b>To'lov cheki qabul qilindi!</b>\n\n"
+        "Chekingiz tekshirish uchun administratorga yuborildi. "
+        "To'lov tasdiqlanishi bilan VIP obunangiz avtomatik faollashtiriladi va sizga xabar beriladi! Rahmat.",
+        reply_markup=get_back_home_keyboard(),
+        parse_mode="HTML"
+    )
+
+    # Adminlarga yuborish
+    admin_caption = (
+        f"🔔 <b>YANGI VIP TO'LOV CHEKI!</b>\n\n"
+        f"👤 <b>Foydalanuvchi:</b> {html.escape(user.full_name)}\n"
+        f"▫️ <b>Username:</b> @{user.username if user.username else 'yoq'}\n"
+        f"🆔 <b>Telegram ID:</b> <code>{user.id}</code>\n"
+        f"💎 <b>Tanlangan tarif:</b> {plan_name}\n"
+        f"💵 <b>Summa:</b> {price}\n"
+        f"⏳ <b>Muddat:</b> {days} kun"
+    )
+
+    admin_kb = get_admin_vip_approval_keyboard(user.id, days)
+
+    for admin_id in config.admins:
+        try:
+            await bot.send_photo(
+                chat_id=admin_id,
+                photo=photo_file_id,
+                caption=admin_caption,
+                reply_markup=admin_kb,
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
 
 
 # 3. /top - Animelar ro'yxati

@@ -562,6 +562,66 @@ async def process_vip_days(message: Message, state: FSMContext, bot: Bot):
         )
 
 
+@router.callback_query(F.data.startswith("approve_vip_"))
+async def handle_approve_vip(callback: CallbackQuery, bot: Bot):
+    parts = callback.data.split("_")
+    target_user_id = int(parts[2])
+    days = int(parts[3])
+
+    success = await db.give_vip(target_user_id, days)
+    await callback.answer("✅ VIP obuna berildi!", show_alert=True)
+
+    if success:
+        try:
+            await bot.send_message(
+                chat_id=target_user_id,
+                text=(
+                    f"🎉 <b>Tabriklaymiz!</b> Sizning to'lovingiz muvaffaqiyatli tasdiqlandi!\n\n"
+                    f"💎 Sizga <b>{days} kunlik VIP obuna</b> faollashtirildi.\n"
+                    f"Endi siz botdagi barcha animelarni homiy kanallarsiz va cheklovlarsiz tomosha qilishingiz mumkin!"
+                ),
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
+
+    try:
+        await callback.message.edit_caption(
+            caption=f"{callback.message.caption}\n\n✅ <b>ADMIN TOMONIDAN TASDIQLANDI ({days} kunlik VIP berildi)!</b>",
+            parse_mode="HTML"
+        )
+    except Exception:
+        pass
+
+
+@router.callback_query(F.data.startswith("reject_vip_"))
+async def handle_reject_vip(callback: CallbackQuery, bot: Bot):
+    parts = callback.data.split("_")
+    target_user_id = int(parts[2])
+
+    await callback.answer("❌ To'lov rad etildi.", show_alert=True)
+    try:
+        await bot.send_message(
+            chat_id=target_user_id,
+            text=(
+                "❌ <b>Kechirasiz, siz yuborgan to'lov cheki tasdiqlanmadi.</b>\n\n"
+                "Iltimos, agar to'lov qilgan bo'lsangiz, admin bilan to'g'ridan-to'g'ri bog'laning:\n"
+                "👨🏻‍💻 <b>Admin:</b> @Jahongir02_02"
+            ),
+            parse_mode="HTML"
+        )
+    except Exception:
+        pass
+
+    try:
+        await callback.message.edit_caption(
+            caption=f"{callback.message.caption}\n\n❌ <b>ADMIN TOMONIDAN RAD ETILDI!</b>",
+            parse_mode="HTML"
+        )
+    except Exception:
+        pass
+
+
 # ================= 5. STATISTIKA =================
 
 @router.callback_query(F.data == "admin_stats")
