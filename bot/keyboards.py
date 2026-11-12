@@ -136,12 +136,25 @@ def get_admin_main_keyboard() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="🎬 Qism yuklash", callback_data="admin_add_episode")
     )
     builder.row(
-        InlineKeyboardButton(text="📢 Sponsor kanallar", callback_data="admin_channels"),
-        InlineKeyboardButton(text="💎 VIP berish", callback_data="admin_give_vip")
+        InlineKeyboardButton(text="🗑 Animeni o'chirish", callback_data="admin_delete_anime"),
+        InlineKeyboardButton(text="📢 Sponsor kanallar", callback_data="admin_channels")
     )
     builder.row(
-        InlineKeyboardButton(text="📊 Statistika", callback_data="admin_stats"),
+        InlineKeyboardButton(text="💎 VIP berish", callback_data="admin_give_vip"),
+        InlineKeyboardButton(text="📊 Statistika", callback_data="admin_stats")
+    )
+    builder.row(
         InlineKeyboardButton(text="✉️ Xabar tarqatish", callback_data="admin_broadcast")
+    )
+    return builder.as_markup()
+
+
+def get_delete_confirm_keyboard(anime_id: int) -> InlineKeyboardMarkup:
+    """Animeni o'chirishni tasdiqlash tugmasi"""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="🗑 Ha, o'chirilsin", callback_data=f"confirm_del_anime_{anime_id}"),
+        InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel")
     )
     return builder.as_markup()
 

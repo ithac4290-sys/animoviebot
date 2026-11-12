@@ -32,5 +32,9 @@ class BroadcastState(StatesGroup):
     message = State()         # Tarqatiladigan xabar
 
 
+class DeleteAnimeState(StatesGroup):
+    anime_id = State()        # O'chiriladigan anime ID yoki nomi
+
+
 class SearchAnimeState(StatesGroup):
     query = State()           # Qidiruv so'zi

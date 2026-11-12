@@ -13,13 +13,15 @@ from bot.states import (
     AddEpisodeState,
     AddChannelState,
     GiveVipState,
-    BroadcastState
+    BroadcastState,
+    DeleteAnimeState
 )
 from bot.keyboards import (
     get_admin_main_keyboard,
     get_admin_cancel_keyboard,
     get_status_keyboard,
-    get_channel_post_keyboard
+    get_channel_post_keyboard,
+    get_delete_confirm_keyboard
 )
 
 router = Router()
@@ -536,3 +538,73 @@ async def process_broadcast_message(message: Message, state: FSMContext, bot: Bo
         reply_markup=get_admin_main_keyboard(),
         parse_mode="HTML"
     )
+
+
+# ================= 7. ANIMENI O'CHIRISH =================
+
+@router.callback_query(F.data == "admin_delete_anime")
+async def start_delete_anime(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await state.set_state(DeleteAnimeState.anime_id)
+
+    # Oxirgi qo'shilgan 5 ta animeni ko'rsatish
+    recent = await db.get_top_animes(limit=5)
+    text = "🗑 <b>Animeni o'chirish bo'limi</b>\n\n"
+    if recent:
+        text += "📌 <i>Oxirgi qo'shilgan ba'zi animelar:</i>\n"
+        for a in recent:
+            text += f"• ID: <code>{a['id']}</code> — {html.escape(a['title'][:30])}\n"
+        text += "\n"
+
+    text += "O'chirmoqchi bo'lgan animengizning <b>ID raqamini</b> kiriting:\n<i>(Masalan: 961)</i>"
+    await callback.message.edit_text(text, reply_markup=get_admin_cancel_keyboard(), parse_mode="HTML")
+
+
+@router.message(DeleteAnimeState.anime_id)
+async def process_delete_anime_id(message: Message, state: FSMContext):
+    query = message.text.strip()
+    if not query.isdigit():
+        await message.answer(
+            "❌ Iltimos, faqat anime ID raqamini kiriting (masalan: 961):",
+            reply_markup=get_admin_cancel_keyboard()
+        )
+        return
+
+    anime_id = int(query)
+    anime = await db.get_anime(anime_id)
+    if not anime:
+        await message.answer(
+            f"❌ <b>{anime_id}</b> ID raqamli anime bazadan topilmadi. Qaytadan kiriting:",
+            reply_markup=get_admin_cancel_keyboard(),
+            parse_mode="HTML"
+        )
+        return
+
+    await state.clear()
+    text = (
+        f"⚠️ <b>Haqiqatdan ham ushbu animeni o'chirmoqchimisiz?</b>\n\n"
+        f"🆔 <b>ID:</b> <code>{anime['id']}</code>\n"
+        f"🎬 <b>Nomi:</b> {html.escape(anime['title'])}\n"
+        f"📁 <b>Qismlar:</b> {html.escape(anime['episodes_count'])}\n"
+        f"👁 <b>Ko'rishlar:</b> {anime.get('views', 0)}\n\n"
+        f"<i>Eslatma: Anime o'chirilsa, uning barcha yuklangan qismlari ham bazadan o'chiriladi!</i>"
+    )
+    await message.answer(text, reply_markup=get_delete_confirm_keyboard(anime_id), parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("confirm_del_anime_"))
+async def handle_confirm_delete_anime(callback: CallbackQuery):
+    anime_id = int(callback.data.replace("confirm_del_anime_", ""))
+    anime = await db.get_anime(anime_id)
+    title = anime["title"] if anime else f"ID: {anime_id}"
+
+    success = await db.delete_anime(anime_id)
+    await callback.answer()
+
+    if success:
+        text = f"✅ <b>{html.escape(title)}</b> animesi va barcha qismlari muvaffaqiyatli o'chirildi!"
+    else:
+        text = f"❌ Animeni o'chirishda xatolik yuz berdi yoki allaqachon o'chirilgan."
+
+    await callback.message.edit_text(text, reply_markup=get_admin_main_keyboard(), parse_mode="HTML")
+
