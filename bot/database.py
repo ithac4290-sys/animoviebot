@@ -326,4 +326,6 @@ class Database:
             return cursor.rowcount > 0
 
 
-db = Database()
+from bot.config import config
+
+db = Database(db_path=config.db_name)
