@@ -16,12 +16,12 @@ class Config:
 
 
 def load_config() -> Config:
-    token = os.getenv("BOT_TOKEN", "").strip()
-    bot_username = os.getenv("BOT_USERNAME", "").strip().lstrip("@")
-    channel_id = os.getenv("DEFAULT_CHANNEL_ID", "").strip()
+    token = os.getenv("BOT_TOKEN", "8985548481:AAGP05mytsA9vLI8iAMz3ELWz58BriNMXHw").strip()
+    bot_username = os.getenv("BOT_USERNAME", "animelar_bot").strip().lstrip("@")
+    channel_id = os.getenv("DEFAULT_CHANNEL_ID", "@Ani_Movei_UZ").strip()
     db_name = os.getenv("DB_NAME", "anime_bot.db").strip()
 
-    admins_raw = os.getenv("ADMINS", "")
+    admins_raw = os.getenv("ADMINS", "7285523919")
     admins: List[int] = []
     for admin_id in admins_raw.split(","):
         admin_id = admin_id.strip()
