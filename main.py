@@ -15,11 +15,30 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramNetworkError
+from aiohttp import web
 
 from bot.config import config
 from bot.database import db
 from bot.handlers import setup_routers
 from bot.middlewares import UserRegisterMiddleware
+
+
+async def start_health_server():
+    """Railway yoki Render kabi bulutli xizmatlar uchun foniy healthcheck serveri"""
+    import os
+    port = os.getenv("PORT")
+    if port and port.isdigit():
+        async def health_check_handler(request):
+            return web.Response(text="Anime Bot is running smoothly on Railway!")
+
+        app = web.Application()
+        app.router.add_get("/", health_check_handler)
+        app.router.add_get("/health", health_check_handler)
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, "0.0.0.0", int(port))
+        await site.start()
+        logging.info(f"Railway Healthcheck serveri ishga tushdi: port {port}")
 
 
 class RetryAiohttpSession(AiohttpSession):
@@ -79,7 +98,10 @@ async def main():
     bot_info = await bot.get_me()
     logger.info(f"Bot muvaffaqiyatli ishga tushdi: @{bot_info.username} (ID: {bot_info.id})")
 
-    # 6. Pollingni boshlash
+    # 6. Railway yoki bulutli hostinglar uchun healthcheck serverini yoqish
+    await start_health_server()
+
+    # 7. Pollingni boshlash
     try:
         await bot.delete_webhook(drop_pending_updates=True)
         await dp.start_polling(bot)
