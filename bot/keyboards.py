@@ -145,15 +145,111 @@ def get_admin_main_keyboard() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="🎬 Qism yuklash", callback_data="admin_add_episode", style="primary")
     )
     builder.row(
-        InlineKeyboardButton(text="🗑 Animeni o'chirish", callback_data="admin_delete_anime", style="danger"),
-        InlineKeyboardButton(text="📢 Sponsor kanallar", callback_data="admin_channels", style="primary")
+        InlineKeyboardButton(text="📋 Animelar ro'yxati", callback_data="admin_list_animes_0", style="primary"),
+        InlineKeyboardButton(text="🗑 Animeni o'chirish", callback_data="admin_delete_anime", style="danger")
     )
     builder.row(
-        InlineKeyboardButton(text="💎 VIP berish", callback_data="admin_give_vip", style="success"),
-        InlineKeyboardButton(text="📊 Statistika", callback_data="admin_stats", style="primary")
+        InlineKeyboardButton(text="📢 Sponsor kanallar", callback_data="admin_channels", style="primary"),
+        InlineKeyboardButton(text="💎 VIP berish", callback_data="admin_give_vip", style="success")
     )
     builder.row(
+        InlineKeyboardButton(text="📊 Statistika", callback_data="admin_stats", style="primary"),
         InlineKeyboardButton(text="✉️ Xabar tarqatish", callback_data="admin_broadcast", style="primary")
+    )
+    return builder.as_markup()
+
+
+def get_admin_channel_select_keyboard(default_channel: str) -> InlineKeyboardMarkup:
+    """Kanal tanlash tugmasi (standart kanalni bir bosish bilan tanlash)"""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text=f"📢 Standart kanal ({default_channel})", callback_data="use_default_channel", style="success")
+    )
+    builder.row(
+        InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel", style="danger")
+    )
+    return builder.as_markup()
+
+
+def get_admin_recent_animes_keyboard(animes: List[Dict[str, Any]], action_prefix: str = "select_anime_") -> InlineKeyboardMarkup:
+    """Qism yuklash yoki boshqarish uchun animelar tezkor tugmalari"""
+    builder = InlineKeyboardBuilder()
+    for a in animes:
+        builder.row(
+            InlineKeyboardButton(
+                text=f"🎬 {a['id']}. {a['title'][:26]}",
+                callback_data=f"{action_prefix}{a['id']}",
+                style="primary"
+            )
+        )
+    builder.row(
+        InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel", style="danger")
+    )
+    return builder.as_markup()
+
+
+def get_admin_after_episode_keyboard(anime_id: int, next_ep: int) -> InlineKeyboardMarkup:
+    """Qism yuklangandan so'ng navbatdagi qismni tezkor yuklash tugmalari"""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(
+            text=f"➕ Keyingi {next_ep}-qismni yuklash",
+            callback_data=f"quick_add_ep_{anime_id}_{next_ep}",
+            style="success"
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(text="🎬 Boshqa anime tanlash", callback_data="admin_add_episode", style="primary"),
+        InlineKeyboardButton(text="⬅️ Admin panel", callback_data="admin_home", style="primary")
+    )
+    return builder.as_markup()
+
+
+def get_animes_list_keyboard(animes: List[Dict[str, Any]], page: int, total_pages: int) -> InlineKeyboardMarkup:
+    """Animelar ro'yxatini sahifalash va boshqarish tugmalari"""
+    builder = InlineKeyboardBuilder()
+    for a in animes:
+        ep_info = f"({a.get('uploaded_episodes', 0)} qism)"
+        builder.row(
+            InlineKeyboardButton(
+                text=f"🎬 [{a['id']}] {a['title'][:22]} {ep_info}",
+                callback_data=f"admin_manage_anime_{a['id']}",
+                style="primary"
+            )
+        )
+
+    # Navigatsiya
+    nav_buttons = []
+    if page > 0:
+        nav_buttons.append(InlineKeyboardButton(text="◀️ Oldingi", callback_data=f"admin_list_animes_{page-1}"))
+    nav_buttons.append(InlineKeyboardButton(text=f"📄 {page+1}/{max(total_pages, 1)}", callback_data="ignore"))
+    if page < total_pages - 1:
+        nav_buttons.append(InlineKeyboardButton(text="Keyingi ▶️", callback_data=f"admin_list_animes_{page+1}"))
+    builder.row(*nav_buttons)
+
+    builder.row(
+        InlineKeyboardButton(text="➕ Yangi anime qo'shish", callback_data="admin_add_anime", style="success"),
+        InlineKeyboardButton(text="⬅️ Admin panel", callback_data="admin_home")
+    )
+    return builder.as_markup()
+
+
+def get_anime_manage_keyboard(anime_id: int, next_ep: int) -> InlineKeyboardMarkup:
+    """Bitta animeni boshqarish tugmalari"""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(
+            text=f"🎬 {next_ep}-qismni yuklash",
+            callback_data=f"quick_add_ep_{anime_id}_{next_ep}",
+            style="success"
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(text="📢 Kanalga postlash", callback_data=f"repost_{anime_id}", style="primary"),
+        InlineKeyboardButton(text="🗑 O'chirish", callback_data=f"confirm_del_anime_{anime_id}", style="danger")
+    )
+    builder.row(
+        InlineKeyboardButton(text="⬅️ Animelar ro'yxatiga qaytish", callback_data="admin_list_animes_0")
     )
     return builder.as_markup()
 

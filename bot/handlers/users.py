@@ -555,3 +555,17 @@ async def handle_check_subscription(callback: CallbackQuery, bot: Bot):
         else:
             kb = get_subscription_keyboard(unsubbed)
             await callback.message.edit_reply_markup(reply_markup=kb)
+
+
+@router.message(Command("admin"))
+async def handle_unauthorized_admin(message: Message):
+    """Admin bo'lmagan foydalanuvchilar /admin yozganda"""
+    user_id = message.from_user.id
+    username = f"@{message.from_user.username}" if message.from_user.username else "mavjud emas"
+    await message.answer(
+        f"⛔️ <b>Kechirasiz, siz bot administratori emassiz!</b>\n\n"
+        f"🆔 <b>Sizning Telegram ID:</b> <code>{user_id}</code>\n"
+        f"👤 <b>Username:</b> {username}\n\n"
+        f"💡 Agar siz bot egasi bo'lsangiz, ushbu ID raqamni sozlamalarga (ADMINS ga) qo'shing yoki @Jahongir02_02 profilingizdan kiring.",
+        parse_mode="HTML"
+    )

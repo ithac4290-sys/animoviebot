@@ -21,7 +21,12 @@ from bot.keyboards import (
     get_admin_cancel_keyboard,
     get_status_keyboard,
     get_channel_post_keyboard,
-    get_delete_confirm_keyboard
+    get_delete_confirm_keyboard,
+    get_admin_channel_select_keyboard,
+    get_admin_recent_animes_keyboard,
+    get_admin_after_episode_keyboard,
+    get_animes_list_keyboard,
+    get_anime_manage_keyboard
 )
 
 router = Router()
@@ -87,14 +92,29 @@ async def process_anime_title(message: Message, state: FSMContext):
     )
 
 
-@router.message(AddAnimeState.poster, F.photo)
+@router.message(AddAnimeState.poster, F.photo | F.document)
 async def process_anime_poster(message: Message, state: FSMContext):
-    photo_file_id = message.photo[-1].file_id
+    if message.photo:
+        photo_file_id = message.photo[-1].file_id
+    elif message.document:
+        photo_file_id = message.document.file_id
+    else:
+        await message.answer("⚠️ Iltimos, anime posterini (rasm yoki fayl ko'rinishida) yuboring:")
+        return
+
     await state.update_data(poster=photo_file_id)
     await state.set_state(AddAnimeState.status)
     await message.answer(
         "3-qadam: Anime holatini tanlang yoki yozing:",
         reply_markup=get_status_keyboard()
+    )
+
+
+@router.message(AddAnimeState.poster)
+async def process_anime_poster_invalid(message: Message):
+    await message.answer(
+        "⚠️ Iltimos, anime posterini rasm yoki fotosurat ko'rinishida yuboring:",
+        reply_markup=get_admin_cancel_keyboard()
     )
 
 
@@ -143,9 +163,11 @@ async def process_anime_episodes(message: Message, state: FSMContext):
 async def process_anime_genres(message: Message, state: FSMContext):
     await state.update_data(genres=message.text.strip())
     await state.set_state(AddAnimeState.channel)
+    default_ch = config.default_channel_id or "@Ani_Movei_UZ"
     await message.answer(
-        f"6-qadam: Asosiy kanal username'ini yozing:\n<i>(Masalan: {config.default_channel_id} yoki @Ani_Movei_UZ)</i>",
-        reply_markup=get_admin_cancel_keyboard(),
+        f"6-qadam: Asosiy kanalni tanlang yoki boshqa kanal username'ini yozing:\n"
+        f"<i>(Standart: {default_ch})</i>",
+        reply_markup=get_admin_channel_select_keyboard(default_ch),
         parse_mode="HTML"
     )
 
@@ -161,11 +183,9 @@ def format_channel_target(raw: str) -> str:
     return raw
 
 
-@router.message(AddAnimeState.channel)
-async def process_anime_channel_finish(message: Message, state: FSMContext, bot: Bot):
-    user_channel_input = message.text.strip()
-    target_channel = format_channel_target(user_channel_input)
-
+async def _finalize_anime_creation(target_channel: str, reply_event: Message, state: FSMContext, bot: Bot):
+    """Animeni DB ga saqlash va kanalga postlash jarayoni"""
+    clean_target = format_channel_target(target_channel)
     data = await state.get_data()
     title = data["title"]
     poster = data["poster"]
@@ -180,7 +200,7 @@ async def process_anime_channel_finish(message: Message, state: FSMContext, bot:
         status=status,
         episodes_count=episodes_count,
         genres=genres,
-        channel=target_channel
+        channel=clean_target
     )
 
     await state.clear()
@@ -188,21 +208,20 @@ async def process_anime_channel_finish(message: Message, state: FSMContext, bot:
     bot_info = await bot.get_me()
     bot_username = bot_info.username or config.bot_username
 
-    # 2. 1-rasmdagi aniq dizaynda kanal postini tayyorlash
+    # 2. Kanal postini tayyorlash
     clean_title = title.replace(r"\'", "'")
     channel_post_caption = (
         f"{html.escape(clean_title)}\n\n"
         f"<blockquote>├• Holati: {html.escape(status)}\n"
         f"├• Anime: {html.escape(episodes_count)}\n"
         f"├• Janrlari: {html.escape(genres)}\n"
-        f"├• Kanal: {html.escape(target_channel)}</blockquote>"
+        f"├• Kanal: {html.escape(clean_target)}</blockquote>"
     )
 
     channel_kb = get_channel_post_keyboard(bot_username, anime_id)
 
     # 3. Kanalga avtomatik post yuborish
-    # Birinchi admin kiritgan kanalga yuborish
-    post_channel_target = target_channel
+    post_channel_target = clean_target
     posted_to_channel = False
     error_msg = ""
 
@@ -217,7 +236,6 @@ async def process_anime_channel_finish(message: Message, state: FSMContext, bot:
         posted_to_channel = True
     except Exception as e:
         error_msg = str(e)
-        # Agar admin kiritgan kanalga yuborilmasa va configda boshqa kanal bo'lsa
         if config.default_channel_id and config.default_channel_id != post_channel_target:
             try:
                 await bot.send_photo(
@@ -244,8 +262,16 @@ async def process_anime_channel_finish(message: Message, state: FSMContext, bot:
         f"📎 <b>Bot havolasi:</b> https://t.me/{bot_username}?start={anime_id}\n\n"
     )
 
+    builder.row(
+        InlineKeyboardButton(
+            text="🎬 1-qismni yuklash",
+            callback_data=f"quick_add_ep_{anime_id}_1",
+            style="success"
+        )
+    )
+
     if posted_to_channel:
-        success_text += f"📢 <b>{post_channel_target} kanaliga 1-rasm dizaynida post muvaffaqiyatli joylandi!</b>"
+        success_text += f"📢 <b>{post_channel_target} kanaliga post muvaffaqiyatli joylandi!</b>"
         builder.row(InlineKeyboardButton(text="⬅️ Admin panel", callback_data="admin_home"))
     else:
         cause_tip = ""
@@ -265,7 +291,20 @@ async def process_anime_channel_finish(message: Message, state: FSMContext, bot:
         builder.row(InlineKeyboardButton(text="🔄 Qayta kanalga postlash", callback_data=f"repost_{anime_id}"))
         builder.row(InlineKeyboardButton(text="⬅️ Admin panel", callback_data="admin_home"))
 
-    await message.answer(success_text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    await reply_event.answer(success_text, reply_markup=builder.as_markup(), parse_mode="HTML")
+
+
+@router.callback_query(AddAnimeState.channel, F.data == "use_default_channel")
+async def process_anime_channel_default_cb(callback: CallbackQuery, state: FSMContext, bot: Bot):
+    await callback.answer()
+    default_ch = config.default_channel_id or "@Ani_Movei_UZ"
+    await _finalize_anime_creation(target_channel=default_ch, reply_event=callback.message, state=state, bot=bot)
+
+
+@router.message(AddAnimeState.channel)
+async def process_anime_channel_finish(message: Message, state: FSMContext, bot: Bot):
+    target_channel = message.text.strip()
+    await _finalize_anime_creation(target_channel=target_channel, reply_event=message, state=state, bot=bot)
 
 
 @router.callback_query(F.data.startswith("repost_"))
@@ -314,15 +353,122 @@ async def handle_repost_to_channel(callback: CallbackQuery, bot: Bot):
 
 # ================= 2. QISM YUKLASH =================
 
+async def _setup_episode_upload(anime_id: int, reply_target: Any, state: FSMContext):
+    """Anime qismini yuklash uchun qadamni tayyorlash"""
+    anime = await db.get_anime(anime_id)
+    if not anime:
+        if isinstance(reply_target, CallbackQuery):
+            await reply_target.answer("❌ Anime topilmadi!", show_alert=True)
+        else:
+            await reply_target.answer("❌ Anime topilmadi!")
+        return
+
+    episodes = await db.get_anime_episodes(anime_id)
+    existing_nums = [e["episode_num"] for e in episodes]
+    next_ep = max(existing_nums, default=0) + 1
+    nums_str = ", ".join(str(n) for n in sorted(existing_nums)) if existing_nums else "Hozircha qismlar yo'q"
+
+    await state.update_data(anime_id=anime_id, anime_title=anime["title"], next_ep=next_ep)
+    await state.set_state(AddEpisodeState.episode_num)
+
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from aiogram.types import InlineKeyboardButton
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(
+            text=f"▶️ Tavsiya etilgan: {next_ep}-qism",
+            callback_data=f"set_ep_num_{anime_id}_{next_ep}",
+            style="success"
+        )
+    )
+    builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel", style="danger"))
+
+    text = (
+        f"🎬 Tanlangan anime: <b>{html.escape(anime['title'])}</b>\n\n"
+        f"📁 <b>Yuklangan qismlar ({len(existing_nums)} ta):</b> {nums_str}\n"
+        f"💡 <b>Tavsiya etilgan navbatdagi qism:</b> {next_ep}\n\n"
+        f"Qism raqamini tugmadan tanlang yoki boshqa raqam kiriting:\n<i>(Masalan: 1 yoki 2)</i>"
+    )
+
+    if isinstance(reply_target, CallbackQuery):
+        await reply_target.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    elif isinstance(reply_target, Message):
+        await reply_target.answer(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+
+
 @router.callback_query(F.data == "admin_add_episode")
 async def start_add_episode(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await state.set_state(AddEpisodeState.anime_id)
+
+    recent = await db.get_animes_paginated(offset=0, limit=6)
     text = (
-        "🎬 <b>Anime qismini yuklash</b>\n\n"
-        "1-qadam: Anime ID raqamini kiriting:\n<i>(Masalan: 961)</i>"
+        "🎬 <b>Anime qismini yuklash bo'limi</b>\n\n"
+        "Quyidagi ro'yxatdan kerakli animeni tanlang yoki uning <b>ID raqamini</b> yozing:\n"
     )
-    await callback.message.edit_text(text, reply_markup=get_admin_cancel_keyboard(), parse_mode="HTML")
+    if recent:
+        text += "\n📌 <i>Oxirgi qo'shilgan animelar:</i>\n"
+        for a in recent:
+            text += f"• ID: <code>{a['id']}</code> — <b>{html.escape(a['title'][:28])}</b> (Yuklangan: {a.get('uploaded_episodes', 0)} ta)\n"
+        kb = get_admin_recent_animes_keyboard(recent, action_prefix="admin_pick_anime_")
+    else:
+        text += "\n<i>Hozircha botda animelar yo'q. Avval 'Yangi anime qo'shish' orqali anime yarating.</i>"
+        kb = get_admin_cancel_keyboard()
+
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("admin_pick_anime_"))
+async def handle_pick_anime_cb(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    anime_id = int(callback.data.replace("admin_pick_anime_", ""))
+    await _setup_episode_upload(anime_id, callback, state)
+
+
+@router.callback_query(F.data.startswith("set_ep_num_"))
+async def handle_set_ep_num_cb(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    parts = callback.data.split("_")
+    anime_id = int(parts[3])
+    ep_num = int(parts[4])
+
+    anime = await db.get_anime(anime_id)
+    anime_title = anime["title"] if anime else "Anime"
+
+    await state.update_data(anime_id=anime_id, episode_num=ep_num, anime_title=anime_title)
+    await state.set_state(AddEpisodeState.video)
+
+    await callback.message.edit_text(
+        f"🎬 <b>{html.escape(anime_title)}</b>\n\n"
+        f"3-qadam: <b>{ep_num}-qism</b> videosini (yoki fayl ko'rinishida) yuboring:",
+        reply_markup=get_admin_cancel_keyboard(),
+        parse_mode="HTML"
+    )
+
+
+@router.callback_query(F.data.startswith("quick_add_ep_"))
+async def handle_quick_add_ep_cb(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    parts = callback.data.split("_")
+    anime_id = int(parts[3])
+    ep_num = int(parts[4])
+
+    anime = await db.get_anime(anime_id)
+    if not anime:
+        await callback.answer("Anime topilmadi!", show_alert=True)
+        return
+
+    await state.update_data(anime_id=anime_id, episode_num=ep_num, anime_title=anime["title"])
+    await state.set_state(AddEpisodeState.video)
+
+    text = (
+        f"🎬 <b>{html.escape(anime['title'])}</b>\n\n"
+        f"➡️ <b>{ep_num}-qism</b> videosini (yoki hujjat/fayl sifatida) yuboring:"
+    )
+    try:
+        await callback.message.edit_text(text, reply_markup=get_admin_cancel_keyboard(), parse_mode="HTML")
+    except Exception:
+        await callback.message.answer(text, reply_markup=get_admin_cancel_keyboard(), parse_mode="HTML")
 
 
 @router.message(AddEpisodeState.anime_id)
@@ -337,14 +483,7 @@ async def process_episode_anime_id(message: Message, state: FSMContext):
         await message.answer(f"❌ {anime_id} ID raqamli anime topilmadi. Qaytadan kiriting:")
         return
 
-    await state.update_data(anime_id=anime_id, anime_title=anime["title"])
-    await state.set_state(AddEpisodeState.episode_num)
-    await message.answer(
-        f"Tanlangan anime: <b>{html.escape(anime['title'])}</b>\n\n"
-        f"2-qadam: Nechanchi qism ekanligini kiriting (raqam):\n<i>(Masalan: 1 yoki 2)</i>",
-        reply_markup=get_admin_cancel_keyboard(),
-        parse_mode="HTML"
-    )
+    await _setup_episode_upload(anime_id, message, state)
 
 
 @router.message(AddEpisodeState.episode_num)
@@ -354,9 +493,13 @@ async def process_episode_num(message: Message, state: FSMContext):
         return
 
     ep_num = int(message.text)
+    data = await state.get_data()
+    anime_title = data.get("anime_title", "Anime")
+
     await state.update_data(episode_num=ep_num)
     await state.set_state(AddEpisodeState.video)
     await message.answer(
+        f"🎬 <b>{html.escape(anime_title)}</b>\n\n"
         f"3-qadam: <b>{ep_num}-qism</b> videosini (yoki fayl ko'rinishida) yuboring:",
         reply_markup=get_admin_cancel_keyboard(),
         parse_mode="HTML"
@@ -386,9 +529,11 @@ async def process_episode_file(message: Message, state: FSMContext):
     )
 
     await state.clear()
+    next_ep = ep_num + 1
     await message.answer(
-        f"✅ <b>{html.escape(anime_title)}</b> animesining <b>{ep_num}-qismi</b> muvaffaqiyatli saqlandi!",
-        reply_markup=get_admin_main_keyboard(),
+        f"✅ <b>{html.escape(anime_title)}</b> animesining <b>{ep_num}-qismi</b> muvaffaqiyatli saqlandi!\n\n"
+        f"Keyingi <b>{next_ep}-qismni</b> darhol yuklashni xohlaysizmi?",
+        reply_markup=get_admin_after_episode_keyboard(anime_id, next_ep),
         parse_mode="HTML"
     )
 
@@ -628,26 +773,107 @@ async def handle_reject_vip(callback: CallbackQuery, bot: Bot):
 async def handle_admin_stats(callback: CallbackQuery):
     await callback.answer()
     users_count = await db.get_users_count()
+    vip_count = await db.get_vip_users_count()
     animes_count = await db.get_animes_count()
     episodes_count = await db.get_episodes_count()
+    total_views = await db.get_total_views()
     channels = await db.get_active_sponsor_channels()
 
+    db_status = "🟢 Neon PostgreSQL (Cloud / JSONB Pooler)" if db.is_postgres else "🟡 SQLite (Lokal)"
+
     text = (
-        "📊 <b>Bot Statistikasi:</b>\n\n"
-        f"👥 <b>Foydalanuvchilar:</b> {users_count} ta\n"
-        f"🎬 <b>Animelar:</b> {animes_count} ta\n"
+        "📊 <b>Botning to'liq statistikasi:</b>\n\n"
+        f"👥 <b>Jami foydalanuvchilar:</b> {users_count:,} ta\n"
+        f"💎 <b>VIP a'zolar:</b> {vip_count} ta\n"
+        f"🎬 <b>Jami animelar:</b> {animes_count} ta\n"
         f"📼 <b>Yuklangan qismlar:</b> {episodes_count} ta\n"
-        f"📢 <b>Faol sponsor kanallar:</b> {len(channels)} ta\n"
+        f"👁 <b>Umumiy ko'rishlar soni:</b> {total_views:,} marta\n"
+        f"📢 <b>Faol sponsor kanallar:</b> {len(channels)} ta\n\n"
+        f"🗄 <b>Baza holati:</b>\n<code>{db_status}</code>"
     )
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     from aiogram.types import InlineKeyboardButton
     builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="🔄 Yangilash", callback_data="admin_stats"))
     builder.row(InlineKeyboardButton(text="⬅️ Admin panel", callback_data="admin_home"))
 
-    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    try:
+        await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    except Exception:
+        await callback.message.answer(text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
 
-# ================= 6. XABAR TARQATISH (BROADCAST) =================
+# ================= 6. ANIMELAR RO'YXATI VA BOSHQARISH =================
+
+@router.callback_query(F.data.startswith("admin_list_animes_"))
+async def handle_admin_list_animes(callback: CallbackQuery):
+    await callback.answer()
+    page = int(callback.data.replace("admin_list_animes_", ""))
+    limit = 7
+    offset = page * limit
+
+    total = await db.get_animes_count()
+    animes = await db.get_animes_paginated(offset=offset, limit=limit)
+    total_pages = (total + limit - 1) // limit if total > 0 else 1
+
+    text = (
+        f"📋 <b>Botdagi animelar ro'yxati</b> (Jami: {total} ta)\n\n"
+        f"Qism yuklash, kanalga qayta postlash yoki o'chirish uchun kerakli animeni tanlang:"
+    )
+    kb = get_animes_list_keyboard(animes, page, total_pages)
+    try:
+        await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+    except Exception:
+        await callback.message.answer(text, reply_markup=kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("admin_manage_anime_"))
+async def handle_admin_manage_anime(callback: CallbackQuery):
+    await callback.answer()
+    anime_id = int(callback.data.replace("admin_manage_anime_", ""))
+    anime = await db.get_anime(anime_id)
+    if not anime:
+        await callback.answer("❌ Anime topilmadi!", show_alert=True)
+        return
+
+    episodes = await db.get_anime_episodes(anime_id)
+    existing_nums = [e["episode_num"] for e in episodes]
+    next_ep = max(existing_nums, default=0) + 1
+    nums_str = ", ".join(str(n) for n in sorted(existing_nums)) if existing_nums else "Hozircha yo'q"
+
+    text = (
+        f"🎬 <b>{html.escape(anime['title'])}</b>\n\n"
+        f"🆔 <b>Anime ID:</b> <code>{anime['id']}</code>\n"
+        f"📊 <b>Holati:</b> {html.escape(anime.get('status', 'Davom etmoqda'))}\n"
+        f"📁 <b>Rejadagi qismlar:</b> {html.escape(anime.get('episodes_count', ''))}\n"
+        f"📼 <b>Yuklangan qismlar ({len(existing_nums)} ta):</b> {nums_str}\n"
+        f"🎭 <b>Janrlar:</b> {html.escape(anime.get('genres', ''))}\n"
+        f"👁 <b>Ko'rishlar soni:</b> {anime.get('views', 0)}\n"
+        f"📢 <b>Kanal:</b> {html.escape(anime.get('channel', ''))}\n"
+    )
+    kb = get_anime_manage_keyboard(anime_id, next_ep)
+
+    try:
+        await callback.message.delete()
+    except Exception:
+        pass
+
+    try:
+        await callback.message.answer_photo(
+            photo=anime["poster"],
+            caption=text,
+            reply_markup=kb,
+            parse_mode="HTML"
+        )
+    except Exception:
+        await callback.message.answer(
+            text=text,
+            reply_markup=kb,
+            parse_mode="HTML"
+        )
+
+
+# ================= 7. XABAR TARQATISH (BROADCAST) =================
 
 @router.callback_query(F.data == "admin_broadcast")
 async def start_broadcast(callback: CallbackQuery, state: FSMContext):
@@ -688,7 +914,7 @@ async def process_broadcast_message(message: Message, state: FSMContext, bot: Bo
     )
 
 
-# ================= 7. ANIMENI O'CHIRISH =================
+# ================= 8. ANIMENI O'CHIRISH =================
 
 @router.callback_query(F.data == "admin_delete_anime")
 async def start_delete_anime(callback: CallbackQuery, state: FSMContext):
@@ -754,5 +980,8 @@ async def handle_confirm_delete_anime(callback: CallbackQuery):
     else:
         text = f"❌ Animeni o'chirishda xatolik yuz berdi yoki allaqachon o'chirilgan."
 
-    await callback.message.edit_text(text, reply_markup=get_admin_main_keyboard(), parse_mode="HTML")
+    try:
+        await callback.message.edit_text(text, reply_markup=get_admin_main_keyboard(), parse_mode="HTML")
+    except Exception:
+        await callback.message.answer(text, reply_markup=get_admin_main_keyboard(), parse_mode="HTML")
 

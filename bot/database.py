@@ -213,6 +213,18 @@ class Database:
                 row = await cursor.fetchone()
                 return row[0] if row else 0
 
+    async def get_vip_users_count(self) -> int:
+        """VIP foydalanuvchilar soni"""
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                val = await conn.fetchval("SELECT COUNT(*) FROM users WHERE is_vip = 1")
+                return val or 0
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                cursor = await db.execute("SELECT COUNT(*) FROM users WHERE is_vip = 1")
+                row = await cursor.fetchone()
+                return row[0] if row else 0
+
     async def give_vip(self, user_id: int, days: int) -> bool:
         """Foydalanuvchiga VIP berish"""
         user = await self.get_user(user_id)
@@ -408,6 +420,43 @@ class Database:
                 cursor = await db.execute("SELECT COUNT(*) FROM animes")
                 row = await cursor.fetchone()
                 return row[0] if row else 0
+
+    async def get_total_views(self) -> int:
+        """Barcha animelarning umumiy ko'rishlar soni"""
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                val = await conn.fetchval("SELECT COALESCE(SUM(views), 0) FROM animes")
+                return int(val or 0)
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                cursor = await db.execute("SELECT COALESCE(SUM(views), 0) FROM animes")
+                row = await cursor.fetchone()
+                return int(row[0] or 0) if row else 0
+
+    async def get_animes_paginated(self, offset: int = 0, limit: int = 10) -> List[Dict[str, Any]]:
+        """Admin ro'yxati uchun animelarni sahifalab olish"""
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                rows = await conn.fetch("""
+                    SELECT a.*, 
+                           COALESCE((SELECT COUNT(*) FROM episodes e WHERE e.anime_id = a.id), 0) as uploaded_episodes
+                    FROM animes a
+                    ORDER BY a.id DESC
+                    LIMIT $1 OFFSET $2
+                """, limit, offset)
+                return [dict(r) for r in rows]
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                db.row_factory = aiosqlite.Row
+                cursor = await db.execute("""
+                    SELECT a.*, 
+                           COALESCE((SELECT COUNT(*) FROM episodes e WHERE e.anime_id = a.id), 0) as uploaded_episodes
+                    FROM animes a
+                    ORDER BY a.id DESC
+                    LIMIT ? OFFSET ?
+                """, (limit, offset))
+                rows = await cursor.fetchall()
+                return [dict(r) for r in rows]
 
     async def delete_anime(self, anime_id: int) -> bool:
         """Animeni o'chirish"""
