@@ -23,7 +23,7 @@ def load_config() -> Config:
     db_name = os.getenv("DB_NAME", "anime_bot.db").strip()
     database_url = os.getenv(
         "DATABASE_URL",
-        "postgresql://neondb_owner:npg_RQ3IuCiD1MKU@ep-rough-rain-befo0pja-pooler.c-9.us-east-2.aws.neon.tech/neondb?sslmode=require"
+        "postgresql://neondb_owner:npg_2jclL6yKbCer@ep-round-truth-bbk4ma0f-pooler.c-15.us-east-1.aws.neon.tech/neondb?sslmode=require"
     ).strip()
 
     admins_raw = os.getenv("ADMINS", "7285523919,8166740229")
