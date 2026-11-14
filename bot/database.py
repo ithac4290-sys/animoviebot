@@ -290,10 +290,12 @@ class Database:
     # ================= Animelar bilan ishlash =================
 
     async def add_anime(self, title: str, poster: str, status: str, episodes_count: str,
-                        genres: str, channel: str) -> int:
+                        genres: str, channel: str, poster_hash: Optional[str] = None,
+                        poster_unique_id: Optional[str] = None,
+                        alt_titles: Optional[List[str]] = None) -> int:
         """
         Yangi anime qo'shish va uning noyob ID sini qaytarish.
-        Barcha ma'lumotlar data JSONB maydonida ham struktura qilib saqlanadi!
+        Barcha ma'lumotlar, rasm posteri hashlari data JSONB maydonida ham struktura qilib saqlanadi!
         """
         initial_data = json.dumps({
             "title": title,
@@ -301,6 +303,9 @@ class Database:
             "episodes_count": episodes_count,
             "genres": genres,
             "channel": channel,
+            "poster_hash": poster_hash,
+            "poster_unique_id": poster_unique_id,
+            "alt_titles": alt_titles or [],
             "episodes": {}
         })
 
@@ -361,7 +366,7 @@ class Database:
                 await db.commit()
 
     async def search_animes(self, query: str, limit: int = 20) -> List[Dict[str, Any]]:
-        """Qidiruv"""
+        """Qidiruv (nomi va data JSON dagi boshqa muqobil nomlar bo'yicha)"""
         if self.is_postgres and self.pool:
             async with self.pool.acquire() as conn:
                 if query.isdigit():
@@ -370,7 +375,7 @@ class Database:
                     search_term = f"%{query}%"
                     rows = await conn.fetch("""
                         SELECT * FROM animes
-                        WHERE title ILIKE $1
+                        WHERE title ILIKE $1 OR (data::text) ILIKE $1
                         ORDER BY views DESC, id DESC
                         LIMIT $2
                     """, search_term, limit)
@@ -383,11 +388,88 @@ class Database:
                 else:
                     search_term = f"%{query}%"
                     cursor = await db.execute(
-                        "SELECT * FROM animes WHERE title LIKE ? ORDER BY views DESC LIMIT ?",
-                        (search_term, limit)
+                        "SELECT * FROM animes WHERE title LIKE ? OR data LIKE ? ORDER BY views DESC LIMIT ?",
+                        (search_term, search_term, limit)
                     )
                 rows = await cursor.fetchall()
                 return [dict(r) for r in rows]
+
+    async def get_all_anime_posters(self) -> List[Dict[str, Any]]:
+        """Barcha animelarning rasm posterlari va hashlarini olish"""
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                rows = await conn.fetch("SELECT id, title, poster, data FROM animes")
+                results = []
+                for r in rows:
+                    d = dict(r)
+                    if isinstance(d.get("data"), str):
+                        try:
+                            d["data"] = json.loads(d["data"])
+                        except Exception:
+                            d["data"] = {}
+                    elif not d.get("data"):
+                        d["data"] = {}
+                    results.append(d)
+                return results
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                db.row_factory = aiosqlite.Row
+                cursor = await db.execute("SELECT id, title, poster, data FROM animes")
+                rows = await cursor.fetchall()
+                results = []
+                for r in rows:
+                    d = dict(r)
+                    if isinstance(d.get("data"), str):
+                        try:
+                            d["data"] = json.loads(d["data"])
+                        except Exception:
+                            d["data"] = {}
+                    elif not d.get("data"):
+                        d["data"] = {}
+                    results.append(d)
+                return results
+
+    async def update_anime_poster_hash(self, anime_id: int, poster_hash: str,
+                                       poster_unique_id: Optional[str] = None,
+                                       alt_titles: Optional[List[str]] = None):
+        """Anime uchun rasm dHash va muqobil nomlarni bazaga saqlash"""
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                row = await conn.fetchrow("SELECT data FROM animes WHERE id = $1", anime_id)
+                current_data = {}
+                if row and row["data"]:
+                    current_data = json.loads(row["data"]) if isinstance(row["data"], str) else dict(row["data"])
+                current_data["poster_hash"] = poster_hash
+                if poster_unique_id:
+                    current_data["poster_unique_id"] = poster_unique_id
+                if alt_titles:
+                    existing_alts = current_data.get("alt_titles", [])
+                    for at in alt_titles:
+                        if at and at not in existing_alts:
+                            existing_alts.append(at)
+                    current_data["alt_titles"] = existing_alts
+                await conn.execute("UPDATE animes SET data = $1::jsonb WHERE id = $2", json.dumps(current_data), anime_id)
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                cursor = await db.execute("SELECT data FROM animes WHERE id = ?", (anime_id,))
+                row = await cursor.fetchone()
+                current_data = {}
+                if row and row[0]:
+                    try:
+                        current_data = json.loads(row[0])
+                    except Exception:
+                        pass
+                current_data["poster_hash"] = poster_hash
+                if poster_unique_id:
+                    current_data["poster_unique_id"] = poster_unique_id
+                if alt_titles:
+                    existing_alts = current_data.get("alt_titles", [])
+                    for at in alt_titles:
+                        if at and at not in existing_alts:
+                            existing_alts.append(at)
+                    current_data["alt_titles"] = existing_alts
+                await db.execute("UPDATE animes SET data = ? WHERE id = ?", (json.dumps(current_data), anime_id))
+                await db.commit()
 
     async def get_top_animes(self, limit: int = 10) -> List[Dict[str, Any]]:
         """TOP animelar"""

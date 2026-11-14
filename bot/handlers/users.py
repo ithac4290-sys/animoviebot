@@ -405,11 +405,83 @@ async def process_search_by_image(message: Message, state: FSMContext, bot: Bot)
     try:
         from io import BytesIO
         import aiohttp
+        from bot.image_search import compute_image_hash, hash_similarity
 
         photo_bytes_io = BytesIO()
         await bot.download(photo, destination=photo_bytes_io)
         image_data = photo_bytes_io.getvalue()
 
+        # 1-BOSQICH: BAZAMIZDAGI ANIMELARNING POSTERLARI BILAN SOLISHTIRISH (Perceptual Hash qidiruv)
+        user_hash = compute_image_hash(image_data)
+        user_unique_id = photo.file_unique_id
+
+        local_animes = await db.get_all_anime_posters()
+        best_match = None
+        best_sim = 0.0
+
+        for a in local_animes:
+            a_data = a.get("data") or {}
+            saved_unique_id = a_data.get("poster_unique_id")
+            saved_hash = a_data.get("poster_hash")
+
+            # Agar anime poster hashi hali hisoblanmagan bo'lsa, avtomatik hisoblab bazaga saqlash
+            if not saved_hash and a.get("poster"):
+                try:
+                    p_file = await bot.get_file(a["poster"])
+                    p_bio = BytesIO()
+                    await bot.download_file(p_file.file_path, destination=p_bio)
+                    saved_hash = compute_image_hash(p_bio.getvalue())
+                    saved_unique_id = p_file.file_unique_id
+                    await db.update_anime_poster_hash(a["id"], saved_hash, saved_unique_id)
+                except Exception:
+                    pass
+
+            if saved_unique_id and saved_unique_id == user_unique_id:
+                best_match = a
+                best_sim = 1.0
+                break
+
+            if saved_hash and user_hash:
+                sim = hash_similarity(user_hash, saved_hash)
+                if sim > best_sim:
+                    best_sim = sim
+                    if sim >= 0.78:
+                        best_match = a
+
+        # Agar bazamizdagi animelardan biri bilan o'xshashlik >= 78% bo'lsa
+        if best_match and best_sim >= 0.78:
+            anime_id = best_match["id"]
+            await db.increment_anime_views(anime_id)
+            bot_info = await bot.get_me()
+            bot_username = bot_info.username or config.bot_username
+            caption = format_anime_caption(best_match, bot_username)
+            episodes = await db.get_anime_episodes(anime_id)
+            uploaded_ep_nums = [ep["episode_num"] for ep in episodes]
+            kb = get_anime_keyboard(anime_id, uploaded_ep_nums)
+
+            sim_percent = round(best_sim * 100, 1)
+            try:
+                await status_msg.delete()
+            except Exception:
+                pass
+
+            poster = best_match.get("poster")
+            if poster:
+                await message.answer_photo(
+                    photo=poster,
+                    caption=f"🎯 <b>Rasm orqali bazamizdan aniqlandi ({sim_percent}%):</b>\n\n{caption}",
+                    reply_markup=kb,
+                    parse_mode="HTML"
+                )
+            else:
+                await message.answer(
+                    f"🎯 <b>Rasm orqali bazamizdan aniqlandi ({sim_percent}%):</b>\n\n{caption}",
+                    reply_markup=kb,
+                    parse_mode="HTML"
+                )
+            return
+
+        # 2-BOSQICH: TRACE.MOE ORQALI GLOBAL QIDIRUV (Epizod kadrlarini aniqlash)
         headers = {
             "Content-Type": "image/jpeg"
         }
@@ -425,7 +497,7 @@ async def process_search_by_image(message: Message, state: FSMContext, bot: Bot)
                     if results:
                         best = results[0]
                         similarity = best.get("similarity", 0)
-                        if similarity >= 0.80:
+                        if similarity >= 0.68:
                             anilist = best.get("anilist") or {}
                             title_info = anilist.get("title") or {}
                             romaji_title = title_info.get("romaji") or ""

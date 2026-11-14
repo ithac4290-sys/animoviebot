@@ -93,16 +93,37 @@ async def process_anime_title(message: Message, state: FSMContext):
 
 
 @router.message(AddAnimeState.poster, F.photo | F.document)
-async def process_anime_poster(message: Message, state: FSMContext):
+async def process_anime_poster(message: Message, state: FSMContext, bot: Bot):
+    photo_file_id = None
+    photo_unique_id = None
+    poster_hash = None
+
     if message.photo:
-        photo_file_id = message.photo[-1].file_id
+        photo_obj = message.photo[-1]
+        photo_file_id = photo_obj.file_id
+        photo_unique_id = photo_obj.file_unique_id
     elif message.document:
         photo_file_id = message.document.file_id
+        photo_unique_id = message.document.file_unique_id
     else:
         await message.answer("⚠️ Iltimos, anime posterini (rasm yoki fayl ko'rinishida) yuboring:")
         return
 
-    await state.update_data(poster=photo_file_id)
+    try:
+        from io import BytesIO
+        from bot.image_search import compute_image_hash
+        target = message.photo[-1] if message.photo else message.document
+        bio = BytesIO()
+        await bot.download(target, destination=bio)
+        poster_hash = compute_image_hash(bio.getvalue())
+    except Exception:
+        pass
+
+    await state.update_data(
+        poster=photo_file_id,
+        poster_unique_id=photo_unique_id,
+        poster_hash=poster_hash
+    )
     await state.set_state(AddAnimeState.status)
     await message.answer(
         "3-qadam: Anime holatini tanlang yoki yozing:",
@@ -200,7 +221,9 @@ async def _finalize_anime_creation(target_channel: str, reply_event: Message, st
         status=status,
         episodes_count=episodes_count,
         genres=genres,
-        channel=clean_target
+        channel=clean_target,
+        poster_hash=data.get("poster_hash"),
+        poster_unique_id=data.get("poster_unique_id")
     )
 
     await state.clear()
