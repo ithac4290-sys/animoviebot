@@ -7,31 +7,31 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 def get_main_menu_keyboard(bot_username: str) -> InlineKeyboardMarkup:
     """
     1. ASOSIY BOSH MENYU (3-rasm dizayni):
-    - 1-qator: [ 🔎 Anime izlash ] (primary / ko'k)
-    - 2-qator: [ 📄 Manga kurish ] (primary / ko'k) | [ 🔴 Shorts kurish ] (danger / qizil)
-    - 3-qator: [ 🗄 Kabinet ] (primary / ko'k) | [ 💎 VIP Obuna ] (success / yashil)
+    - 1-qator: [ 🔎 𝗔𝗻𝗶𝗺𝗲 𝗶𝘇𝗹𝗮𝘀𝗵 ] (primary / ko'k)
+    - 2-qator: [ 📄 𝗠𝗮𝗻𝗴𝗮 𝗸𝗼'𝗿𝗶𝘀𝗵 ] (primary / ko'k) | [ 🔴 𝗦𝗵𝗼𝗿𝘁𝘀 𝗸𝗼'𝗿𝗶𝘀𝗵 ] (danger / qizil)
+    - 3-qator: [ 🗄 𝗞𝗮𝗯𝗶𝗻𝗲𝘁 ] (primary / ko'k) | [ 💎 𝗩𝗜𝗣 𝗢𝗯𝘂𝗻𝗮 ] (success / yashil)
     """
     builder = InlineKeyboardBuilder()
 
-    # 1-qator: 🔎 Anime izlash (switch_inline_query_current_chat)
+    # 1-qator: 🔎 Anime izlash
     builder.row(
         InlineKeyboardButton(
-            text="🔎 Anime izlash",
+            text="🔎 𝗔𝗻𝗶𝗺𝗲 𝗶𝘇𝗹𝗮𝘀𝗵",
             switch_inline_query_current_chat="",
             style="primary"
         )
     )
 
-    # 2-qator: 📄 Manga kurish | 🔴 Shorts kurish
+    # 2-qator: 📄 Manga ko'rish | 🔴 Shorts ko'rish
     builder.row(
-        InlineKeyboardButton(text="📄 Manga kurish", callback_data="btn_manga", style="primary"),
-        InlineKeyboardButton(text="🔴 Shorts kurish", callback_data="btn_shorts", style="danger")
+        InlineKeyboardButton(text="📄 𝗠𝗮𝗻𝗴𝗮 𝗸𝗼'𝗿𝗶𝘀𝗵", callback_data="btn_manga", style="primary"),
+        InlineKeyboardButton(text="🔴 𝗦𝗵𝗼𝗿𝘁𝘀 𝗸𝗼'𝗿𝗶𝘀𝗵", callback_data="btn_shorts", style="danger")
     )
 
     # 3-qator: 🗄 Kabinet | 💎 VIP Obuna
     builder.row(
-        InlineKeyboardButton(text="🗄 Kabinet", callback_data="btn_cabinet", style="primary"),
-        InlineKeyboardButton(text="💎 VIP Obuna", callback_data="btn_vip", style="success")
+        InlineKeyboardButton(text="🗄 𝗞𝗮𝗯𝗶𝗻𝗲𝘁", callback_data="btn_cabinet", style="primary"),
+        InlineKeyboardButton(text="💎 𝗩𝗜𝗣 𝗢𝗯𝘂𝗻𝗮", callback_data="btn_vip", style="success")
     )
 
     return builder.as_markup()
@@ -53,7 +53,7 @@ def get_anime_keyboard(anime_id: int, episodes_list: Optional[List[int]] = None)
         for ep in sorted_episodes:
             episode_buttons.append(
                 InlineKeyboardButton(
-                    text=f"{ep} - qism",
+                    text=f"▶️ {ep} - qism",
                     callback_data=f"play_{anime_id}_{ep}",
                     style="primary"
                 )
@@ -74,7 +74,7 @@ def get_anime_keyboard(anime_id: int, episodes_list: Optional[List[int]] = None)
 
     # Eng pastki qatorda alohida keng tugma: ❌ Yopish (danger / qizil rangda)
     builder.row(
-        InlineKeyboardButton(text="❌ Yopish", callback_data="close_anime_view", style="danger")
+        InlineKeyboardButton(text="❌ 𝗬𝗼𝗽𝗶𝘀𝗵", callback_data="close_anime_view", style="danger")
     )
 
     return builder.as_markup()
@@ -90,20 +90,18 @@ def get_channel_post_keyboard(bot_username: str, anime_id: int) -> InlineKeyboar
 
     builder.row(
         InlineKeyboardButton(
-            text="▶️ Tomosha qilish",
+            text="▶️ 𝗧𝗼𝗺𝗼𝘀𝗵𝗮 𝗾𝗶𝗹𝗶𝘀𝗵",
             url=f"https://t.me/{bot_username}?start={anime_id}",
             style="success"
         )
     )
     builder.row(
         InlineKeyboardButton(
-            text="📚 Barcha qismlar",
+            text="📚 𝗕𝗮𝗿𝗰𝗵𝗮 𝗾𝗶𝘀𝗺𝗹𝗮𝗿",
             url=f"https://t.me/{bot_username}?start={anime_id}",
             style="primary"
         )
     )
-
-    return builder.as_markup()
 
     return builder.as_markup()
 
@@ -205,19 +203,19 @@ def get_vip_plans_keyboard() -> InlineKeyboardMarkup:
     """VIP tariflarini tanlash tugmalari"""
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="💎 1 oylik — 15,000 so'm", callback_data="buy_vip_1", style="primary")
+        InlineKeyboardButton(text="💎 𝟭 𝗼𝘆𝗹𝗶𝗸 — 𝟭𝟱,𝟬𝟬𝟬 𝘀𝗼'𝗺", callback_data="buy_vip_1", style="primary")
     )
     builder.row(
-        InlineKeyboardButton(text="💎 3 oylik — 50,000 so'm", callback_data="buy_vip_3", style="primary")
+        InlineKeyboardButton(text="💎 𝟯 𝗼𝘆𝗹𝗶𝗸 — 𝟱𝟬,𝟬𝟬𝟬 𝘀𝗼'𝗺", callback_data="buy_vip_3", style="primary")
     )
     builder.row(
-        InlineKeyboardButton(text="👑 Doimiy (cheksiz) — 100,000 so'm", callback_data="buy_vip_unlimited", style="success")
+        InlineKeyboardButton(text="👑 𝗗𝗼𝗶𝗺𝗶𝘆 (𝗰𝗵𝗲𝗸𝘀𝗶𝘇) — 𝟭𝟬𝟬,𝟬𝟬𝟬 𝘀𝗼'𝗺", callback_data="buy_vip_unlimited", style="success")
     )
     builder.row(
-        InlineKeyboardButton(text="👨🏻‍💻 Admin bilan bog'lanish", url="https://t.me/Jahongir02_02")
+        InlineKeyboardButton(text="👨🏻‍💻 𝗔𝗱𝗺𝗶𝗻 𝗯𝗶𝗹𝗮𝗻 𝗯𝗼𝗴'𝗹𝗮𝗻𝗶𝘀𝗵", url="https://t.me/Jahongir02_02")
     )
     builder.row(
-        InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="btn_home")
+        InlineKeyboardButton(text="⬅️ 𝗕𝗼𝘀𝗵 𝗺𝗲𝗻𝘆𝘂", callback_data="btn_home")
     )
     return builder.as_markup()
 
@@ -226,16 +224,16 @@ def get_vip_payment_keyboard(plan_id: str, user_id: int) -> InlineKeyboardMarkup
     """To'lov qilish va chek yuborish tugmalari"""
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="📤 Chek (skrinshot) yuborish", callback_data=f"send_receipt_{plan_id}", style="success")
+        InlineKeyboardButton(text="📤 𝗖𝗵𝗲𝗸 (𝘀𝗸𝗿𝗶𝗻𝘀𝗵𝗼𝘁) 𝘆𝘂𝗯𝗼𝗿𝗶𝘀𝗵", callback_data=f"send_receipt_{plan_id}", style="success")
     )
     builder.row(
         InlineKeyboardButton(
-            text="👨🏻‍💻 Adminga to'g'ridan-to'g'ri yozish",
+            text="👨🏻‍💻 𝗔𝗱𝗺𝗶𝗻𝗴𝗮 𝘆𝗼𝘇𝗶𝘀𝗵",
             url=f"https://t.me/Jahongir02_02"
         )
     )
     builder.row(
-        InlineKeyboardButton(text="⬅️ Boshqa tarif tanlash", callback_data="btn_vip")
+        InlineKeyboardButton(text="⬅️ 𝗕𝗼𝘀𝗵𝗾𝗮 𝘁𝗮𝗿𝗶𝗳 𝘁𝗮𝗻𝗹𝗮𝘀𝗵", callback_data="btn_vip")
     )
     return builder.as_markup()
 

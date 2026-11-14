@@ -13,6 +13,7 @@ class Config:
     admins: List[int]
     default_channel_id: str
     db_name: str
+    database_url: str
 
 
 def load_config() -> Config:
@@ -20,6 +21,10 @@ def load_config() -> Config:
     bot_username = os.getenv("BOT_USERNAME", "animelar_bot").strip().lstrip("@")
     channel_id = os.getenv("DEFAULT_CHANNEL_ID", "@Ani_Movei_UZ").strip()
     db_name = os.getenv("DB_NAME", "anime_bot.db").strip()
+    database_url = os.getenv(
+        "DATABASE_URL",
+        "postgresql://neondb_owner:npg_RQ3IuCiD1MKU@ep-rough-rain-befo0pja-pooler.c-9.us-east-2.aws.neon.tech/neondb?sslmode=require"
+    ).strip()
 
     admins_raw = os.getenv("ADMINS", "7285523919")
     admins: List[int] = []
@@ -34,6 +39,7 @@ def load_config() -> Config:
         admins=admins,
         default_channel_id=channel_id,
         db_name=db_name,
+        database_url=database_url,
     )
 
 
