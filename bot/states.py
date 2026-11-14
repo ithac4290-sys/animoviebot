@@ -40,5 +40,11 @@ class SearchAnimeState(StatesGroup):
     query = State()           # Qidiruv so'zi
 
 
+class UserSearchState(StatesGroup):
+    by_name = State()         # Anime nomi orqali qidiruv
+    by_code = State()         # Kod orqali qidiruv
+    by_image = State()        # Rasm orqali qidiruv
+
+
 class VipPaymentState(StatesGroup):
     receipt = State()         # To'lov cheki (rasm)

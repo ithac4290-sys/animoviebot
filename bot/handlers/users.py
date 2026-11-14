@@ -15,9 +15,13 @@ from bot.keyboards import (
     get_back_home_keyboard,
     get_vip_plans_keyboard,
     get_vip_payment_keyboard,
-    get_admin_vip_approval_keyboard
+    get_admin_vip_approval_keyboard,
+    get_search_type_keyboard,
+    get_genres_keyboard,
+    get_animes_pagination_keyboard,
+    get_search_cancel_keyboard
 )
-from bot.states import VipPaymentState
+from bot.states import VipPaymentState, UserSearchState
 from bot.utils import check_user_subscriptions
 
 router = Router()
@@ -214,6 +218,255 @@ async def handle_close_view(callback: CallbackQuery):
         await callback.message.delete()
     except Exception:
         await callback.answer("Xabar o'chirildi.")
+
+
+# ================= QIDIRUV MENYUSI VA TURLARI (Rasm dizayni) =================
+
+@router.callback_query(F.data == "btn_search_menu")
+async def handle_search_menu(callback: CallbackQuery, state: FSMContext):
+    """Qidiruv tipini tanlash menyusi (foydalanuvchi yuborgan rasm dizayni)"""
+    await state.clear()
+    await callback.answer()
+    text = "🔍 <b>Qidiruv tipini tanlang :</b>"
+    try:
+        await callback.message.edit_text(text, reply_markup=get_search_type_keyboard(), parse_mode="HTML")
+    except Exception:
+        try:
+            await callback.message.delete()
+        except Exception:
+            pass
+        await callback.message.answer(text, reply_markup=get_search_type_keyboard(), parse_mode="HTML")
+
+
+# 1. 🏷 Anime nomi orqali qidirish
+@router.callback_query(F.data == "search_by_name")
+async def handle_search_by_name_start(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await state.set_state(UserSearchState.by_name)
+    text = (
+        "🏷 <b>Anime nomi orqali qidirish</b>\n\n"
+        "Qidirmoqchi bo'lgan anime nomini yozing:\n"
+        "<i>(Masalan: Naruto yoki Titan)</i>"
+    )
+    await callback.message.edit_text(text, reply_markup=get_search_cancel_keyboard(), parse_mode="HTML")
+
+
+@router.message(UserSearchState.by_name)
+async def process_search_by_name(message: Message, state: FSMContext, bot: Bot):
+    query = message.text.strip()
+    await state.clear()
+    bot_info = await bot.get_me()
+    bot_username = bot_info.username or config.bot_username
+
+    results = await db.search_animes(query, limit=10)
+    if not results:
+        await message.answer(
+            f"❌ <b>'{html.escape(query)}'</b> nomli anime topilmadi.\n\n"
+            f"<i>Boshqa nom bilan qidirib ko'ring yoki quyidagi menyudan foydalaning:</i>",
+            reply_markup=get_search_cancel_keyboard(),
+            parse_mode="HTML"
+        )
+        return
+
+    if len(results) == 1:
+        await show_anime_by_id(message, results[0]["id"], bot, bot_username)
+        return
+
+    text = f"🔎 <b>'{html.escape(query)}'</b> bo'yicha topilgan animelar:\n\n<i>Kerakli animeni tanlang:</i>"
+    kb = get_animes_pagination_keyboard(results, 0, 1)
+    await message.answer(text, reply_markup=kb, parse_mode="HTML")
+
+
+# 2. 📌 Kod orqali qidirish
+@router.callback_query(F.data == "search_by_code")
+async def handle_search_by_code_start(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await state.set_state(UserSearchState.by_code)
+    text = (
+        "📌 <b>Kod orqali qidirish</b>\n\n"
+        "Anime kodini (ID raqamini) kiriting:\n"
+        "<i>(Masalan: 1 yoki 961)</i>"
+    )
+    await callback.message.edit_text(text, reply_markup=get_search_cancel_keyboard(), parse_mode="HTML")
+
+
+@router.message(UserSearchState.by_code)
+async def process_search_by_code(message: Message, state: FSMContext, bot: Bot):
+    query = message.text.strip()
+    if not query.isdigit():
+        await message.answer(
+            "❌ Anime kodi faqat raqamlardan iborat bo'lishi kerak. Masalan: 1",
+            reply_markup=get_search_cancel_keyboard()
+        )
+        return
+
+    await state.clear()
+    anime_id = int(query)
+    bot_info = await bot.get_me()
+    bot_username = bot_info.username or config.bot_username
+    await show_anime_by_id(message, anime_id, bot, bot_username)
+
+
+# 3. ⏱ So'ngi yuklanganlar
+@router.callback_query(F.data == "search_latest")
+async def handle_search_latest(callback: CallbackQuery):
+    await callback.answer()
+    animes = await db.get_latest_animes(limit=10)
+    if not animes:
+        await callback.answer("Hozircha animelar yuklanmagan.", show_alert=True)
+        return
+
+    text = "⏱ <b>So'ngi yuklangan animelar:</b>\n\n<i>Kerakli animeni tanlang:</i>"
+    kb = get_animes_pagination_keyboard(animes, 0, 1)
+    try:
+        await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+    except Exception:
+        await callback.message.answer(text, reply_markup=kb, parse_mode="HTML")
+
+
+# 4. 💬 Janr orqali qidirish
+@router.callback_query(F.data == "search_genres")
+async def handle_search_genres_menu(callback: CallbackQuery):
+    await callback.answer()
+    text = "💬 <b>Janr orqali qidirish:</b>\n\nQaysi janrdagi animelarni tomosha qilmoqchisiz?"
+    try:
+        await callback.message.edit_text(text, reply_markup=get_genres_keyboard(), parse_mode="HTML")
+    except Exception:
+        await callback.message.answer(text, reply_markup=get_genres_keyboard(), parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("genre_"))
+async def handle_genre_selected(callback: CallbackQuery):
+    await callback.answer()
+    genre_name = callback.data.replace("genre_", "")
+    animes = await db.search_animes_by_genre(genre_name, limit=10)
+
+    if not animes:
+        await callback.answer(f"❌ '{genre_name}' janrida hali anime qo'shilmagan.", show_alert=True)
+        return
+
+    text = f"💬 <b>{html.escape(genre_name)}</b> janridagi animelar:\n\n<i>Kerakli animeni tanlang:</i>"
+    kb = get_animes_pagination_keyboard(animes, 0, 1)
+    try:
+        await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+    except Exception:
+        await callback.message.answer(text, reply_markup=kb, parse_mode="HTML")
+
+
+# 5. 👁 Eng ko'p ko'rilgan
+@router.callback_query(F.data == "search_top_views")
+async def handle_search_top_views(callback: CallbackQuery):
+    await callback.answer()
+    top_animes = await db.get_top_animes(limit=10)
+    if not top_animes:
+        await callback.answer("Hozircha animelar yo'q.", show_alert=True)
+        return
+
+    text = "👁 <b>Eng ko'p ko'rilgan TOP animelar:</b>\n\n"
+    medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
+    builder = InlineKeyboardBuilder()
+
+    for idx, a in enumerate(top_animes):
+        badge = medals[idx] if idx < len(medals) else "▫️"
+        views = a.get("views", 0)
+        text += f"{badge} <b>{html.escape(a['title'])}</b> — <i>{views} marta ko'rilgan</i>\n"
+        builder.row(InlineKeyboardButton(text=f"{badge} {a['title'][:25]}", callback_data=f"open_anime_{a['id']}"))
+
+    builder.row(
+        InlineKeyboardButton(text="⬅️ Qidiruv menyusi", callback_data="btn_search_menu"),
+        InlineKeyboardButton(text="🏠 Bosh sahifa", callback_data="btn_home")
+    )
+    try:
+        await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    except Exception:
+        await callback.message.answer(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+
+
+# 6. 🖼 Rasm orqali qidirish
+@router.callback_query(F.data == "search_by_image")
+async def handle_search_by_image_start(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await state.set_state(UserSearchState.by_image)
+    text = (
+        "🖼 <b>Rasm orqali qidirish</b>\n\n"
+        "Anime skrinshotini yoki posterini (rasm ko'rinishida) yuboring:\n"
+        "<i>Bot rasm orqali qaysi anime ekanligini aniqlashga harakat qiladi va bazamizdan topib beradi.</i>"
+    )
+    await callback.message.edit_text(text, reply_markup=get_search_cancel_keyboard(), parse_mode="HTML")
+
+
+@router.message(UserSearchState.by_image, F.photo)
+async def process_search_by_image(message: Message, state: FSMContext, bot: Bot):
+    await state.clear()
+    status_msg = await message.answer("🔍 Rasm tahlil qilinmoqda...")
+
+    photo = message.photo[-1]
+    recognized_title = ""
+
+    try:
+        file = await bot.get_file(photo.file_id)
+        file_url = f"https://api.telegram.org/file/bot{config.bot_token}/{file.file_path}"
+
+        import aiohttp
+        async with aiohttp.ClientSession() as session:
+            trace_url = f"https://api.trace.moe/search?cutBorders&url={file_url}"
+            async with session.get(trace_url, timeout=10) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    results = data.get("result", [])
+                    if results and results[0].get("similarity", 0) > 0.80:
+                        filename = results[0].get("filename", "")
+                        clean_title = filename.split("]")[ -1].split("[")[0].strip() if "]" in filename else filename
+                        clean_title = clean_title.split("-")[0].strip()
+                        recognized_title = clean_title
+    except Exception:
+        pass
+
+    if recognized_title:
+        db_results = await db.search_animes(recognized_title, limit=5)
+        if db_results:
+            await status_msg.edit_text(
+                f"✅ <b>Anime aniqlandi:</b> {html.escape(recognized_title)}\n\n"
+                f"Bazamizdan topilgan natijalar:",
+                reply_markup=get_animes_pagination_keyboard(db_results, 0, 1),
+                parse_mode="HTML"
+            )
+            return
+
+        await status_msg.edit_text(
+            f"💡 <b>Rasmdan aniqlangan anime:</b> <i>{html.escape(recognized_title)}</i>\n\n"
+            f"Afsuski, ushbu anime hozircha bizning bazamizga yuklanmagan.\n"
+            f"Adminlar tez orada uni kanalimizga joylashadi!",
+            reply_markup=get_search_cancel_keyboard(),
+            parse_mode="HTML"
+        )
+    else:
+        await status_msg.edit_text(
+            "⚠️ <b>Kechirasiz, ushbu rasm orqali animeni aniqlab bo'lmadi.</b>\n\n"
+            "<i>Iltimos, aniqroq skrinshot yuboring yoki '🏷 Anime nomi orqali' qidiruvdan foydalaning.</i>",
+            reply_markup=get_search_cancel_keyboard(),
+            parse_mode="HTML"
+        )
+
+
+# 7. 📚 Barcha animelar (sahifalash bilan)
+@router.callback_query(F.data.startswith("search_all_animes_"))
+async def handle_search_all_animes(callback: CallbackQuery):
+    await callback.answer()
+    page = int(callback.data.replace("search_all_animes_", ""))
+    limit = 8
+    offset = page * limit
+
+    total = await db.get_animes_count()
+    animes = await db.get_animes_paginated(offset=offset, limit=limit)
+    total_pages = (total + limit - 1) // limit if total > 0 else 1
+
+    text = f"📚 <b>Barcha animelar ro'yxati</b> (Jami: {total} ta):\n\n<i>Kerakli animeni tanlang:</i>"
+    kb = get_animes_pagination_keyboard(animes, page, total_pages, prefix="search_all_animes_")
+    try:
+        await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+    except Exception:
+        await callback.message.answer(text, reply_markup=kb, parse_mode="HTML")
 
 
 # ================= MATN ORQALI ANIME QIDIRISH (ID yoki NOM) =================

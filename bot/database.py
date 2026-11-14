@@ -409,6 +409,48 @@ class Database:
                 rows = await cursor.fetchall()
                 return [dict(r) for r in rows]
 
+    async def get_latest_animes(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """So'ngi yuklangan animelar"""
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                rows = await conn.fetch("""
+                    SELECT * FROM animes
+                    ORDER BY id DESC
+                    LIMIT $1
+                """, limit)
+                return [dict(r) for r in rows]
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                db.row_factory = aiosqlite.Row
+                cursor = await db.execute(
+                    "SELECT * FROM animes ORDER BY id DESC LIMIT ?",
+                    (limit,)
+                )
+                rows = await cursor.fetchall()
+                return [dict(r) for r in rows]
+
+    async def search_animes_by_genre(self, genre: str, limit: int = 20) -> List[Dict[str, Any]]:
+        """Janr bo'yicha qidirish"""
+        search_term = f"%{genre}%"
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                rows = await conn.fetch("""
+                    SELECT * FROM animes
+                    WHERE genres ILIKE $1
+                    ORDER BY views DESC, id DESC
+                    LIMIT $2
+                """, search_term, limit)
+                return [dict(r) for r in rows]
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                db.row_factory = aiosqlite.Row
+                cursor = await db.execute(
+                    "SELECT * FROM animes WHERE genres LIKE ? ORDER BY views DESC, id DESC LIMIT ?",
+                    (search_term, limit)
+                )
+                rows = await cursor.fetchall()
+                return [dict(r) for r in rows]
+
     async def get_animes_count(self) -> int:
         """Jami animelar soni"""
         if self.is_postgres and self.pool:

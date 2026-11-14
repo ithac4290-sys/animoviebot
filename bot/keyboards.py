@@ -7,7 +7,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 def get_main_menu_keyboard(bot_username: str) -> InlineKeyboardMarkup:
     """
     1. ASOSIY BOSH MENYU (3-rasm dizayni):
-    - 1-qator: [ 🔎 𝗔𝗻𝗶𝗺𝗲 𝗶𝘇𝗹𝗮𝘀𝗵 ] (primary / ko'k)
+    - 1-qator: [ 🔎 𝗔𝗻𝗶𝗺𝗲 𝗶𝘇𝗹𝗮𝘀𝗵 ] (primary / ko'k) -> Qidiruv tipini tanlash menyusini ochadi
     - 2-qator: [ 📄 𝗠𝗮𝗻𝗴𝗮 𝗸𝗼'𝗿𝗶𝘀𝗵 ] (primary / ko'k) | [ 🔴 𝗦𝗵𝗼𝗿𝘁𝘀 𝗸𝗼'𝗿𝗶𝘀𝗵 ] (danger / qizil)
     - 3-qator: [ 🗄 𝗞𝗮𝗯𝗶𝗻𝗲𝘁 ] (primary / ko'k) | [ 💎 𝗩𝗜𝗣 𝗢𝗯𝘂𝗻𝗮 ] (success / yashil)
     """
@@ -17,7 +17,7 @@ def get_main_menu_keyboard(bot_username: str) -> InlineKeyboardMarkup:
     builder.row(
         InlineKeyboardButton(
             text="🔎 𝗔𝗻𝗶𝗺𝗲 𝗶𝘇𝗹𝗮𝘀𝗵",
-            switch_inline_query_current_chat="",
+            callback_data="btn_search_menu",
             style="primary"
         )
     )
@@ -34,6 +34,114 @@ def get_main_menu_keyboard(bot_username: str) -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="💎 𝗩𝗜𝗣 𝗢𝗯𝘂𝗻𝗮", callback_data="btn_vip", style="success")
     )
 
+    return builder.as_markup()
+
+
+def get_search_type_keyboard() -> InlineKeyboardMarkup:
+    """
+    Foydalanuvchi yuborgan rasm bo'yicha qidiruv tipi tugmalari:
+    - 1-qator: 🏷Anime nomi orqali | ⏱ So'ngi yuklanganlar
+    - 2-qator: 💬Janr orqali qidirish
+    - 3-qator: 📌 Kod orqali | 👁 Eng ko'p ko'rilgan
+    - 4-qator: 🖼Rasm orqali qidirish
+    - 5-qator: 📚 Barcha animelar
+    - 6-qator: ⬅️ Bosh menyu
+    """
+    builder = InlineKeyboardBuilder()
+
+    # 1-qator
+    builder.row(
+        InlineKeyboardButton(text="🏷Anime nomi orqali", callback_data="search_by_name", style="primary"),
+        InlineKeyboardButton(text="⏱ So'ngi yuklanganlar", callback_data="search_latest", style="primary")
+    )
+    # 2-qator
+    builder.row(
+        InlineKeyboardButton(text="💬Janr orqali qidirish", callback_data="search_genres", style="primary")
+    )
+    # 3-qator
+    builder.row(
+        InlineKeyboardButton(text="📌 Kod orqali", callback_data="search_by_code", style="primary"),
+        InlineKeyboardButton(text="👁 Eng ko'p ko'rilgan", callback_data="search_top_views", style="primary")
+    )
+    # 4-qator
+    builder.row(
+        InlineKeyboardButton(text="🖼Rasm orqali qidirish", callback_data="search_by_image", style="primary")
+    )
+    # 5-qator
+    builder.row(
+        InlineKeyboardButton(text="📚 Barcha animelar", callback_data="search_all_animes_0", style="primary")
+    )
+    # 6-qator
+    builder.row(
+        InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="btn_home")
+    )
+
+    return builder.as_markup()
+
+
+def get_genres_keyboard() -> InlineKeyboardMarkup:
+    """Janrlar bo'yicha qidirish tugmalari"""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="⚔️ Jangari", callback_data="genre_Jangari", style="primary"),
+        InlineKeyboardButton(text="🧙‍♂️ Fantastika", callback_data="genre_Fantastika", style="primary")
+    )
+    builder.row(
+        InlineKeyboardButton(text="😂 Komediya", callback_data="genre_Komediya", style="primary"),
+        InlineKeyboardButton(text="🎭 Drama", callback_data="genre_Drama", style="primary")
+    )
+    builder.row(
+        InlineKeyboardButton(text="❤️ Romantika", callback_data="genre_Romantika", style="primary"),
+        InlineKeyboardButton(text="🏃 Sarguzasht", callback_data="genre_Sarguzasht", style="primary")
+    )
+    builder.row(
+        InlineKeyboardButton(text="🔮 Sehr-jodu", callback_data="genre_Sehr-jodu", style="primary"),
+        InlineKeyboardButton(text="🎒 Maktab", callback_data="genre_Maktab", style="primary")
+    )
+    builder.row(
+        InlineKeyboardButton(text="👻 Dahshat", callback_data="genre_Dahshat", style="primary"),
+        InlineKeyboardButton(text="🕵️ Detektiv", callback_data="genre_Detektiv", style="primary")
+    )
+    builder.row(
+        InlineKeyboardButton(text="⬅️ Qidiruv menyusiga qaytish", callback_data="btn_search_menu")
+    )
+    return builder.as_markup()
+
+
+def get_animes_pagination_keyboard(animes: List[Dict[str, Any]], page: int, total_pages: int, prefix: str = "search_all_animes_") -> InlineKeyboardMarkup:
+    """Animelar ro'yxatini sahifalab ko'rsatish tugmalari"""
+    builder = InlineKeyboardBuilder()
+    for a in animes:
+        builder.row(
+            InlineKeyboardButton(
+                text=f"🎬 {a['title'][:28]}",
+                callback_data=f"open_anime_{a['id']}",
+                style="primary"
+            )
+        )
+
+    nav = []
+    if page > 0:
+        nav.append(InlineKeyboardButton(text="◀️ Oldingi", callback_data=f"{prefix}{page-1}"))
+    nav.append(InlineKeyboardButton(text=f"📄 {page+1}/{max(total_pages, 1)}", callback_data="ignore"))
+    if page < total_pages - 1:
+        nav.append(InlineKeyboardButton(text="Keyingi ▶️", callback_data=f"{prefix}{page+1}"))
+    if nav:
+        builder.row(*nav)
+
+    builder.row(
+        InlineKeyboardButton(text="⬅️ Qidiruv menyusi", callback_data="btn_search_menu"),
+        InlineKeyboardButton(text="🏠 Bosh sahifa", callback_data="btn_home")
+    )
+    return builder.as_markup()
+
+
+def get_search_cancel_keyboard() -> InlineKeyboardMarkup:
+    """Qidiruvni bekor qilish tugmasi"""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="❌ Bekor qilish", callback_data="btn_search_menu", style="danger")
+    )
     return builder.as_markup()
 
 

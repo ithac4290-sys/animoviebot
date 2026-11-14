@@ -70,39 +70,12 @@ python3 main.py
 
 ---
 
-## ☁️ Railway.com da joylash
-
-Loyiha Railway uchun to'liq sozlangan (`Dockerfile`, `railway.json`, `Procfile`, Healthcheck serveri):
-1. [Railway.com](https://railway.com) ga kiring va GitHub dagi ushbu omborni tanlang.
-2. **Variables** bo'limiga quyidagilarni kiriting:
-   - `BOT_TOKEN`
-   - `ADMINS` (masalan: `7285523919`)
-   - `DATABASE_URL` (Neon PostgreSQL DSN)
-   - `DEFAULT_CHANNEL_ID` (masalan: `@Ani_Movei_UZ`)
-3. Railway loyihani avtomatik qurib, ishga tushiradi!
-```
-Va ichiga bot tokeningiz hamda admin ID raqamingizni yozing:
-```env
-BOT_TOKEN=YOUR_BOT_TOKEN_HERE
-BOT_USERNAME=your_bot_username
-ADMINS=123456789
-DEFAULT_CHANNEL_ID=@your_channel_username
-DB_NAME=anime_bot.db
-```
-
-### 5. Botni ishga tushirish:
-```bash
-python3 main.py
-```
-
----
-
 ## 📁 Loyiha Strukturasi
 
 ```text
 ├── bot/
 │   ├── config.py             # Sozlamalar
-│   ├── database.py           # aiosqlite ma'lumotlar bazasi
+│   ├── database.py           # Neon PostgreSQL (JSONB) va aiosqlite
 │   ├── filters.py            # Admin filter
 │   ├── keyboards.py          # Barcha inline va reply tugmalar
 │   ├── middlewares.py        # Foydalanuvchini ro'yxatga olish
