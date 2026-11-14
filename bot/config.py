@@ -17,7 +17,7 @@ class Config:
 
 
 def load_config() -> Config:
-    token = os.getenv("BOT_TOKEN", "8985548481:AAGP05mytsA9vLI8iAMz3ELWz58BriNMXHw").strip()
+    token = os.getenv("BOT_TOKEN", "8985548481:AAGrObZ8YwZgV9mP0EOCPg2zn-EIELZgruY").strip()
     bot_username = os.getenv("BOT_USERNAME", "AniMovieuz_bot").strip().lstrip("@")
     channel_id = os.getenv("DEFAULT_CHANNEL_ID", "@Ani_Movei_UZ").strip()
     db_name = os.getenv("DB_NAME", "anime_bot.db").strip()
@@ -26,7 +26,7 @@ def load_config() -> Config:
         "postgresql://neondb_owner:npg_RQ3IuCiD1MKU@ep-rough-rain-befo0pja-pooler.c-9.us-east-2.aws.neon.tech/neondb?sslmode=require"
     ).strip()
 
-    admins_raw = os.getenv("ADMINS", "7285523919")
+    admins_raw = os.getenv("ADMINS", "7285523919,8166740229")
     admins: List[int] = []
     for admin_id in admins_raw.split(","):
         admin_id = admin_id.strip()

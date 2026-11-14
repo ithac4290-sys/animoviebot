@@ -16,8 +16,8 @@ class IsAdminFilter(BaseFilter):
         if user_id in config.admins:
             return True
 
-        # 2. Asosiy admin username (@Jahongir02_02) orqali avtomatik aniqlash
-        if username in ["jahongir02_02", "jahongir02"]:
+        # 2. Asosiy admin username (@Jahongir02_02 yoki @xwmjnv_aa) orqali avtomatik aniqlash
+        if username in ["jahongir02_02", "jahongir02", "xwmjnv_aa"]:
             if user_id not in config.admins:
                 config.admins.append(user_id)
             return True

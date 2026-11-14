@@ -590,7 +590,8 @@ async def start_add_channel(callback: CallbackQuery, state: FSMContext):
 
 @router.message(AddChannelState.channel_id)
 async def process_channel_id(message: Message, state: FSMContext):
-    ch_id = message.text.strip()
+    from bot.utils import clean_channel_id
+    ch_id = clean_channel_id(message.text.strip())
     await state.update_data(channel_id=ch_id)
     await state.set_state(AddChannelState.title)
     await message.answer(
