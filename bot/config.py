@@ -14,6 +14,7 @@ class Config:
     default_channel_id: str
     db_name: str
     database_url: str
+    trace_moe_api_key: str
 
 
 def load_config() -> Config:
@@ -25,6 +26,8 @@ def load_config() -> Config:
         "DATABASE_URL",
         "postgresql://neondb_owner:npg_2jclL6yKbCer@ep-round-truth-bbk4ma0f-pooler.c-15.us-east-1.aws.neon.tech/neondb?sslmode=require"
     ).strip()
+
+    trace_moe_api_key = os.getenv("TRACE_MOE_API_KEY", "").strip()
 
     admins_raw = os.getenv("ADMINS", "7285523919,8166740229")
     admins: List[int] = []
@@ -40,6 +43,7 @@ def load_config() -> Config:
         default_channel_id=channel_id,
         db_name=db_name,
         database_url=database_url,
+        trace_moe_api_key=trace_moe_api_key,
     )
 
 

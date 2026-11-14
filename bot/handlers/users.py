@@ -395,58 +395,105 @@ async def handle_search_by_image_start(callback: CallbackQuery, state: FSMContex
     await callback.message.edit_text(text, reply_markup=get_search_cancel_keyboard(), parse_mode="HTML")
 
 
-@router.message(UserSearchState.by_image, F.photo)
+@router.message(StateFilter(UserSearchState.by_image, None), F.photo)
 async def process_search_by_image(message: Message, state: FSMContext, bot: Bot):
     await state.clear()
-    status_msg = await message.answer("🔍 Rasm tahlil qilinmoqda...")
+    status_msg = await message.answer("🔍 <b>Rasm tahlil qilinmoqda, iltimos kuting...</b>", parse_mode="HTML")
 
     photo = message.photo[-1]
-    recognized_title = ""
 
     try:
-        file = await bot.get_file(photo.file_id)
-        file_url = f"https://api.telegram.org/file/bot{config.bot_token}/{file.file_path}"
-
+        from io import BytesIO
         import aiohttp
+
+        photo_bytes_io = BytesIO()
+        await bot.download(photo, destination=photo_bytes_io)
+        image_data = photo_bytes_io.getvalue()
+
+        headers = {
+            "Content-Type": "image/jpeg"
+        }
+        if config.trace_moe_api_key:
+            headers["x-trace-secret"] = config.trace_moe_api_key
+
         async with aiohttp.ClientSession() as session:
-            trace_url = f"https://api.trace.moe/search?cutBorders&url={file_url}"
-            async with session.get(trace_url, timeout=10) as resp:
+            trace_url = "https://api.trace.moe/search?cutBorders&anilistInfo"
+            async with session.post(trace_url, data=image_data, headers=headers, timeout=20) as resp:
                 if resp.status == 200:
                     data = await resp.json()
                     results = data.get("result", [])
-                    if results and results[0].get("similarity", 0) > 0.80:
-                        filename = results[0].get("filename", "")
-                        clean_title = filename.split("]")[ -1].split("[")[0].strip() if "]" in filename else filename
-                        clean_title = clean_title.split("-")[0].strip()
-                        recognized_title = clean_title
+                    if results:
+                        best = results[0]
+                        similarity = best.get("similarity", 0)
+                        if similarity >= 0.80:
+                            anilist = best.get("anilist") or {}
+                            title_info = anilist.get("title") or {}
+                            romaji_title = title_info.get("romaji") or ""
+                            english_title = title_info.get("english") or ""
+                            native_title = title_info.get("native") or ""
+
+                            filename = best.get("filename", "")
+                            clean_filename = filename.split("]")[-1].split("[")[0].strip() if "]" in filename else filename
+                            clean_filename = clean_filename.split("-")[0].strip()
+
+                            episode_num = best.get("episode")
+                            similarity_percent = round(similarity * 100, 1)
+
+                            display_title = english_title or romaji_title or clean_filename
+
+                            candidate_queries = []
+                            for candidate in [romaji_title, english_title, clean_filename]:
+                                if candidate and candidate not in candidate_queries:
+                                    candidate_queries.append(candidate)
+                                    words = candidate.split()
+                                    if len(words) > 1 and words[0] not in candidate_queries:
+                                        candidate_queries.append(words[0])
+
+                            db_results = []
+                            for q in candidate_queries:
+                                found = await db.search_animes(q, limit=5)
+                                if found:
+                                    db_results = found
+                                    break
+
+                            ep_str = f"\n📌 <b>Taxminiy qism:</b> {episode_num}-qism" if episode_num else ""
+
+                            if db_results:
+                                await status_msg.edit_text(
+                                    f"✅ <b>Anime aniqlandi:</b> {html.escape(display_title)}\n"
+                                    f"🎯 <b>Aniqlik darajasi:</b> {similarity_percent}%{ep_str}\n\n"
+                                    f"🎬 <b>Bazamizdan topilgan natijalar:</b>",
+                                    reply_markup=get_animes_pagination_keyboard(db_results, 0, 1),
+                                    parse_mode="HTML"
+                                )
+                                return
+                            else:
+                                await status_msg.edit_text(
+                                    f"💡 <b>Rasmdan aniqlangan anime:</b>\n"
+                                    f"🎬 <b>Nomi:</b> <i>{html.escape(display_title)}</i>\n"
+                                    f"🎯 <b>Aniqlik darajasi:</b> {similarity_percent}%{ep_str}\n\n"
+                                    f"ℹ️ <i>Ushbu anime hozircha bizning bot bazamizga yuklanmagan.\n"
+                                    f"Adminlar tez orada uni kanalimizga joylashadi!</i>",
+                                    reply_markup=get_search_cancel_keyboard(),
+                                    parse_mode="HTML"
+                                )
+                                return
+                elif resp.status == 429:
+                    await status_msg.edit_text(
+                        "⚠️ <b>Juda ko'p so'rov yuborildi.</b> Iltimos, biroz kutib qaytadan urinib ko'ring.",
+                        reply_markup=get_search_cancel_keyboard(),
+                        parse_mode="HTML"
+                    )
+                    return
     except Exception:
         pass
 
-    if recognized_title:
-        db_results = await db.search_animes(recognized_title, limit=5)
-        if db_results:
-            await status_msg.edit_text(
-                f"✅ <b>Anime aniqlandi:</b> {html.escape(recognized_title)}\n\n"
-                f"Bazamizdan topilgan natijalar:",
-                reply_markup=get_animes_pagination_keyboard(db_results, 0, 1),
-                parse_mode="HTML"
-            )
-            return
-
-        await status_msg.edit_text(
-            f"💡 <b>Rasmdan aniqlangan anime:</b> <i>{html.escape(recognized_title)}</i>\n\n"
-            f"Afsuski, ushbu anime hozircha bizning bazamizga yuklanmagan.\n"
-            f"Adminlar tez orada uni kanalimizga joylashadi!",
-            reply_markup=get_search_cancel_keyboard(),
-            parse_mode="HTML"
-        )
-    else:
-        await status_msg.edit_text(
-            "⚠️ <b>Kechirasiz, ushbu rasm orqali animeni aniqlab bo'lmadi.</b>\n\n"
-            "<i>Iltimos, aniqroq skrinshot yuboring yoki '🏷 Anime nomi orqali' qidiruvdan foydalaning.</i>",
-            reply_markup=get_search_cancel_keyboard(),
-            parse_mode="HTML"
-        )
+    await status_msg.edit_text(
+        "⚠️ <b>Kechirasiz, ushbu rasm orqali animeni aniqlab bo'lmadi.</b>\n\n"
+        "<i>Iltimos, animening aniqroq kadrini (skrinshot) yuboring yoki '🏷 Anime nomi orqali' qidiruvdan foydalaning.</i>",
+        reply_markup=get_search_cancel_keyboard(),
+        parse_mode="HTML"
+    )
 
 
 # 7. 📚 Barcha animelar (sahifalash bilan)
