@@ -1,6 +1,6 @@
-# 🎬 Anime Telegram Bot (aiogram 3.x + SQLite)
+# 🎬 Anime Telegram Bot (aiogram 3.x + Neon PostgreSQL JSONB)
 
-Mukammal arxitekturaga ega, tezkor va zamonaviy Anime Telegram Boti. Bot anime ko'rish, qismlarni tomosha qilish, majburiy obunani tekshirish, admin panel va kanalga avtomatik chiroyli post joylash imkoniyatlariga ega.
+Mukammal arxitekturaga ega, tezkor va zamonaviy Anime Telegram Boti. Bot anime ko'rish, qismlarni tomosha qilish, majburiy sponsor obunasini tekshirish, admin boshqaruv paneli, Neon Serverless PostgreSQL bazasida barcha video va qismlarni JSONB formatda saqlash va Railway bulutli serverida uzluksiz ishlashga to'liq moslashtirilgan.
 
 ---
 
@@ -15,25 +15,32 @@ Mukammal arxitekturaga ega, tezkor va zamonaviy Anime Telegram Boti. Bot anime k
 
 2. **Kanalga Avtomatik Post Joylash (Admin Panel):**
    - Admin `/admin` menyusi orqali yangi anime qo'shadi (Nomi, Posteri, Holati, Qismlar soni, Janrlari, Kanal username).
+   - Standart `@Ani_Movei_UZ` kanalini bitta tugma bilan tanlash imkoniyati.
    - Bot noyob **Anime ID** yaratadi va kanalda avtomatik post joylaydi:
      - `▶️ Tomosha qilish` tugmasi
      - `📚 Barcha qismlar` tugmasi
 
-3. **Anime Menyusi va Qismlar Gridi:**
-   - 4 tadan ustun (grid) qilib joylashtirilgan qism tugmalari (`[ 1 - qism ]` `[ 2 - qism ]` ...).
+3. **Neon Serverless PostgreSQL & JSON Formatda Saqlash:**
+   - Barcha anime ma'lumotlari, video fayllari (`file_id`), qismlar va ko'rishlar soni PostgreSQL `JSONB` ustunlarida strukturaviy JSON formatda saqlanadi.
+   - Qismlar yuklanganda `jsonb_set` orqali ma'lumotlar real vaqtda yangilanadi.
+
+4. **Anime Menyusi va Qismlar Gridi:**
+   - 4 tadan ustun (grid) qilib joylashtirilgan qism tugmalari (`[ ▶️ 1 - qism ]` `[ ▶️ 2 - qism ]` ...).
    - Eng pastda alohida `❌ Yopish` tugmasi.
    - Qism tanlanganda videoni tezkor yuborish.
 
-4. **Qo'shimcha Imkoniyatlar:**
-   - 🎬 **Qism yuklash:** Admin panel orqali har bir qism uchun video yuklash.
-   - 📢 **Majburiy obuna (Sponsor kanallar):** Obunani tekshirish tizimi.
-   - 💎 **VIP Tizimi:** VIP foydalanuvchilar kanallarga obuna bo'lmasdan tomosha qiladi.
-   - 📊 **Statistika:** Foydalanuvchilar, animelar va qismlar soni.
-   - ✉️ **Broadcast:** Barcha foydalanuvchilarga xabar tarqatish.
+5. **Qulay Admin Boshqaruv Paneli (`/admin`):**
+   - ➕ **Yangi anime qo'shish**: Rasm yoki fotosurat fayli orqali, standart kanal tanlash bilan.
+   - 🎬 **Qism yuklash**: Oxirgi animelar ro'yxatidan tanlash va keyingi qismlarni ketma-ket uzluksiz yuklash.
+   - 📋 **Animelar ro'yxati**: Barcha animelarni sahifalab ko'rish, boshqarish va o'chirish.
+   - 📢 **Sponsor kanallar**: Majburiy a'zolik kanallarini qo'shish va boshqarish.
+   - 💎 **VIP boshqaruvi**: Foydalanuvchilarga VIP berish, cheklarni tasdiqlash/rad etish.
+   - 📊 **Kengaytirilgan statistika**: Foydalanuvchilar, VIP lar, animelar, yuklangan videolar, ko'rishlar soni va Neon DB holati.
+   - ✉️ **Broadcast**: Barcha foydalanuvchilarga xabar tarqatish.
 
 ---
 
-## 🚀 O'rnatish va Ishga Tushirish
+## 🚀 Ishga Tushirish va O'rnatish
 
 ### 1. Repozitoriyani klonlash:
 ```bash
@@ -41,23 +48,38 @@ git clone https://github.com/ithac4290-sys/animoviebot.git
 cd animoviebot
 ```
 
-### 2. Virtual muhit yaratish va faollashtirish:
+### 2. Virtual muhit va kutubxonalarni o'rnatish:
 ```bash
-python3 -m venv venv
-source venv/bin/activate  # Linux / macOS
-# yoki Windows uchun:
-# venv\Scripts\activate
-```
-
-### 3. Kutubxonalarni o'rnatish:
-```bash
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4. Sozlamalarni kiritish (.env):
-`.env.example` faylidan nusxa olib `.env` yarating:
+### 3. Sozlamalarni kiritish (.env):
+```env
+BOT_TOKEN=Sizning_Bot_Tokeningiz
+ADMINS=7285523919
+DEFAULT_CHANNEL_ID=@Ani_Movei_UZ
+DATABASE_URL=postgresql://neondb_owner:parol@ep-rough-rain-befo0pja-pooler.c-9.us-east-2.aws.neon.tech/neondb?sslmode=require
+```
+
+### 4. Botni ishga tushirish:
 ```bash
-cp .env.example .env
+python3 main.py
+```
+
+---
+
+## ☁️ Railway.com da joylash
+
+Loyiha Railway uchun to'liq sozlangan (`Dockerfile`, `railway.json`, `Procfile`, Healthcheck serveri):
+1. [Railway.com](https://railway.com) ga kiring va GitHub dagi ushbu omborni tanlang.
+2. **Variables** bo'limiga quyidagilarni kiriting:
+   - `BOT_TOKEN`
+   - `ADMINS` (masalan: `7285523919`)
+   - `DATABASE_URL` (Neon PostgreSQL DSN)
+   - `DEFAULT_CHANNEL_ID` (masalan: `@Ani_Movei_UZ`)
+3. Railway loyihani avtomatik qurib, ishga tushiradi!
 ```
 Va ichiga bot tokeningiz hamda admin ID raqamingizni yozing:
 ```env

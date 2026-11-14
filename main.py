@@ -69,18 +69,27 @@ async def main():
     )
     logger = logging.getLogger("AnimeBot")
 
+    # 1. Railway yoki bulutli hostinglar uchun healthcheck serverini DARHOL ishga tushirish!
+    # Bu Railway da 'Port binding failed' yoki 'CRASHED' holatining oldini oladi.
+    await start_health_server()
+
+    # 2. Ma'lumotlar bazasini initsializatsiya qilish (Neon PostgreSQL / JSONB)
+    logger.info("Ma'lumotlar bazasi initsializatsiya qilinmoqda...")
+    try:
+        await db.init_db()
+    except Exception as e:
+        logger.error(f"Bazaga ulanishda xatolik: {e}")
+
     if not config.bot_token or config.bot_token == "YOUR_BOT_TOKEN_HERE":
         logger.error("BOT_TOKEN ko'rsatilmagan! Iltimos, .env faylini to'ldiring.")
-        return
+        # Railway serveri tirik turishi uchun cheksiz kutish
+        while True:
+            await asyncio.sleep(3600)
 
-    # 1. Ma'lumotlar bazasini initsializatsiya qilish
-    logger.info("Ma'lumotlar bazasi ishga tushirilmoqda...")
-    await db.init_db()
-
-    # 2. Xatoliklarga chidamli sessiya yaratish
+    # 3. Xatoliklarga chidamli sessiya yaratish
     session = RetryAiohttpSession(timeout=60.0)
 
-    # 3. Bot va Dispatcher yaratish
+    # 4. Bot va Dispatcher yaratish
     bot = Bot(
         token=config.bot_token,
         session=session,
@@ -88,25 +97,26 @@ async def main():
     )
     dp = Dispatcher()
 
-    # 4. Middleware ulash
+    # 5. Middleware ulash
     dp.update.outer_middleware(UserRegisterMiddleware())
 
-    # 5. Handlerlarni ulash
+    # 6. Handlerlarni ulash
     dp.include_router(setup_routers())
 
-    # Bot ma'lumotlarini olish
-    bot_info = await bot.get_me()
-    logger.info(f"Bot muvaffaqiyatli ishga tushdi: @{bot_info.username} (ID: {bot_info.id})")
-
-    # 6. Railway yoki bulutli hostinglar uchun healthcheck serverini yoqish
-    await start_health_server()
-
-    # 7. Pollingni boshlash
-    try:
-        await bot.delete_webhook(drop_pending_updates=True)
-        await dp.start_polling(bot)
-    finally:
-        await bot.session.close()
+    # 7. Bot ma'lumotlarini olish va ishga tushirish
+    while True:
+        try:
+            bot_info = await bot.get_me()
+            logger.info(f"Bot muvaffaqiyatli ishga tushdi: @{bot_info.username} (ID: {bot_info.id})")
+            await bot.delete_webhook(drop_pending_updates=True)
+            await dp.start_polling(bot)
+            break
+        except Exception as e:
+            logger.error(
+                f"Telegram serveriga ulanishda xatolik: {e}. "
+                f"Iltimos, BOT_TOKEN to'g'riligini tekshiring! 25 soniyadan so'ng qayta uriniladi..."
+            )
+            await asyncio.sleep(25)
 
 
 if __name__ == "__main__":
