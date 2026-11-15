@@ -95,6 +95,26 @@
       z-index: 5;
     }
 
+    /* Video Progress Bar */
+    .video-progress-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.2);
+      z-index: 25;
+      pointer-events: none;
+    }
+
+    .video-progress-fill {
+      height: 100%;
+      width: 0%;
+      background: #ff2d55;
+      box-shadow: 0 0 8px rgba(255, 45, 85, 0.8);
+      transition: width 0.1s linear;
+    }
+
     /* Top Bar */
     .top-bar {
       position: absolute;
@@ -965,9 +985,13 @@
             </button>
           </div>
 
-          <video src="${resolvedVideo}" autoplay muted loop playsinline webkit-playsinline preload="auto" poster="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='700'><rect width='100%' height='100%' fill='%230b0e14'/><text x='50%' y='50%' fill='%23ff2d55' font-size='24' font-weight='bold' text-anchor='middle'>⚡️ AniMovie Shorts</text></svg>">
+          <video muted playsinline webkit-playsinline preload="metadata" poster="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='700'><rect width='100%' height='100%' fill='%230b0e14'/><text x='50%' y='50%' fill='%23ff2d55' font-size='24' font-weight='bold' text-anchor='middle'>⚡️ AniMovie Shorts</text></svg>">
             <source src="${resolvedVideo}" type="video/mp4">
           </video>
+
+          <div class="video-progress-bar">
+            <div class="video-progress-fill"></div>
+          </div>
 
           <div class="center-indicator">
             <svg width="34" height="34" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -1041,35 +1065,90 @@
       setupShortEvents();
     }
 
+    let currentPlayingIndex = -1;
+
     function setupShortEvents() {
+      const container = document.getElementById('shortsContainer');
       const items = document.querySelectorAll('.short-item');
       if (items.length === 0) return;
 
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          const video = entry.target.querySelector('video');
-          if (video) {
-            if (entry.isIntersecting) {
-              video.muted = isMuted;
-              const p = video.play();
-              if (p !== undefined) {
-                p.catch(() => {
-                  video.muted = true;
-                  video.play().catch(() => {});
-                });
-              }
-            } else {
-              video.pause();
-              video.currentTime = 0;
-            }
+      function updateActiveVideo() {
+        const containerRect = container.getBoundingClientRect();
+        const centerY = containerRect.top + containerRect.height / 2;
+
+        let bestIndex = 0;
+        let bestDist = Infinity;
+
+        items.forEach((item, idx) => {
+          const rect = item.getBoundingClientRect();
+          const itemCenter = rect.top + rect.height / 2;
+          const dist = Math.abs(centerY - itemCenter);
+          if (dist < bestDist) {
+            bestDist = dist;
+            bestIndex = idx;
           }
         });
-      }, { threshold: 0.6 });
 
-      items.forEach((item) => {
-        observer.observe(item);
+        if (bestIndex !== currentPlayingIndex) {
+          // Pause previous video
+          if (currentPlayingIndex >= 0 && items[currentPlayingIndex]) {
+            const prevVideo = items[currentPlayingIndex].querySelector('video');
+            if (prevVideo) {
+              prevVideo.pause();
+            }
+          }
+          // Play current video
+          currentPlayingIndex = bestIndex;
+          const currentItem = items[bestIndex];
+          if (currentItem) {
+            const curVideo = currentItem.querySelector('video');
+            if (curVideo) {
+              curVideo.muted = isMuted;
+              const p = curVideo.play();
+              if (p !== undefined) {
+                p.catch(() => {
+                  curVideo.muted = true;
+                  curVideo.play().catch(() => {});
+                });
+              }
+            }
+          }
+        }
+      }
+
+      // Initial active video
+      setTimeout(updateActiveVideo, 150);
+
+      // Scroll listener with throttle via requestAnimationFrame
+      let ticking = false;
+      container.addEventListener('scroll', () => {
+        if (!ticking) {
+          window.requestAnimationFrame(() => {
+            updateActiveVideo();
+            ticking = false;
+          });
+          ticking = true;
+        }
+      }, { passive: true });
+
+      items.forEach((item, idx) => {
         const video = item.querySelector('video');
+        const progressBar = item.querySelector('.video-progress-fill');
         const indicator = item.querySelector('.center-indicator');
+
+        if (video) {
+          video.addEventListener('timeupdate', () => {
+            if (video.duration && progressBar) {
+              const pct = (video.currentTime / video.duration) * 100;
+              progressBar.style.width = pct + '%';
+            }
+          });
+
+          video.addEventListener('ended', () => {
+            video.currentTime = 0;
+            video.play().catch(() => {});
+          });
+        }
 
         item.addEventListener('click', (e) => {
           if (e.target.closest('.actions-sidebar') || e.target.closest('.creator-tag') || e.target.closest('.top-bar')) {
