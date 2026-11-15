@@ -1002,7 +1002,7 @@
         card.className = 'manga-card';
         card.innerHTML = `
           <div class="cover-wrap">
-            <img src="${manga.cover}" alt="${manga.title}" loading="lazy">
+            <img src="${manga.cover}" alt="${manga.title}" loading="lazy" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500';">
             <div class="badge-rating">★ ${manga.rating}</div>
             <div class="badge-status">${manga.status}</div>
           </div>

@@ -922,6 +922,14 @@
       setTimeout(() => heart.remove(), 750);
     }
 
+    function formatVideoUrl(url) {
+      if (!url) return '';
+      if (url.startsWith('http://') || url.startsWith('https://')) return url;
+      let clean = url.replace(/^\.?\//, '');
+      if (clean.startsWith('shorts/')) clean = clean.substring(7);
+      return 'https://ithac4290-sys.github.io/animoviebot/shorts/' + clean;
+    }
+
     function renderShorts(list) {
       const container = document.getElementById('shortsContainer');
       container.innerHTML = '';
@@ -941,6 +949,7 @@
         const item = document.createElement('div');
         item.className = 'short-item';
         item.setAttribute('data-index', idx);
+        const resolvedVideo = formatVideoUrl(s.video_url);
         item.innerHTML = `
           <div class="overlay-top"></div>
           <div class="overlay-bottom"></div>
@@ -956,8 +965,8 @@
             </button>
           </div>
 
-          <video src="${s.video_url}" autoplay muted loop playsinline webkit-playsinline preload="auto" poster="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='700'><rect width='100%' height='100%' fill='%230b0e14'/><text x='50%' y='50%' fill='%23ff2d55' font-size='24' font-weight='bold' text-anchor='middle'>⚡️ AniMovie Shorts</text></svg>">
-            <source src="${s.video_url}" type="video/mp4">
+          <video src="${resolvedVideo}" autoplay muted loop playsinline webkit-playsinline preload="auto" poster="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='700'><rect width='100%' height='100%' fill='%230b0e14'/><text x='50%' y='50%' fill='%23ff2d55' font-size='24' font-weight='bold' text-anchor='middle'>⚡️ AniMovie Shorts</text></svg>">
+            <source src="${resolvedVideo}" type="video/mp4">
           </video>
 
           <div class="center-indicator">

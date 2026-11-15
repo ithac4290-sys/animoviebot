@@ -1191,6 +1191,7 @@ async def handle_confirm_delete_anime(callback: CallbackQuery):
 
 import os
 import json
+import shutil
 
 
 async def push_to_github():
@@ -1307,10 +1308,23 @@ async def process_manga_cover(message: Message, state: FSMContext, bot: Bot):
     if message.photo:
         photo = message.photo[-1]
         try:
-            file_info = await bot.get_file(photo.file_id)
-            cover_url = f"https://api.telegram.org/file/bot{config.bot_token}/{file_info.file_path}"
+            cover_filename = f"cover_{photo.file_unique_id}.jpg"
+            primary_cover = os.path.join("manga/covers", cover_filename)
+            os.makedirs("manga/covers", exist_ok=True)
+            await bot.download(photo, destination=primary_cover)
+            for d in ["docs/manga/covers", "miniapp/manga/covers"]:
+                try:
+                    os.makedirs(d, exist_ok=True)
+                    shutil.copyfile(primary_cover, os.path.join(d, cover_filename))
+                except Exception:
+                    pass
+            cover_url = f"https://ithac4290-sys.github.io/animoviebot/manga/covers/{cover_filename}"
         except Exception:
-            cover_url = "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500"
+            try:
+                file_info = await bot.get_file(photo.file_id)
+                cover_url = f"https://api.telegram.org/file/bot{config.bot_token}/{file_info.file_path}"
+            except Exception:
+                cover_url = "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500"
         await state.update_data(cover_file_id=photo.file_id)
     elif message.text and (message.text.startswith("http://") or message.text.startswith("https://")):
         cover_url = message.text.strip()
@@ -1747,13 +1761,18 @@ async def process_shorts_video(message: Message, state: FSMContext, bot: Bot):
         "miniapp/shorts/videos",
         "/var/www/html/shorts/videos"
     ]
-    for d in dest_dirs:
-        try:
-            os.makedirs(d, exist_ok=True)
-            file_dest = os.path.join(d, f"short_{video.file_unique_id}.mp4")
-            await bot.download(video, destination=file_dest)
-        except Exception:
-            pass
+    try:
+        os.makedirs(dest_dirs[0], exist_ok=True)
+        primary_file = os.path.join(dest_dirs[0], f"short_{video.file_unique_id}.mp4")
+        await bot.download(video, destination=primary_file)
+        for d in dest_dirs[1:]:
+            try:
+                os.makedirs(d, exist_ok=True)
+                shutil.copyfile(primary_file, os.path.join(d, f"short_{video.file_unique_id}.mp4"))
+            except Exception:
+                pass
+    except Exception as e:
+        logger.error(f"Error saving short video: {e}")
 
     await state.update_data(video_file_id=file_id, video_url=video_rel_url)
     await state.set_state(AddShortsState.title)
