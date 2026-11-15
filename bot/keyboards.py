@@ -6,32 +6,31 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 
 def get_main_menu_keyboard(bot_username: str) -> InlineKeyboardMarkup:
     """
-    1. ASOSIY BOSH MENYU (3-rasm dizayni):
-    - 1-qator: [ 🔎 𝗔𝗻𝗶𝗺𝗲 𝗶𝘇𝗹𝗮𝘀𝗵 ] (primary / ko'k) -> Qidiruv tipini tanlash menyusini ochadi
-    - 2-qator: [ 📄 𝗠𝗮𝗻𝗴𝗮 𝗸𝗼'𝗿𝗶𝘀𝗵 ] (primary / ko'k) | [ 🔴 𝗦𝗵𝗼𝗿𝘁𝘀 𝗸𝗼'𝗿𝗶𝘀𝗵 ] (danger / qizil)
-    - 3-qator: [ 🗄 𝗞𝗮𝗯𝗶𝗻𝗲𝘁 ] (primary / ko'k) | [ 💎 𝗩𝗜𝗣 𝗢𝗯𝘂𝗻𝗮 ] (success / yashil)
+    1. ASOSIY BOSH MENYU:
+    - 1-qator: [ 🔍 𝗔𝗻𝗶𝗺𝗲 𝗶𝘇𝗹𝗮𝘀𝗵 ]
+    - 2-qator: [ 📖 𝗠𝗮𝗻𝗴𝗮 𝗸𝗼'𝗿𝗶𝘀𝗵 ] | [ ⚡️ 𝗦𝗵𝗼𝗿𝘁𝘀 𝗸𝗼'𝗿𝗶𝘀𝗵 ]
+    - 3-qator: [ 👤 𝗞𝗮𝗯𝗶𝗻𝗲𝘁 ] | [ 👑 𝗩𝗜𝗣 𝗢𝗯𝘂𝗻𝗮 ]
     """
     builder = InlineKeyboardBuilder()
 
-    # 1-qator: 🔎 Anime izlash
+    # 1-qator: 🔍 Anime izlash
     builder.row(
         InlineKeyboardButton(
-            text="🔎 𝗔𝗻𝗶𝗺𝗲 𝗶𝘇𝗹𝗮𝘀𝗵",
-            callback_data="btn_search_menu",
-            style="primary"
+            text="🔍 𝗔𝗻𝗶𝗺𝗲 𝗶𝘇𝗹𝗮𝘀𝗵",
+            callback_data="btn_search_menu"
         )
     )
 
-    # 2-qator: 📄 Manga ko'rish | 🔴 Shorts ko'rish
+    # 2-qator: 📖 Manga ko'rish | ⚡️ Shorts ko'rish
     builder.row(
-        InlineKeyboardButton(text="📄 𝗠𝗮𝗻𝗴𝗮 𝗸𝗼'𝗿𝗶𝘀𝗵", callback_data="btn_manga", style="primary"),
-        InlineKeyboardButton(text="🔴 𝗦𝗵𝗼𝗿𝘁𝘀 𝗸𝗼'𝗿𝗶𝘀𝗵", callback_data="btn_shorts", style="danger")
+        InlineKeyboardButton(text="📖 𝗠𝗮𝗻𝗴𝗮 𝗸𝗼'𝗿𝗶𝘀𝗵", callback_data="btn_manga"),
+        InlineKeyboardButton(text="⚡️ 𝗦𝗵𝗼𝗿𝘁𝘀 𝗸𝗼'𝗿𝗶𝘀𝗵", callback_data="btn_shorts")
     )
 
-    # 3-qator: 🗄 Kabinet | 💎 VIP Obuna
+    # 3-qator: 👤 Kabinet | 👑 VIP Obuna
     builder.row(
-        InlineKeyboardButton(text="🗄 𝗞𝗮𝗯𝗶𝗻𝗲𝘁", callback_data="btn_cabinet", style="primary"),
-        InlineKeyboardButton(text="💎 𝗩𝗜𝗣 𝗢𝗯𝘂𝗻𝗮", callback_data="btn_vip", style="success")
+        InlineKeyboardButton(text="👤 𝗞𝗮𝗯𝗶𝗻𝗲𝘁", callback_data="btn_cabinet"),
+        InlineKeyboardButton(text="👑 𝗩𝗜𝗣 𝗢𝗯𝘂𝗻𝗮", callback_data="btn_vip")
     )
 
     return builder.as_markup()
@@ -416,8 +415,8 @@ def get_cabinet_keyboard() -> InlineKeyboardMarkup:
     """Kabinet ichidagi tugmalar"""
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="💎 VIP sotib olish", callback_data="btn_vip", style="success"),
-        InlineKeyboardButton(text="🔄 Yangilash", callback_data="btn_cabinet", style="primary")
+        InlineKeyboardButton(text="👑 VIP sotib olish", callback_data="btn_vip"),
+        InlineKeyboardButton(text="🔄 Yangilash", callback_data="btn_cabinet")
     )
     builder.row(
         InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="btn_home")

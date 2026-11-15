@@ -28,35 +28,36 @@ router = Router()
 
 
 def get_welcome_text(full_name: str) -> str:
-    """3-rasmdagi bosh sahifa matni"""
-    escaped_name = html.escape(full_name or "Анимешник")
+    """Bosh sahifa xush kelibsiz matni"""
+    escaped_name = html.escape(full_name or "Foydalanuvchi")
     return (
-        f"✋🏻 <b>Assalomu aleykum hurmatli '{escaped_name}' botimizga xush kelibsiz.</b>\n\n"
-        f"📄 <i>Botimizda barcha animelarni osongina @Ani_Movei_UZ kanalidan yuklab olib tomosha qilishingiz mumkin.</i>\n\n"
-        f"<u>Botimizdagi ba'zi buyruqlar:</u>\n"
-        f"<blockquote>/top - 📄 Animelar ro'yxati.\n"
-        f"/help - ☎️ Qo'llab-quvvatlash.\n"
-        f"/vip - 💎 VIP Obuna haqida.\n"
-        f"/qollanma - 📚 Botdan foydalanish.</blockquote>\n\n"
-        f"‼️ Botga to'g'ridan-to'g'ri anime kodi yoki nomini yozishingiz mumkin."
+        f"👋🏻 <b>Assalomu alaykum, hurmatli '{escaped_name}'!</b>\n"
+        f"<b>AniMovieUZ rasmiy botiga xush kelibsiz!</b>\n\n"
+        f"🍿 <i>Botimizda barcha sara animelarni osongina @Ani_Movei_UZ kanalidan yuklab olib tomosha qilishingiz mumkin.</i>\n\n"
+        f"<u>⚡️ Botimizdagi asosiy buyruqlar:</u>\n"
+        f"<blockquote>🎬 /top — Eng ommabop animelar ro'yxati\n"
+        f"👨🏻‍💻 /help — Qo'llab-quvvatlash xizmati\n"
+        f"👑 /vip — VIP Obuna va imtiyozlar\n"
+        f"💡 /qollanma — Botdan foydalanish qo'llanmasi</blockquote>\n\n"
+        f"🔥 <b>Botga to'g'ridan-to'g'ri anime kodi yoki nomini yozishingiz mumkin.</b>"
     )
 
 
 def format_anime_caption(anime: dict, bot_username: str) -> str:
-    """2-rasmdagi anime caption formati"""
+    """Anime card caption formati"""
     title = html.escape(anime.get("title", ""))
     status = html.escape(anime.get("status", "Davom etmoqda"))
     channel = html.escape(anime.get("channel", f"@{bot_username}"))
     anime_id = anime.get("id")
 
     return (
-        f"{title}\n\n"
-        f"<blockquote>• Holati: {status}\n"
-        f"• Sifat - 720p, 1080p\n"
-        f"• {channel}</blockquote>\n\n"
-        f"🏷 Botimiz: @{bot_username}\n"
-        f"📮 Anime ID: {anime_id}\n"
-        f"📎 Link: https://t.me/{bot_username}?start={anime_id}"
+        f"🎬 <b>{title}</b>\n\n"
+        f"<blockquote>• 📌 Holati: {status}\n"
+        f"• ⚡️ Sifat: 720p, 1080p\n"
+        f"• 📢 {channel}</blockquote>\n\n"
+        f"🏷 <b>Botimiz:</b> @{bot_username}\n"
+        f"📮 <b>Anime ID:</b> <code>{anime_id}</code>\n"
+        f"📎 <b>Link:</b> https://t.me/{bot_username}?start={anime_id}"
     )
 
 
@@ -898,24 +899,24 @@ async def handle_guide(message: Message):
     await message.answer(text, parse_mode="HTML")
 
 
-# 6. 📄 Manga kurish
+# 6. 📖 Manga ko'rish
 @router.callback_query(F.data == "btn_manga")
 async def handle_manga(callback: CallbackQuery):
     await callback.answer()
     text = (
-        "📄 <b>Manga mutolaa bo'limi</b>\n\n"
+        "📖 <b>Manga mutolaa bo'limi</b>\n\n"
         "Tez kunda botimizda eng sara o'zbekcha tarjima qilingan mangalarni ham o'qishingiz mumkin bo'ladi!\n\n"
         "Yangiliklarni kanalimizda kuzatib boring: @Ani_Movei_UZ"
     )
     await callback.message.edit_text(text, reply_markup=get_back_home_keyboard(), parse_mode="HTML")
 
 
-# 7. 🔴 Shorts kurish
+# 7. ⚡️ Shorts ko'rish
 @router.callback_query(F.data == "btn_shorts")
 async def handle_shorts(callback: CallbackQuery):
     await callback.answer()
     text = (
-        "🔴 <b>Anime Shorts & Lavhalar</b>\n\n"
+        "⚡️ <b>Anime Shorts & Lavhalar</b>\n\n"
         "Eng qiziqarli anime qisqa videolari va lahzalarini bizning maxsus kanalimizda tomosha qiling:\n\n"
         "👉 https://t.me/Ani_Movei_UZ"
     )
