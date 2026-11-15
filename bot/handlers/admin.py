@@ -1190,8 +1190,13 @@ async def handle_confirm_delete_anime(callback: CallbackQuery):
 # ================= MANGA VA SHORTS YUKLASH BO'LIMI =================
 
 import os
+import re
 import json
 import shutil
+import zipfile
+import logging
+
+logger = logging.getLogger("AdminHandler")
 
 
 async def push_to_github():
@@ -1326,6 +1331,26 @@ async def process_manga_cover(message: Message, state: FSMContext, bot: Bot):
             except Exception:
                 cover_url = "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500"
         await state.update_data(cover_file_id=photo.file_id)
+    elif message.document and (
+        (message.document.mime_type and message.document.mime_type.startswith("image/")) or
+        message.document.file_name.lower().endswith((".jpg", ".jpeg", ".png", ".webp"))
+    ):
+        doc = message.document
+        try:
+            cover_filename = f"cover_{doc.file_unique_id}.jpg"
+            primary_cover = os.path.join("manga/covers", cover_filename)
+            os.makedirs("manga/covers", exist_ok=True)
+            await bot.download(doc, destination=primary_cover)
+            for d in ["docs/manga/covers", "miniapp/manga/covers"]:
+                try:
+                    os.makedirs(d, exist_ok=True)
+                    shutil.copyfile(primary_cover, os.path.join(d, cover_filename))
+                except Exception:
+                    pass
+            cover_url = f"https://ithac4290-sys.github.io/animoviebot/manga/covers/{cover_filename}"
+        except Exception:
+            cover_url = "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500"
+        await state.update_data(cover_file_id=doc.file_id)
     elif message.text and (message.text.startswith("http://") or message.text.startswith("https://")):
         cover_url = message.text.strip()
     else:
@@ -1586,9 +1611,11 @@ async def handle_quick_add_ch_cb(callback: CallbackQuery, state: FSMContext):
 
     text = (
         f"📑 <b>{html.escape(manga['title'])} — {next_ch}-bob</b>\n\n"
-        f"Ushbu bobning <b>sahifalarini (rasmlarini)</b> ketma-ket yuboring:\n"
-        f"• Sahifalarni bittalab yoki foto-albom (media group) qilib yuborishingiz mumkin.\n"
-        f"• Barcha sahifalarni yuborib bo'lgach, <b>[ ✅ Yuklashni yakunlash ]</b> tugmasini bosing!\n\n"
+        f"Ushbu bobning sahifalarini yuboring:\n"
+        f"• 📑 <b>PDF fayl</b> (barcha sahifalar jamlangan bitta PDF)\n"
+        f"• 📦 <b>ZIP / CBZ arxiv</b>\n"
+        f"• 📸 <b>Rasmlar</b> (bittalab yoki foto-albom ko'rinishida)\n\n"
+        f"<i>Barcha sahifalarni yuborib bo'lgach, <b>[ ✅ Yuklashni yakunlash ]</b> tugmasini bosing!</i>\n\n"
         f"<i>📸 Qabul qilingan sahifalar: 0 ta</i>"
     )
     await callback.message.edit_text(text, reply_markup=get_admin_finish_chapter_keyboard(0), parse_mode="HTML")
@@ -1609,32 +1636,242 @@ async def process_chapter_num(message: Message, state: FSMContext):
 
     text = (
         f"📑 <b>{html.escape(manga_title)} — {ch_num}-bob</b>\n\n"
-        f"Ushbu bobning <b>sahifalarini (rasmlarini)</b> yuboring:\n"
-        f"• Sahifalarni bittalab yoki foto-albom (media group) ko'rinishida yuborishingiz mumkin.\n"
-        f"• Barcha sahifalarni yuborib bo'lgach, <b>[ ✅ Yuklashni yakunlash ]</b> tugmasini bosing!\n\n"
+        f"Ushbu bobning sahifalarini yuboring:\n"
+        f"• 📑 <b>PDF fayl</b> (barcha sahifalar jamlangan bitta PDF)\n"
+        f"• 📦 <b>ZIP / CBZ arxiv</b>\n"
+        f"• 📸 <b>Rasmlar</b> (bittalab yoki foto-albom ko'rinishida)\n\n"
+        f"<i>Barcha sahifalarni yuborib bo'lgach, <b>[ ✅ Yuklashni yakunlash ]</b> tugmasini bosing!</i>\n\n"
         f"<i>📸 Qabul qilingan sahifalar: 0 ta</i>"
     )
     await message.answer(text, reply_markup=get_admin_finish_chapter_keyboard(0), parse_mode="HTML")
 
 
+@router.message(AddChapterState.pages, F.document)
+async def process_chapter_document(message: Message, state: FSMContext, bot: Bot):
+    doc = message.document
+    filename = doc.file_name or "chapter.pdf"
+    file_ext = os.path.splitext(filename)[1].lower()
+
+    data = await state.get_data()
+    manga_id = data.get("manga_id")
+    manga_title = data.get("manga_title", "Manga")
+    ch_num = data.get("chapter_num", 1)
+    pages = data.get("pages", [])
+
+    # Bob raqamini fayl nomidan aniqlash (Masalan: "BOB 186", "186-bob", "ch186", "chapter 186")
+    match = re.search(r'(?:bob|ch|chapter)[\s_-]*(\d+)', filename, re.IGNORECASE) or re.search(r'(\d+)[\s_-]*(?:bob|ch|chapter)', filename, re.IGNORECASE)
+    if match:
+        extracted_num = int(match.group(1))
+        ch_num = extracted_num
+        await state.update_data(chapter_num=ch_num)
+
+    # 1. PDF Fayl
+    if file_ext == ".pdf":
+        status_msg = await message.answer(
+            f"⏳ <b>{html.escape(filename)}</b> qabul qilindi.\n"
+            f"PDF sahifalari ajratib olinmoqda, iltimos kuting...",
+            parse_mode="HTML"
+        )
+        try:
+            temp_pdf = f"data/temp_{message.chat.id}_{doc.file_unique_id}.pdf"
+            os.makedirs("data", exist_ok=True)
+            await bot.download(doc, destination=temp_pdf)
+
+            import fitz  # PyMuPDF
+            pdf_doc = fitz.open(temp_pdf)
+            total_pages = len(pdf_doc)
+
+            pages_rel_dir = f"pages/manga_{manga_id}_ch_{ch_num}"
+            target_dirs = [
+                f"manga/{pages_rel_dir}",
+                f"docs/manga/{pages_rel_dir}",
+                f"miniapp/manga/{pages_rel_dir}"
+            ]
+            for d in target_dirs:
+                os.makedirs(d, exist_ok=True)
+
+            for idx in range(total_pages):
+                page = pdf_doc.load_page(idx)
+                pix = page.get_pixmap(dpi=150)
+                img_name = f"p_{idx + 1}.jpg"
+                primary_path = os.path.join(target_dirs[0], img_name)
+                pix.save(primary_path)
+                for d in target_dirs[1:]:
+                    try:
+                        shutil.copyfile(primary_path, os.path.join(d, img_name))
+                    except Exception:
+                        pass
+                page_url = f"https://ithac4290-sys.github.io/animoviebot/manga/{pages_rel_dir}/{img_name}"
+                pages.append(page_url)
+
+            pdf_doc.close()
+            try:
+                os.remove(temp_pdf)
+            except Exception:
+                pass
+
+            await state.update_data(pages=pages)
+            await status_msg.edit_text(
+                f"✅ <b>PDF muvaffaqiyatli qabul qilindi!</b>\n\n"
+                f"📖 <b>Manga:</b> {html.escape(manga_title)}\n"
+                f"📑 <b>Bob:</b> {ch_num}-bob\n"
+                f"📸 <b>Ajratib olingan sahifalar:</b> {total_pages} ta\n\n"
+                f"Barcha sahifalar tayyor bo'lsa, quyidagi tugmani bosing:",
+                reply_markup=get_admin_finish_chapter_keyboard(len(pages)),
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            logger.error(f"Error processing chapter PDF: {e}")
+            await status_msg.edit_text(
+                f"❌ PDF faylni qayta ishlashda xatolik yuz berdi: {html.escape(str(e))}\n"
+                f"Iltimos, boshqa PDF yoki rasmlar shaklida yuboring.",
+                reply_markup=get_admin_finish_chapter_keyboard(len(pages)),
+                parse_mode="HTML"
+            )
+        return
+
+    # 2. ZIP / CBZ Arxivi
+    elif file_ext in [".zip", ".cbz"]:
+        status_msg = await message.answer(
+            f"⏳ <b>{html.escape(filename)}</b> arxivi ochilmoqda...",
+            parse_mode="HTML"
+        )
+        try:
+            temp_zip = f"data/temp_{message.chat.id}_{doc.file_unique_id}.zip"
+            os.makedirs("data", exist_ok=True)
+            await bot.download(doc, destination=temp_zip)
+
+            pages_rel_dir = f"pages/manga_{manga_id}_ch_{ch_num}"
+            target_dirs = [
+                f"manga/{pages_rel_dir}",
+                f"docs/manga/{pages_rel_dir}",
+                f"miniapp/manga/{pages_rel_dir}"
+            ]
+            for d in target_dirs:
+                os.makedirs(d, exist_ok=True)
+
+            with zipfile.ZipFile(temp_zip, 'r') as zf:
+                valid_exts = ('.jpg', '.jpeg', '.png', '.webp')
+                img_names = sorted([n for n in zf.namelist() if n.lower().endswith(valid_exts) and not n.startswith('__MACOSX')])
+                for idx, name in enumerate(img_names):
+                    extracted_bytes = zf.read(name)
+                    img_name = f"p_{idx + 1}.jpg"
+                    primary_path = os.path.join(target_dirs[0], img_name)
+                    with open(primary_path, 'wb') as f:
+                        f.write(extracted_bytes)
+                    for d in target_dirs[1:]:
+                        try:
+                            shutil.copyfile(primary_path, os.path.join(d, img_name))
+                        except Exception:
+                            pass
+                    page_url = f"https://ithac4290-sys.github.io/animoviebot/manga/{pages_rel_dir}/{img_name}"
+                    pages.append(page_url)
+
+            try:
+                os.remove(temp_zip)
+            except Exception:
+                pass
+
+            await state.update_data(pages=pages)
+            await status_msg.edit_text(
+                f"✅ <b>Arxivdan {len(img_names)} ta sahifa muvaffaqiyatli ajratib olindi!</b>\n\n"
+                f"📖 <b>Manga:</b> {html.escape(manga_title)}\n"
+                f"📑 <b>Bob:</b> {ch_num}-bob\n\n"
+                f"Barcha sahifalar tayyor bo'lsa, quyidagi tugmani bosing:",
+                reply_markup=get_admin_finish_chapter_keyboard(len(pages)),
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            logger.error(f"Error processing chapter ZIP: {e}")
+            await status_msg.edit_text(
+                f"❌ Arxivni ochishda xatolik yuz berdi: {html.escape(str(e))}",
+                reply_markup=get_admin_finish_chapter_keyboard(len(pages)),
+                parse_mode="HTML"
+            )
+        return
+
+    # 3. Rasm fayl (JPG, PNG, WEBP)
+    elif file_ext in [".jpg", ".jpeg", ".png", ".webp"] or (doc.mime_type and doc.mime_type.startswith("image/")):
+        try:
+            pages_rel_dir = f"pages/manga_{manga_id}_ch_{ch_num}"
+            target_dirs = [
+                f"manga/{pages_rel_dir}",
+                f"docs/manga/{pages_rel_dir}",
+                f"miniapp/manga/{pages_rel_dir}"
+            ]
+            for d in target_dirs:
+                os.makedirs(d, exist_ok=True)
+            img_name = f"p_{len(pages) + 1}.jpg"
+            primary_path = os.path.join(target_dirs[0], img_name)
+            await bot.download(doc, destination=primary_path)
+            for d in target_dirs[1:]:
+                try:
+                    shutil.copyfile(primary_path, os.path.join(d, img_name))
+                except Exception:
+                    pass
+            page_url = f"https://ithac4290-sys.github.io/animoviebot/manga/{pages_rel_dir}/{img_name}"
+            pages.append(page_url)
+            await state.update_data(pages=pages)
+            await message.answer(
+                f"📸 <b>{len(pages)}-sahifa qabul qilindi!</b>\n\n"
+                f"📖 <i>{html.escape(manga_title)} ({ch_num}-bob)</i>\n"
+                f"Keyingi sahifani yuboring yoki barchasi tayyor bo'lsa yakunlang:",
+                reply_markup=get_admin_finish_chapter_keyboard(len(pages)),
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            logger.error(f"Error saving image doc: {e}")
+        return
+
+    else:
+        await message.answer(
+            "⚠️ <b>Noma'lum formatdagi fayl!</b>\n\n"
+            "Iltimos, bob sahifalari uchun:\n"
+            "• 📑 <b>PDF</b> fayl (masalan: <code>BOB 186.pdf</code>)\n"
+            "• 📦 <b>ZIP / CBZ</b> arxiv\n"
+            "• 📸 <b>Rasmlar (foto yoki rasm fayl)</b> yuboring.",
+            reply_markup=get_admin_finish_chapter_keyboard(len(pages)),
+            parse_mode="HTML"
+        )
+
+
 @router.message(AddChapterState.pages, F.photo)
 async def process_chapter_photo(message: Message, state: FSMContext, bot: Bot):
     photo = message.photo[-1]
-    file_id = photo.file_id
-
-    try:
-        f = await bot.get_file(file_id)
-        page_url = f"https://api.telegram.org/file/bot{config.bot_token}/{f.file_path}"
-    except Exception:
-        page_url = file_id
-
     data = await state.get_data()
-    pages = data.get("pages", [])
-    pages.append(page_url)
-    await state.update_data(pages=pages)
-
+    manga_id = data.get("manga_id")
     manga_title = data.get("manga_title", "Manga")
     ch_num = data.get("chapter_num", 1)
+    pages = data.get("pages", [])
+
+    pages_rel_dir = f"pages/manga_{manga_id}_ch_{ch_num}"
+    target_dirs = [
+        f"manga/{pages_rel_dir}",
+        f"docs/manga/{pages_rel_dir}",
+        f"miniapp/manga/{pages_rel_dir}"
+    ]
+    for d in target_dirs:
+        os.makedirs(d, exist_ok=True)
+
+    img_name = f"p_{len(pages) + 1}.jpg"
+    primary_path = os.path.join(target_dirs[0], img_name)
+    try:
+        await bot.download(photo, destination=primary_path)
+        for d in target_dirs[1:]:
+            try:
+                shutil.copyfile(primary_path, os.path.join(d, img_name))
+            except Exception:
+                pass
+        page_url = f"https://ithac4290-sys.github.io/animoviebot/manga/{pages_rel_dir}/{img_name}"
+    except Exception:
+        try:
+            f = await bot.get_file(photo.file_id)
+            page_url = f"https://api.telegram.org/file/bot{config.bot_token}/{f.file_path}"
+        except Exception:
+            page_url = photo.file_id
+
+    pages.append(page_url)
+    await state.update_data(pages=pages)
 
     text = (
         f"📸 <b>{len(pages)}-sahifa qabul qilindi!</b>\n\n"
