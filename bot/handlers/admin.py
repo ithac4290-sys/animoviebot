@@ -1,7 +1,7 @@
 import html
 import asyncio
 from aiogram import Router, F, Bot
-from aiogram.types import Message, CallbackQuery, InlineKeyboardButton
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -1498,20 +1498,19 @@ async def process_manga_desc(message: Message, state: FSMContext):
         f"<b>Asosiy kanal:</b> {manga_channel}"
     )
 
-    channel_kb = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="📚 Hoziroq O'qish 📚",
-                    url=f"https://t.me/{bot_username}?start=manga_{m_id}"
-                )
-            ]
-        ]
-    )
-
     posted_to_channel = False
     error_msg = ""
     try:
+        channel_kb = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="📚 Hoziroq O'qish 📚",
+                        url=f"https://t.me/{bot_username}?start=manga_{m_id}"
+                    )
+                ]
+            ]
+        )
         await message.bot.send_photo(
             chat_id=manga_channel,
             photo=cover,
@@ -1522,6 +1521,7 @@ async def process_manga_desc(message: Message, state: FSMContext):
         posted_to_channel = True
     except Exception as e:
         error_msg = str(e)
+        logger.error(f"Error posting manga to channel: {e}")
 
     post_status_str = f"📢 <b>{manga_channel} kanaliga post muvaffaqiyatli yuborildi!</b>" if posted_to_channel else f"⚠️ <i>Kanalga yuborishda ogohlantirish: {html.escape(error_msg)}</i>"
 
