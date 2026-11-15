@@ -30,8 +30,8 @@ def load_config() -> Config:
     ).strip()
 
     trace_moe_api_key = os.getenv("TRACE_MOE_API_KEY", "").strip()
-    manga_webapp_url = os.getenv("MANGA_WEBAPP_URL", "https://animovie.uz/manga/").strip()
-    shorts_webapp_url = os.getenv("SHORTS_WEBAPP_URL", "https://animovie.uz/shorts/").strip()
+    manga_webapp_url = os.getenv("MANGA_WEBAPP_URL", "https://ithac4290-sys.github.io/animoviebot/manga/").strip()
+    shorts_webapp_url = os.getenv("SHORTS_WEBAPP_URL", "https://ithac4290-sys.github.io/animoviebot/shorts/").strip()
 
     admins_raw = os.getenv("ADMINS", "7285523919,8166740229")
     admins: List[int] = []
