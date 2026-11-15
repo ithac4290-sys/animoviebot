@@ -145,20 +145,33 @@ def get_search_cancel_keyboard() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def get_anime_keyboard(anime_id: int, episodes_list: Optional[List[int]] = None) -> InlineKeyboardMarkup:
+def get_anime_keyboard(
+    anime_id: int,
+    episodes_list: Optional[List[int]] = None,
+    page: int = 1,
+    per_page: int = 20
+) -> InlineKeyboardMarkup:
     """
-    3. ANIME MENYUSI VA QISMLAR RO'YXATI (2-rasm dizayni):
-    - Faqat admin yuklagan qismlar chiqadi.
-    - Qismlar 4 tadan ustun (grid) ko'rinishida joylashadi (primary).
-    - Eng pastki qatorda alohida keng tugma: ❌ Yopish (danger / qizil).
+    3. ANIME MENYUSI VA QISMLAR RO'YXATI (20 tadan sahifalash bilan):
+    - Har sahifada 20 tagacha qism 4 tadan ustun (grid) qilib chiqariladi.
+    - 20-qismdan oshganda navbatdagi sahifaga o'tish tugmasi chiqadi (>).
+    - 21-qism va keyingilar alohida sahifada ko'rsatiladi.
+    - Eng pastki qatorda alohida keng tugma: ❌ Yopish.
     """
     builder = InlineKeyboardBuilder()
 
     if episodes_list and len(episodes_list) > 0:
-        # Faqat admin yuklagan qismlarni tartib bilan chiqarish
         sorted_episodes = sorted(list(set(episodes_list)))
+        total_episodes = len(sorted_episodes)
+        total_pages = max(1, (total_episodes + per_page - 1) // per_page)
+        page = max(1, min(page, total_pages))
+
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        page_episodes = sorted_episodes[start_idx:end_idx]
+
         episode_buttons = []
-        for ep in sorted_episodes:
+        for ep in page_episodes:
             episode_buttons.append(
                 InlineKeyboardButton(
                     text=f"▶️ {ep} - qism",
@@ -167,9 +180,47 @@ def get_anime_keyboard(anime_id: int, episodes_list: Optional[List[int]] = None)
                 )
             )
 
-        # 4 tadan ustun (grid) qilib joylashtirish (2-rasmdagi ko'rinish)
+        # 4 tadan ustun (grid) qilib joylashtirish
         builder.add(*episode_buttons)
         builder.adjust(4)
+
+        # 20 tadan oshganda sahifalash navigatsiyasi ( < va > )
+        if total_pages > 1:
+            nav_buttons = []
+
+            # 1-sahifadan keyingi sahifalarda oldingisiga qaytish (<)
+            if page > 1:
+                prev_start = (page - 2) * per_page + 1
+                prev_end = (page - 1) * per_page
+                nav_buttons.append(
+                    InlineKeyboardButton(
+                        text=f"< {prev_start}-{prev_end}",
+                        callback_data=f"ep_page_{anime_id}_{page - 1}",
+                        style="primary"
+                    )
+                )
+
+            # Joriy sahifa indikatori
+            nav_buttons.append(
+                InlineKeyboardButton(
+                    text=f"📄 {page}/{total_pages}",
+                    callback_data="noop_page"
+                )
+            )
+
+            # Keyingi sahifaga o'tish tugmasi (>)
+            if page < total_pages:
+                next_start = page * per_page + 1
+                next_end = min((page + 1) * per_page, sorted_episodes[-1])
+                nav_buttons.append(
+                    InlineKeyboardButton(
+                        text=f"{next_start}-{next_end} >",
+                        callback_data=f"ep_page_{anime_id}_{page + 1}",
+                        style="primary"
+                    )
+                )
+
+            builder.row(*nav_buttons)
     else:
         # Agar admin hali hech qanday qism yuklamagan bo'lsa
         builder.row(

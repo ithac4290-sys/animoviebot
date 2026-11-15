@@ -220,6 +220,31 @@ async def handle_close_view(callback: CallbackQuery):
         await callback.answer("Xabar o'chirildi.")
 
 
+# ================= ⏩ QISMLARNI SAHIFALASH (PAGINATION) =================
+
+@router.callback_query(F.data.startswith("ep_page_"))
+async def handle_episodes_page(callback: CallbackQuery):
+    """20 tadan oshganda qismlarni sahifalab ko'rsatish (< va > tugmalari)"""
+    parts = callback.data.split("_")
+    anime_id = int(parts[2])
+    page = int(parts[3])
+
+    episodes = await db.get_anime_episodes(anime_id)
+    uploaded_ep_nums = [ep["episode_num"] for ep in episodes]
+    kb = get_anime_keyboard(anime_id, uploaded_ep_nums, page=page)
+
+    try:
+        await callback.message.edit_reply_markup(reply_markup=kb)
+    except Exception:
+        pass
+    await callback.answer()
+
+
+@router.callback_query(F.data == "noop_page")
+async def handle_noop_page(callback: CallbackQuery):
+    await callback.answer("📄 Sahifa indikatori")
+
+
 # ================= QIDIRUV MENYUSI VA TURLARI (Rasm dizayni) =================
 
 @router.callback_query(F.data == "btn_search_menu")
