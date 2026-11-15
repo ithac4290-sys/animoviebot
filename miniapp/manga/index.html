@@ -3,25 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>AniMovie Manga — Telegram Mini App</title>
+  <title>AniMovie Manga — O'zbekcha Tarjima Mangalar</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-primary: #090c10;
-      --bg-card: #141822;
-      --bg-card-hover: #1c2230;
-      --accent-red: #ff2d55;
-      --accent-glow: rgba(255, 45, 85, 0.35);
-      --accent-blue: #0088cc;
-      --text-main: #f1f5f9;
+      --primary: #ff2a5f;
+      --primary-glow: rgba(255, 42, 95, 0.45);
+      --primary-gradient: linear-gradient(135deg, #ff2a5f 0%, #ff6b8b 100%);
+      --bg-dark: #07090e;
+      --surface: #0e121a;
+      --surface-glass: rgba(14, 18, 26, 0.85);
+      --card-glass: rgba(22, 28, 40, 0.65);
+      --text: #ffffff;
       --text-muted: #94a3b8;
-      --border-subtle: rgba(255, 255, 255, 0.1);
-      --radius-lg: 16px;
-      --radius-md: 12px;
-      --radius-sm: 8px;
+      --text-sub: #cbd5e1;
+      --border-glass: rgba(255, 255, 255, 0.1);
+      --border-active: rgba(255, 42, 95, 0.5);
     }
 
     * {
@@ -33,24 +33,38 @@
     }
 
     body {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      background-color: var(--bg-primary);
-      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text);
       min-height: 100vh;
       overflow-x: hidden;
-      padding-bottom: 40px;
+      padding-bottom: max(30px, env(safe-area-inset-bottom));
     }
 
-    /* Header */
+    /* Ambient Glow Behind */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -120px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 360px;
+      height: 360px;
+      background: radial-gradient(circle, rgba(255, 42, 95, 0.15) 0%, rgba(139, 92, 246, 0.08) 50%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Floating Frosted Header */
     header {
       position: sticky;
       top: 0;
       z-index: 50;
-      background: rgba(9, 12, 16, 0.88);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      border-bottom: 1px solid var(--border-subtle);
-      padding: 12px 16px;
+      background: rgba(7, 9, 14, 0.82);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border-bottom: 1px solid var(--border-glass);
+      padding: max(12px, env(safe-area-inset-top)) 16px 12px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -63,62 +77,89 @@
     }
 
     .brand-icon {
-      width: 36px;
-      height: 36px;
-      background: linear-gradient(135deg, #ff2d55 0%, #ff6b3d 100%);
-      border-radius: 10px;
+      width: 38px;
+      height: 38px;
+      background: var(--primary-gradient);
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
-      box-shadow: 0 4px 14px var(--accent-glow);
+      font-size: 19px;
+      box-shadow: 0 4px 14px var(--primary-glow);
     }
 
     .brand-text h1 {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 800;
       letter-spacing: -0.3px;
-      background: linear-gradient(90deg, #ffffff, #ff9ba5);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .brand-text h1 span {
+      background: var(--primary-gradient);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+      font-weight: 900;
     }
 
     .brand-text p {
       font-size: 11px;
       color: var(--text-muted);
-      font-weight: 500;
+      font-weight: 600;
     }
 
     .auth-btn-header {
-      background: rgba(255, 255, 255, 0.12);
-      backdrop-filter: blur(12px);
-      border: 1px solid var(--border-subtle);
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border-glass);
       color: white;
-      padding: 6px 12px;
-      border-radius: 20px;
+      padding: 6px 13px;
+      border-radius: 99px;
       font-size: 12px;
       font-weight: 700;
       display: flex;
       align-items: center;
       gap: 6px;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
 
     .auth-btn-header:active {
-      transform: scale(0.95);
-      background: rgba(255, 45, 85, 0.3);
+      transform: scale(0.92);
+      border-color: var(--primary);
     }
 
     .auth-btn-header.logged-in {
-      background: rgba(34, 197, 94, 0.2);
-      border-color: rgba(34, 197, 94, 0.4);
-      color: #86efac;
+      background: rgba(16, 185, 129, 0.16);
+      border-color: rgba(16, 185, 129, 0.35);
+      color: #6ee7b7;
     }
 
-    /* Search & Categories */
+    .auth-avatar-mini {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--primary-gradient);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .auth-btn-header.logged-in .auth-avatar-mini {
+      background: linear-gradient(135deg, #10b981, #059669);
+    }
+
+    /* Controls (Search & Categories) */
     .controls {
-      padding: 14px 16px 6px;
+      padding: 16px 16px 8px;
+      position: relative;
+      z-index: 1;
     }
 
     .search-box {
@@ -128,20 +169,23 @@
 
     .search-box input {
       width: 100%;
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
+      background: rgba(22, 28, 40, 0.7);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border-glass);
+      border-radius: 16px;
       padding: 12px 16px 12px 42px;
-      color: var(--text-main);
-      font-size: 14px;
+      color: var(--text);
+      font-size: 13.5px;
       font-family: inherit;
       outline: none;
-      transition: all 0.2s ease;
+      transition: all 0.22s ease;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
     }
 
     .search-box input:focus {
-      border-color: var(--accent-red);
-      box-shadow: 0 0 0 3px rgba(255, 45, 85, 0.2);
+      border-color: var(--primary);
+      background: rgba(28, 35, 50, 0.85);
+      box-shadow: 0 0 16px rgba(255, 42, 95, 0.3);
     }
 
     .search-icon {
@@ -149,11 +193,13 @@
       left: 14px;
       top: 50%;
       transform: translateY(-50%);
-      font-size: 16px;
-      opacity: 0.6;
+      color: var(--text-muted);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
     }
 
-    /* Category pills */
+    /* Modern Category Horizontal Scroll */
     .categories {
       display: flex;
       gap: 8px;
@@ -167,200 +213,625 @@
     }
 
     .pill {
-      background: var(--bg-card);
-      color: var(--text-muted);
-      border: 1px solid var(--border-subtle);
-      padding: 8px 16px;
-      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-glass);
+      padding: 7px 14px;
+      border-radius: 99px;
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 700;
+      color: var(--text-muted);
       white-space: nowrap;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      flex-shrink: 0;
+    }
+
+    .pill:active {
+      transform: scale(0.92);
     }
 
     .pill.active {
-      background: linear-gradient(135deg, #ff2d55, #ff6b3d);
-      color: white;
+      background: var(--primary-gradient);
       border-color: transparent;
-      box-shadow: 0 4px 12px var(--accent-glow);
+      color: #ffffff;
+      box-shadow: 0 4px 16px var(--primary-glow);
     }
 
-    /* Section title */
+    /* Section Title */
     .section-title {
-      font-size: 15px;
-      font-weight: 800;
-      padding: 14px 16px 10px;
+      padding: 10px 16px 12px;
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: space-between;
+      position: relative;
+      z-index: 1;
     }
 
-    .section-title span {
-      font-size: 12px;
-      color: var(--accent-red);
-      font-weight: 600;
-      cursor: pointer;
+    .section-title h2 {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -0.2px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    /* Manga Grid */
+    .section-badge {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 3px 9px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    /* Manga Cards Grid */
     .manga-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 14px;
-      padding: 0 16px;
+      padding: 0 16px 20px;
+      position: relative;
+      z-index: 1;
     }
 
     .manga-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-lg);
+      background: rgba(18, 23, 33, 0.7);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--border-glass);
+      border-radius: 20px;
       overflow: hidden;
       cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s;
+      transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
       display: flex;
       flex-direction: column;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     }
 
     .manga-card:active {
-      transform: scale(0.97);
+      transform: scale(0.96);
+      border-color: var(--primary);
     }
 
     .cover-wrap {
       position: relative;
       width: 100%;
-      height: 220px;
+      aspect-ratio: 3 / 4.4;
+      background: #0d111a;
       overflow: hidden;
-      background: #1b202c;
     }
 
     .cover-wrap img {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transition: transform 0.3s ease;
+      transition: transform 0.4s ease;
     }
 
     .manga-card:hover .cover-wrap img {
       transform: scale(1.04);
     }
 
+    /* Bottom shadow on image */
+    .cover-wrap::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: linear-gradient(0deg, rgba(18, 23, 33, 0.9) 0%, transparent 100%);
+      pointer-events: none;
+    }
+
     .badge-rating {
       position: absolute;
-      top: 8px;
-      left: 8px;
-      background: rgba(0, 0, 0, 0.75);
-      backdrop-filter: blur(8px);
-      padding: 3px 8px;
-      border-radius: 6px;
-      font-size: 11px;
-      font-weight: 700;
+      top: 10px;
+      left: 10px;
+      background: rgba(10, 13, 20, 0.75);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(251, 191, 36, 0.3);
       color: #fbbf24;
+      padding: 3px 8px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 800;
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 3px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+      z-index: 2;
     }
 
     .badge-status {
       position: absolute;
-      top: 8px;
-      right: 8px;
-      background: var(--accent-red);
+      top: 10px;
+      right: 10px;
+      background: rgba(16, 185, 129, 0.85);
+      backdrop-filter: blur(8px);
+      color: #ffffff;
       padding: 3px 8px;
-      border-radius: 6px;
-      font-size: 9px;
+      border-radius: 99px;
+      font-size: 9.5px;
       font-weight: 800;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.3px;
       text-transform: uppercase;
-      box-shadow: 0 2px 8px rgba(255, 45, 85, 0.5);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+      z-index: 2;
+    }
+
+    .badge-status.ongoing {
+      background: rgba(59, 130, 246, 0.85);
     }
 
     .card-info {
       padding: 12px;
       display: flex;
       flex-direction: column;
-      flex-grow: 1;
+      gap: 8px;
+      flex: 1;
       justify-content: space-between;
     }
 
     .card-info h3 {
-      font-size: 13px;
-      font-weight: 700;
-      line-height: 1.4;
-      margin-bottom: 6px;
+      font-size: 13.5px;
+      font-weight: 800;
+      line-height: 1.35;
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
+      color: #f8fafc;
     }
 
     .card-meta {
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: space-between;
       font-size: 11px;
       color: var(--text-muted);
-      margin-top: 4px;
+      font-weight: 600;
     }
 
     .read-badge {
-      color: var(--accent-red);
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      gap: 3px;
+      background: var(--primary-gradient);
+      color: white;
+      padding: 3px 9px;
+      border-radius: 99px;
+      font-size: 10.5px;
+      font-weight: 800;
+      box-shadow: 0 2px 8px var(--primary-glow);
     }
 
-    /* Modal / Details Popup */
+    /* Ultra-Refined Details Modal Overlay */
     .modal-overlay {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.88);
-      backdrop-filter: blur(14px);
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       z-index: 100;
       display: none;
       flex-direction: column;
       overflow-y: auto;
+      scrollbar-width: none;
+    }
+
+    .modal-overlay::-webkit-scrollbar {
+      display: none;
     }
 
     .modal-overlay.active {
       display: flex;
-      animation: fadeIn 0.25s ease-out;
     }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .modal-header {
-      padding: 14px 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid var(--border-subtle);
-      background: rgba(9, 12, 16, 0.95);
+    .modal-header-sticky {
       position: sticky;
       top: 0;
+      background: rgba(7, 9, 14, 0.88);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-glass);
+      padding: max(14px, env(safe-area-inset-top)) 18px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       z-index: 10;
     }
 
-    .modal-title {
-      font-size: 15px;
-      font-weight: 700;
+    .modal-title-text {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -0.2px;
       max-width: 80%;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
-    .close-btn {
-      background: rgba(255, 255, 255, 0.12);
-      border: none;
+    .modal-close-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #cbd5e1;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .modal-close-btn:active {
+      transform: scale(0.9);
+      background: rgba(255, 42, 95, 0.2);
+    }
+
+    .modal-body {
+      padding: 18px 18px 40px;
+    }
+
+    .detail-hero-card {
+      display: flex;
+      gap: 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-glass);
+      border-radius: 22px;
+      padding: 16px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-cover-img {
+      width: 105px;
+      height: 150px;
+      border-radius: 16px;
+      object-fit: cover;
+      flex-shrink: 0;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .detail-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .detail-info h2 {
+      font-size: 17px;
+      font-weight: 800;
+      line-height: 1.3;
+      color: #ffffff;
+    }
+
+    .detail-chips-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .detail-chip {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 3px 9px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #cbd5e1;
+    }
+
+    .chip-rating {
+      background: rgba(251, 191, 36, 0.12);
+      border-color: rgba(251, 191, 36, 0.35);
+      color: #fbbf24;
+    }
+
+    .chip-status {
+      background: rgba(16, 185, 129, 0.12);
+      border-color: rgba(16, 185, 129, 0.35);
+      color: #6ee7b7;
+    }
+
+    .detail-desc-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-glass);
+      border-radius: 18px;
+      padding: 14px 16px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #cbd5e1;
+      margin-bottom: 22px;
+    }
+
+    /* Chapters List Modern Styling */
+    .chapters-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .chapters-section-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: #f1f5f9;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .chapters-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .chapter-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 14px 16px;
+      cursor: pointer;
+      transition: all 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .chapter-item:active {
+      transform: scale(0.97);
+      background: rgba(255, 42, 95, 0.1);
+      border-color: var(--primary);
+    }
+
+    .chapter-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .chapter-icon-badge {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: rgba(255, 42, 95, 0.12);
+      border: 1px solid rgba(255, 42, 95, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .chapter-pages-tag {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-left: 4px;
+    }
+
+    .chapter-action-pill {
+      background: var(--primary-gradient);
       color: white;
+      padding: 5px 13px;
+      border-radius: 99px;
+      font-size: 11.5px;
+      font-weight: 800;
+      box-shadow: 0 2px 10px var(--primary-glow);
+    }
+
+    /* Manga Fullscreen Reader View */
+    .reader-view {
+      position: fixed;
+      inset: 0;
+      background: #000000;
+      z-index: 150;
+      display: none;
+      flex-direction: column;
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+
+    .reader-view::-webkit-scrollbar {
+      display: none;
+    }
+
+    .reader-view.active {
+      display: flex;
+    }
+
+    .reader-top-bar {
+      position: sticky;
+      top: 0;
+      background: rgba(7, 9, 14, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding: max(12px, env(safe-area-inset-top)) 16px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 20;
+    }
+
+    .reader-top-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      max-width: 80%;
+    }
+
+    .reader-back-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: white;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    .reader-title-info h3 {
+      font-size: 14px;
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 220px;
+    }
+
+    .reader-pages-wrap {
+      display: flex;
+      flex-direction: column;
+      background: #000;
+      min-height: 80vh;
+      padding-bottom: 90px;
+    }
+
+    .reader-panel-img {
+      width: 100%;
+      display: block;
+      margin: 0 auto;
+      border: none;
+    }
+
+    /* Reader Bottom Floating Controls */
+    .reader-bottom-bar {
+      position: fixed;
+      bottom: max(16px, env(safe-area-inset-bottom));
+      left: 16px;
+      right: 16px;
+      background: rgba(14, 18, 26, 0.85);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 99px;
+      padding: 6px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 20;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+    }
+
+    .reader-nav-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: white;
+      padding: 9px 16px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .reader-nav-btn:active {
+      transform: scale(0.92);
+      background: var(--primary);
+    }
+
+    .reader-nav-btn.primary {
+      background: var(--primary-gradient);
+      box-shadow: 0 4px 14px var(--primary-glow);
+    }
+
+    /* Bottom Sheet Modal for Profile */
+    .bottom-sheet {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      z-index: 200;
+      display: none;
+      align-items: flex-end;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .bottom-sheet.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    .sheet-card {
+      width: 100%;
+      max-height: 85vh;
+      background: rgba(14, 18, 26, 0.95);
+      backdrop-filter: blur(30px) saturate(190%);
+      -webkit-backdrop-filter: blur(30px) saturate(190%);
+      border-top-left-radius: 28px;
+      border-top-right-radius: 28px;
+      border: 1px solid var(--border-glass);
+      border-bottom: none;
+      display: flex;
+      flex-direction: column;
+      transform: translateY(100%);
+      transition: transform 0.32s cubic-bezier(0.175, 0.885, 0.32, 1.15);
+      box-shadow: 0 -15px 45px rgba(0, 0, 0, 0.8);
+    }
+
+    .bottom-sheet.active .sheet-card {
+      transform: translateY(0);
+    }
+
+    .sheet-handle {
+      width: 40px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.25);
+      border-radius: 99px;
+      margin: 12px auto 6px;
+    }
+
+    .sheet-header {
+      padding: 12px 20px 14px;
+      border-bottom: 1px solid var(--border-glass);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .sheet-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sheet-title {
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    .sheet-badge {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #94a3b8;
+    }
+
+    .sheet-close {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #cbd5e1;
       width: 32px;
       height: 32px;
       border-radius: 50%;
@@ -368,364 +839,190 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 16px;
-    }
-
-    .modal-body {
-      padding: 16px;
-    }
-
-    .detail-hero {
-      display: flex;
-      gap: 16px;
-      margin-bottom: 20px;
-    }
-
-    .detail-cover {
-      width: 110px;
-      height: 160px;
-      border-radius: var(--radius-md);
-      object-fit: cover;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
-      flex-shrink: 0;
-    }
-
-    .detail-info h2 {
-      font-size: 17px;
-      font-weight: 800;
-      margin-bottom: 6px;
-      line-height: 1.3;
-    }
-
-    .detail-info p {
-      font-size: 12px;
-      color: var(--text-muted);
-      line-height: 1.5;
-      margin-bottom: 12px;
-      display: -webkit-box;
-      -webkit-line-clamp: 4;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-
-    .rating-badge {
-      background: rgba(251, 191, 36, 0.15);
-      color: #fbbf24;
-      border: 1px solid rgba(251, 191, 36, 0.3);
-      padding: 4px 10px;
-      border-radius: 8px;
-      font-size: 11px;
-      font-weight: 700;
-    }
-
-    .status-badge {
-      background: rgba(255, 45, 85, 0.15);
-      color: var(--accent-red);
-      border: 1px solid rgba(255, 45, 85, 0.3);
-      padding: 4px 10px;
-      border-radius: 8px;
-      font-size: 11px;
-      font-weight: 700;
-    }
-
-    .chapters-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-top: 12px;
-    }
-
-    .chapter-item {
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 12px 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      cursor: pointer;
       font-size: 13px;
-      font-weight: 600;
-      transition: background 0.2s;
-    }
-
-    .chapter-item:active {
-      background: var(--bg-card-hover);
-      border-color: var(--accent-red);
-    }
-
-    /* Reader View */
-    .reader-view {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: #000;
-      z-index: 150;
-      display: none;
-      flex-direction: column;
-      overflow-y: auto;
-    }
-
-    .reader-view.active {
-      display: flex;
-    }
-
-    .reader-panel-img {
-      width: 100%;
-      max-width: 650px;
-      margin: 0 auto;
-      display: block;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.8);
-    }
-
-    .reader-controls {
-      position: sticky;
-      bottom: 0;
-      background: rgba(9, 12, 16, 0.92);
-      backdrop-filter: blur(14px);
-      padding: 12px 16px;
-      display: flex;
-      gap: 12px;
-      border-top: 1px solid var(--border-subtle);
-      margin-top: 20px;
-    }
-
-    .btn-nav {
-      flex: 1;
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      color: white;
-      padding: 12px;
-      border-radius: 10px;
-      font-weight: 700;
-      font-size: 13px;
-      cursor: pointer;
-    }
-
-    .btn-nav:active {
-      background: var(--accent-red);
-    }
-
-    /* Bottom Sheet Modal for Auth */
-    .bottom-sheet {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.75);
-      backdrop-filter: blur(8px);
-      z-index: 200;
-      display: none;
-      align-items: flex-end;
-      justify-content: center;
-    }
-
-    .bottom-sheet.active {
-      display: flex;
-      animation: fadeIn 0.2s ease-out;
-    }
-
-    .sheet-card {
-      width: 100%;
-      max-width: 520px;
-      background: #141822;
-      border-top-left-radius: 24px;
-      border-top-right-radius: 24px;
-      border: 1px solid rgba(255,255,255,0.12);
-      border-bottom: none;
-      display: flex;
-      flex-direction: column;
-      max-height: 80vh;
-      animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    @keyframes slideUp {
-      from { transform: translateY(100%); }
-      to { transform: translateY(0); }
-    }
-
-    .sheet-handle {
-      width: 44px;
-      height: 4px;
-      background: rgba(255,255,255,0.3);
-      border-radius: 2px;
-      margin: 10px auto 4px;
-    }
-
-    .sheet-header {
-      padding: 12px 18px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-    }
-
-    .sheet-title {
-      font-size: 15px;
-      font-weight: 800;
-    }
-
-    .sheet-close {
-      background: rgba(255,255,255,0.1);
-      border: none;
-      color: white;
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-    }
-
-    .sheet-body {
-      padding: 18px 16px;
-      overflow-y: auto;
-    }
-
-    .auth-banner {
-      text-align: center;
-      padding: 14px 10px 20px;
-    }
-
-    .auth-icon-big {
-      width: 64px;
-      height: 64px;
-      background: linear-gradient(135deg, #0088cc, #00b4d8);
-      border-radius: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 32px;
-      margin: 0 auto 14px;
-      box-shadow: 0 8px 24px rgba(0, 136, 204, 0.4);
-    }
-
-    .auth-title {
-      font-size: 18px;
-      font-weight: 800;
-      margin-bottom: 6px;
-    }
-
-    .auth-subtitle {
-      font-size: 13px;
-      color: var(--text-muted);
-      line-height: 1.5;
-      margin-bottom: 20px;
-    }
-
-    .btn-telegram-auth {
-      background: linear-gradient(135deg, #0088cc, #0099e6);
-      color: white;
-      border: none;
-      width: 100%;
-      padding: 14px;
-      border-radius: 14px;
-      font-size: 15px;
-      font-weight: 800;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      cursor: pointer;
-      box-shadow: 0 6px 20px rgba(0, 136, 204, 0.4);
       transition: all 0.2s;
     }
 
-    .btn-telegram-auth:active {
-      transform: scale(0.97);
+    .sheet-close:active {
+      transform: scale(0.9);
+      background: rgba(255, 42, 95, 0.2);
     }
 
-    .profile-card {
+    .sheet-body {
+      padding: 18px 20px max(24px, env(safe-area-inset-bottom));
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .profile-hero-card {
+      background: linear-gradient(135deg, rgba(255, 42, 95, 0.12), rgba(139, 92, 246, 0.12));
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 22px;
+      padding: 20px;
+      margin-bottom: 18px;
       display: flex;
       align-items: center;
-      gap: 14px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
-      padding: 14px;
-      border-radius: 16px;
-      margin-bottom: 16px;
+      gap: 16px;
+      box-shadow: inset 0 1px 1px rgba(255,255,255,0.15);
     }
 
-    .profile-avatar-big {
-      width: 56px;
-      height: 56px;
+    .profile-avatar-large {
+      width: 60px;
+      height: 60px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #ff2d55, #ff6b3d);
+      background: linear-gradient(135deg, #ff2a5f, #8b5cf6);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 22px;
-      font-weight: 800;
-      color: white;
-      box-shadow: 0 4px 14px var(--accent-glow);
+      font-size: 24px;
+      font-weight: 900;
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      box-shadow: 0 0 20px rgba(255, 42, 95, 0.5);
     }
 
-    .profile-details h3 {
+    .profile-details-hero h3 {
       font-size: 16px;
       font-weight: 800;
       margin-bottom: 2px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    .profile-details p {
-      font-size: 12px;
+    .profile-details-hero p {
+      font-size: 12.5px;
       color: var(--text-muted);
     }
 
-    .stats-row {
+    .active-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      padding: 2px 8px;
+      border-radius: 99px;
+      color: #6ee7b7;
+      font-size: 10.5px;
+      font-weight: 700;
+      margin-top: 6px;
+    }
+
+    .active-dot {
+      width: 6px;
+      height: 6px;
+      background: #10b981;
+      border-radius: 50%;
+      box-shadow: 0 0 6px #10b981;
+    }
+
+    .stats-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 10px;
-      margin-bottom: 18px;
+      margin-bottom: 20px;
     }
 
-    .stat-box {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 12px;
-      padding: 10px;
+    .stat-tile {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 14px 10px;
       text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
     }
 
-    .stat-val {
-      font-size: 16px;
+    .stat-tile-val {
+      font-size: 17px;
       font-weight: 800;
-      color: white;
+      color: #fff;
     }
 
-    .stat-label {
+    .stat-tile-vip {
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 900;
+    }
+
+    .stat-tile-label {
       font-size: 11px;
       color: var(--text-muted);
-      margin-top: 2px;
+      font-weight: 600;
+    }
+
+    .sheet-action-btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 16px;
+      font-size: 14px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      margin-bottom: 10px;
+    }
+
+    .sheet-action-btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn-channel-primary {
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      color: white;
+      box-shadow: 0 4px 18px rgba(2, 132, 199, 0.4);
+    }
+
+    .btn-logout-ghost {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #f43f5e;
+    }
+
+    .btn-logout-ghost:active {
+      background: rgba(244, 63, 94, 0.15);
+      border-color: #f43f5e;
     }
   </style>
 </head>
 <body>
 
-  <!-- Header -->
+  <!-- Floating Header -->
   <header>
     <div class="brand">
       <div class="brand-icon">📖</div>
       <div class="brand-text">
-        <h1>AniMovie Manga</h1>
-        <p>O'zbekcha tarjima mangalar</p>
+        <h1>AniMovie <span>Manga</span></h1>
+        <p>O'zbekcha Tarjima Mangalar</p>
       </div>
     </div>
     <button class="auth-btn-header" id="authBtnHeader" onclick="openAuthModal()">
-      <span id="authBadgeIcon">👤</span>
-      <span id="authBadgeText">Kirish</span>
+      <span class="auth-avatar-mini" id="authBadgeIcon">👤</span>
+      <span id="authBadgeText">Profil</span>
     </button>
   </header>
 
-  <!-- Search & Filter Controls -->
+  <!-- Controls -->
   <div class="controls">
     <div class="search-box">
-      <span class="search-icon">🔍</span>
-      <input type="text" id="searchInput" placeholder="Manga nomini qidiring...">
+      <div class="search-icon">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+      </div>
+      <input type="text" id="searchInput" placeholder="Manga nomini qidiring..." autocomplete="off">
     </div>
 
+    <!-- Category Pills -->
     <div class="categories">
-      <div class="pill active" data-genre="all">Barchasi</div>
+      <div class="pill active" data-genre="all">🔥 Barchasi</div>
       <div class="pill" data-genre="action">⚔️ Jangari</div>
       <div class="pill" data-genre="fantasy">🔮 Fantastika</div>
       <div class="pill" data-genre="adventure">🏃 Sarguzasht</div>
@@ -734,117 +1031,144 @@
     </div>
   </div>
 
+  <!-- Section Title -->
   <div class="section-title">
-    Ommabop Mangalar
-    <span>Hammasi</span>
+    <h2>🔥 Ommabop Mangalar</h2>
+    <span class="section-badge" id="mangaCountBadge">Jami 0 ta</span>
   </div>
 
-  <!-- Manga Grid -->
+  <!-- Manga Cards Grid -->
   <div class="manga-grid" id="mangaGrid"></div>
 
-  <!-- Details / Chapters Modal -->
+  <!-- Manga Details Modal -->
   <div class="modal-overlay" id="detailsModal">
-    <div class="modal-header">
-      <div class="modal-title" id="modalTitle">Manga tafsilotlari</div>
-      <button class="close-btn" onclick="closeModal()">✕</button>
+    <div class="modal-header-sticky">
+      <div class="modal-title-text" id="modalTitle">Manga tafsilotlari</div>
+      <button class="modal-close-btn" onclick="closeModal()">✕</button>
     </div>
+
     <div class="modal-body">
-      <div class="detail-hero">
-        <img class="detail-cover" id="modalCover" src="" alt="Cover">
+      <div class="detail-hero-card">
+        <img class="modal-cover-img" id="modalCover" src="" alt="Manga Cover">
         <div class="detail-info">
-          <h2 id="modalMangaName">Manga Nomi</h2>
-          <p id="modalDesc">Tavsif yuklanmoqda...</p>
-          <div style="display: flex; gap: 8px;">
-            <span class="rating-badge" id="modalRating">⭐ 4.9</span>
-            <span class="status-badge" id="modalStatus">Yangi</span>
+          <h2 id="modalMangaName">Tokyo Qasoskorlari</h2>
+          <div class="detail-chips-row">
+            <span class="detail-chip chip-rating" id="modalRating">★ 4.9</span>
+            <span class="detail-chip chip-status" id="modalStatus">Tugallangan</span>
+            <span class="detail-chip" id="modalType">Manga</span>
+            <span class="detail-chip">Uzbek</span>
           </div>
         </div>
       </div>
 
-      <div class="section-title" style="margin-left: 0; padding-left: 0;">Boblar ro'yxati</div>
+      <div class="detail-desc-card" id="modalDesc">
+        Manga haqida ma'lumotlar.
+      </div>
+
+      <div class="chapters-section-header">
+        <div class="chapters-section-title">
+          📑 Boblar ro'yxati
+        </div>
+      </div>
       <div class="chapters-list" id="chaptersList"></div>
     </div>
   </div>
 
-  <!-- Reader View -->
+  <!-- Manga Fullscreen Reader View -->
   <div class="reader-view" id="readerView">
-    <div class="modal-header" style="position: sticky; top:0; width: 100%;">
-      <div class="modal-title" id="readerTitle">1-bob o'qish</div>
-      <button class="close-btn" onclick="closeReader()">✕</button>
+    <div class="reader-top-bar">
+      <div class="reader-top-left">
+        <button class="reader-back-btn" onclick="closeReader()">←</button>
+        <div class="reader-title-info">
+          <h3 id="readerTitle">1-bob mutolaasi</h3>
+        </div>
+      </div>
+      <button class="modal-close-btn" onclick="closeReader()">✕</button>
     </div>
-    <div id="readerPages" style="width: 100%;"></div>
-    <div class="reader-controls">
-      <button class="btn-nav" onclick="prevChapter()">◀️ Oldingi bob</button>
-      <button class="btn-nav" onclick="nextChapter()">Keyingi bob ▶️</button>
+
+    <div class="reader-pages-wrap" id="readerPages"></div>
+
+    <div class="reader-bottom-bar">
+      <button class="reader-nav-btn" onclick="prevChapter()">◀️ Oldingi bob</button>
+      <button class="reader-nav-btn primary" onclick="nextChapter()">Keyingi bob ▶️</button>
     </div>
   </div>
 
-  <!-- Auth Bottom Sheet Modal -->
+  <!-- Profile Bottom Sheet Modal -->
   <div class="bottom-sheet" id="authSheet" onclick="handleSheetBackdrop(event)">
     <div class="sheet-card">
       <div class="sheet-handle"></div>
       <div class="sheet-header">
-        <div class="sheet-title">Foydalanuvchi Profili</div>
+        <div class="sheet-title-row">
+          <div class="sheet-title">Foydalanuvchi Profili</div>
+          <span class="sheet-badge">VIP</span>
+        </div>
         <button class="sheet-close" onclick="closeAuthModal()">✕</button>
       </div>
-      <div class="sheet-body">
 
+      <div class="sheet-body">
         <!-- Not Logged In View -->
-        <div id="unauthView" style="display: none;">
-          <div class="auth-banner">
-            <div class="auth-icon-big">✈️</div>
-            <h2 class="auth-title">AniMovie ga xush kelibsiz!</h2>
-            <p class="auth-subtitle">Mangalarni mutolaa qilish, sevimli ro'yxatga saqlash va qolgan joyidan davom ettirish uchun profilingizga kiring.</p>
-            <button class="btn-telegram-auth" onclick="doTelegramLogin()">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 0 0-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.52 2.77-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
-              Telegram orqali 1 bosishda kirish
-            </button>
-          </div>
+        <div id="unauthView" style="display: none; text-align: center; padding: 20px 10px;">
+          <div style="width: 68px; height: 68px; background: var(--primary-gradient); border-radius: 22px; display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 16px; box-shadow: 0 10px 25px var(--primary-glow);">📖</div>
+          <h2 style="font-size: 19px; font-weight: 800; margin-bottom: 6px;">AniMovie Manga ga xush kelibsiz!</h2>
+          <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 22px;">O'qilgan boblarni eslab qolish, saqlangan mangalar va shaxsiy tavsiyalar uchun profilingizga kiring.</p>
+          <button class="sheet-action-btn btn-channel-primary" onclick="doTelegramLogin()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 0 0-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.52 2.77-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+            Telegram orqali kirish
+          </button>
         </div>
 
         <!-- Logged In Profile View -->
         <div id="authProfileView" style="display: none;">
-          <div class="profile-card">
-            <div class="profile-avatar-big" id="userAvatarBig">J</div>
-            <div class="profile-details">
-              <h3 id="userNameBig">Mirzayev Jahongir</h3>
-              <p id="userHandleBig">@AniMovie_User</p>
-              <p style="color: #4ade80; font-size: 11px; font-weight:700; margin-top:3px;">● Telegram orqali faol</p>
+          <div class="profile-hero-card">
+            <div class="profile-avatar-large" id="userAvatarBig">J</div>
+            <div class="profile-details-hero">
+              <h3 id="userNameBig">Mirzayev Jahongir <span style="background:#0ea5e9; border-radius:50%; width:14px; height:14px; display:inline-flex; align-items:center; justify-content:center; font-size:9px; color:white;">✓</span></h3>
+              <p id="userHandleBig">@Jahongir02_02</p>
+              <div class="active-status-badge">
+                <span class="active-dot"></span>
+                Telegram orqali faol
+              </div>
             </div>
           </div>
 
-          <div class="stats-row">
-            <div class="stat-box">
-              <div class="stat-val" id="userMangaCount">12</div>
-              <div class="stat-label">O'qilgan boblar</div>
+          <div class="stats-grid">
+            <div class="stat-tile">
+              <div class="stat-tile-val" id="userReadCount">12</div>
+              <div class="stat-tile-label">O'qilgan boblar</div>
             </div>
-            <div class="stat-box">
-              <div class="stat-val" id="userSavedCount">4</div>
-              <div class="stat-label">Saqlanganlar</div>
+            <div class="stat-tile">
+              <div class="stat-tile-val" id="userSavedCount">4</div>
+              <div class="stat-tile-label">Saqlanganlar</div>
             </div>
-            <div class="stat-box">
-              <div class="stat-val">VIP 💎</div>
-              <div class="stat-label">Status</div>
+            <div class="stat-tile">
+              <div class="stat-tile-val stat-tile-vip">VIP 💎</div>
+              <div class="stat-tile-label">Status</div>
             </div>
           </div>
 
-          <button class="btn-telegram-auth" style="background: #232936; border: 1px solid var(--border-subtle); box-shadow: none;" onclick="logout()">
+          <button class="sheet-action-btn btn-channel-primary" onclick="openMangaChannel()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 0 0-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.52 2.77-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+            AniMovie Manga kanalimiz
+          </button>
+
+          <button class="sheet-action-btn btn-logout-ghost" onclick="logout()">
             Hisobdan chiqish
           </button>
         </div>
-
       </div>
     </div>
   </div>
 
   <script>
+    // 1. Telegram WebApp Setup
     const tg = window.Telegram?.WebApp;
     if (tg) {
       tg.ready();
       tg.expand();
       try {
-        tg.setHeaderColor('#090c10');
-        tg.setBackgroundColor('#090c10');
+        tg.setHeaderColor('#07090e');
+        tg.setBackgroundColor('#07090e');
       } catch (e) {}
     }
 
@@ -857,13 +1181,13 @@
 
     if (!isVipParam && !isAdmin && !localStorage.getItem('animovie_is_vip')) {
       document.body.innerHTML = `
-        <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; background: #090c10; color: white; font-family: 'Plus Jakarta Sans', sans-serif;">
+        <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; background: #07090e; color: white; font-family: 'Plus Jakarta Sans', sans-serif;">
           <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #f59e0b, #ef4444); border-radius: 24px; display: flex; align-items: center; justify-content: center; font-size: 40px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(245, 158, 11, 0.4);">👑</div>
           <h2 style="font-size: 22px; font-weight: 800; margin-bottom: 10px;">Faqat VIP Obunachilar Uchun</h2>
           <p style="font-size: 14px; color: #94a3b8; line-height: 1.6; max-width: 320px; margin-bottom: 28px;">
             Hurmatli foydalanuvchi, Manga Mini App bo'limi faqat AniMovie VIP foydalanuvchilari uchun ochiq!
           </p>
-          <a href="https://t.me/AniMovieuz_bot?start=vip" style="background: linear-gradient(135deg, #ff2d55, #ff6b3d); color: white; text-decoration: none; padding: 14px 28px; border-radius: 14px; font-size: 15px; font-weight: 800; box-shadow: 0 8px 24px rgba(255, 45, 85, 0.4); display: inline-block;">
+          <a href="https://t.me/AniMovieuz_bot?start=vip" style="background: linear-gradient(135deg, #ff2a5f, #ff6b8b); color: white; text-decoration: none; padding: 14px 28px; border-radius: 14px; font-size: 15px; font-weight: 800; box-shadow: 0 8px 24px rgba(255, 42, 95, 0.4); display: inline-block;">
             💎 VIP Obunani Xarid Qilish
           </a>
         </div>
@@ -876,9 +1200,7 @@
       }
     }
 
-    // Manga database (faqat admin yuklagan haqiqiy mangalar)
     let mangas = [];
-
     let currentManga = null;
     let currentChapter = 1;
     let currentUser = null;
@@ -892,13 +1214,13 @@
         } catch (e) {}
       }
 
-      if (!currentUser && tg?.initDataUnsafe?.user) {
+      if (tg?.initDataUnsafe?.user) {
         const u = tg.initDataUnsafe.user;
         currentUser = {
           id: u.id,
-          name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Foydalanuvchi',
+          name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Telegram Foydalanuvchi',
           username: u.username ? `@${u.username}` : `ID: ${u.id}`,
-          avatar: (u.first_name ? u.first_name[0] : 'U').toUpperCase()
+          avatar: (u.first_name || 'U')[0].toUpperCase()
         };
         localStorage.setItem('animovie_user', JSON.stringify(currentUser));
       }
@@ -907,9 +1229,9 @@
     }
 
     function updateUserUI() {
-      const headerBtn = document.getElementById('authBtnHeader');
       const badgeText = document.getElementById('authBadgeText');
       const badgeIcon = document.getElementById('authBadgeIcon');
+      const headerBtn = document.getElementById('authBtnHeader');
 
       if (currentUser) {
         headerBtn.classList.add('logged-in');
@@ -918,7 +1240,7 @@
       } else {
         headerBtn.classList.remove('logged-in');
         badgeIcon.innerText = '👤';
-        badgeText.innerText = 'Kirish';
+        badgeText.innerText = 'Profil';
       }
     }
 
@@ -932,11 +1254,11 @@
         unauthView.style.display = 'none';
         authProfileView.style.display = 'block';
         document.getElementById('userAvatarBig').innerText = currentUser.avatar;
-        document.getElementById('userNameBig').innerText = currentUser.name;
+        document.getElementById('userNameBig').innerHTML = `${currentUser.name} <span style="background:#0ea5e9; border-radius:50%; width:14px; height:14px; display:inline-flex; align-items:center; justify-content:center; font-size:9px; color:white;">✓</span>`;
         document.getElementById('userHandleBig').innerText = currentUser.username;
       } else {
-        authProfileView.style.display = 'none';
         unauthView.style.display = 'block';
+        authProfileView.style.display = 'none';
       }
 
       sheet.classList.add('active');
@@ -958,16 +1280,16 @@
         const u = tg.initDataUnsafe.user;
         currentUser = {
           id: u.id,
-          name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Foydalanuvchi',
+          name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Telegram Foydalanuvchi',
           username: u.username ? `@${u.username}` : `ID: ${u.id}`,
-          avatar: (u.first_name ? u.first_name[0] : 'U').toUpperCase()
+          avatar: (u.first_name || 'U')[0].toUpperCase()
         };
       } else {
         currentUser = {
-          id: 8985548,
-          name: "Mirzayev Jahongir",
-          username: "@Ani_Movei_UZ",
-          avatar: "M"
+          id: 12345678,
+          name: "Jahongir Mirzayev",
+          username: "@Jahongir02_02",
+          avatar: "J"
         };
       }
       localStorage.setItem('animovie_user', JSON.stringify(currentUser));
@@ -980,39 +1302,62 @@
       localStorage.removeItem('animovie_user');
       currentUser = null;
       updateUserUI();
-      openAuthModal();
+      closeAuthModal();
     }
 
-    // Render Manga
+    function openMangaChannel() {
+      haptic();
+      const channelUrl = 'https://t.me/AniMovie_manga';
+      if (tg && tg.openTelegramLink) {
+        tg.openTelegramLink(channelUrl);
+      } else {
+        window.open(channelUrl, '_blank');
+      }
+    }
+
+    // Render Manga Cards
     function renderManga(list) {
       const grid = document.getElementById('mangaGrid');
       grid.innerHTML = '';
+
+      const countBadge = document.getElementById('mangaCountBadge');
+      if (countBadge) {
+        countBadge.innerText = `Jami ${list ? list.length : 0} ta`;
+      }
+
       if (!list || list.length === 0) {
         grid.innerHTML = `
           <div style="grid-column: 1 / -1; text-align: center; padding: 70px 20px; color: var(--text-muted);">
-            <div style="font-size: 48px; margin-bottom: 12px;">📖</div>
-            <h3 style="color: white; font-size: 16px; margin-bottom: 6px; font-weight: 700;">Hozircha mangalar mavjud emas</h3>
-            <p style="font-size: 12px; line-height: 1.5;">Admin panel orqali yangi manga yuklanganda bu yerda avtomatik ko'rinadi.</p>
+            <div style="width: 72px; height: 72px; background: rgba(255,42,95,0.12); border: 1px solid rgba(255,42,95,0.25); border-radius: 24px; display: flex; align-items: center; justify-content: center; font-size: 34px; margin: 0 auto 16px; box-shadow: 0 0 30px rgba(255,42,95,0.2);">📚</div>
+            <h3 style="color: white; font-size: 18px; font-weight: 800; margin-bottom: 8px;">Mangalar topilmadi</h3>
+            <p style="font-size: 13px; max-width: 280px; margin: 0 auto; line-height: 1.5;">Hozircha bazada ushbu bo'lim bo'yicha manga mavjud emas.</p>
           </div>
         `;
         return;
       }
+
       list.forEach(manga => {
-        const validChs = (manga.data && Array.isArray(manga.data.chapters)) ? manga.data.chapters.filter(ch => (ch.pages && ch.pages.length > 0) || (ch.pages_count && ch.pages_count > 0)) : [];
-        const chDisplay = validChs.length > 0 ? `${validChs.length} bob` : `${manga.chapters || 0} bob (kutilmoqda)`;
+        const validChs = (manga.data && Array.isArray(manga.data.chapters))
+          ? manga.data.chapters.filter(ch => (ch.pages && ch.pages.length > 0) || (ch.pages_count && ch.pages_count > 0))
+          : [];
+
+        const chDisplay = validChs.length > 0 ? `${validChs.length} bob` : `${manga.chapters || 0} bob`;
+        const hasPages = validChs.length > 0;
+        const statusClass = (manga.status || '').toLowerCase().includes('davom') ? 'ongoing' : '';
+
         const card = document.createElement('div');
         card.className = 'manga-card';
         card.innerHTML = `
           <div class="cover-wrap">
             <img src="${manga.cover}" alt="${manga.title}" loading="lazy" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500';">
-            <div class="badge-rating">★ ${manga.rating}</div>
-            <div class="badge-status">${manga.status}</div>
+            <div class="badge-rating">★ ${manga.rating || '4.9'}</div>
+            <div class="badge-status ${statusClass}">${manga.status || 'Manga'}</div>
           </div>
           <div class="card-info">
             <h3>${manga.title}</h3>
             <div class="card-meta">
               <span>📖 ${chDisplay}</span>
-              <span class="read-badge">${validChs.length > 0 ? "O'qish →" : "Kutilmoqda"}</span>
+              <span class="read-badge">${hasPages ? "O'qish →" : "Mutolaa"}</span>
             </div>
           </div>
         `;
@@ -1023,7 +1368,7 @@
 
     initUserAuth();
 
-    // Faqat dataga yuklangan haqiqiy mangalarni yuklash (bir nechta yo'llar orqali kafolatli yuklash)
+    // Faqat dataga yuklangan haqiqiy mangalarni yuklash
     async function loadMangas() {
       const candidates = [
         'mangas.json?t=' + Date.now(),
@@ -1058,7 +1403,7 @@
     // Search filter
     document.getElementById('searchInput').addEventListener('input', (e) => {
       const q = e.target.value.toLowerCase().trim();
-      const filtered = mangas.filter(m => m.title.toLowerCase().includes(q) || m.desc.toLowerCase().includes(q));
+      const filtered = mangas.filter(m => (m.title || '').toLowerCase().includes(q) || (m.desc || '').toLowerCase().includes(q));
       renderManga(filtered);
     });
 
@@ -1072,7 +1417,7 @@
         if (genre === 'all') {
           renderManga(mangas);
         } else {
-          renderManga(mangas.filter(m => m.genre === genre));
+          renderManga(mangas.filter(m => (m.genre || '').toLowerCase().includes(genre)));
         }
       });
     });
@@ -1083,9 +1428,9 @@
       document.getElementById('modalTitle').innerText = manga.title;
       document.getElementById('modalMangaName').innerText = manga.title;
       document.getElementById('modalCover').src = manga.cover;
-      document.getElementById('modalDesc').innerText = manga.desc;
-      document.getElementById('modalRating').innerText = '★ ' + manga.rating;
-      document.getElementById('modalStatus').innerText = manga.status;
+      document.getElementById('modalDesc').innerText = manga.desc || "Ushbu manga haqida qisqacha tavsif tez orada qo'shiladi.";
+      document.getElementById('modalRating').innerText = '★ ' + (manga.rating || '4.9');
+      document.getElementById('modalStatus').innerText = manga.status || 'Tugallangan';
 
       const chaptersList = document.getElementById('chaptersList');
       chaptersList.innerHTML = '';
@@ -1101,18 +1446,24 @@
           const item = document.createElement('div');
           item.className = 'chapter-item';
           item.innerHTML = `
-            <span>📖 ${chTitle} <small style="color:var(--text-muted); font-size:11px;">(${pCount} sahifa)</small></span>
-            <span style="color: #4ade80; font-weight:700;">Mutolaa →</span>
+            <div class="chapter-left">
+              <div class="chapter-icon-badge">📑</div>
+              <div>
+                <span>${chTitle}</span>
+                <span class="chapter-pages-tag">(${pCount} sahifa)</span>
+              </div>
+            </div>
+            <span class="chapter-action-pill">Mutolaa →</span>
           `;
           item.onclick = () => openReader(chNum);
           chaptersList.appendChild(item);
         });
       } else {
         chaptersList.innerHTML = `
-          <div style="padding: 28px 16px; text-align: center; color: var(--text-muted); background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.1); border-radius: 12px; margin: 10px 0;">
-            <div style="font-size: 32px; margin-bottom: 6px;">⏳</div>
-            <div style="color: #fff; font-weight: 700; font-size: 14px; margin-bottom: 4px;">Bob sahifalari hali yuklanmagan</div>
-            <p style="font-size: 12px; line-height: 1.4; margin: 0 auto; max-width: 260px;">Admin bot orqali ushbu manganing bobini (PDF yoki rasm) yuklagach, shu yerda mutolaa qilishingiz mumkin bo'ladi.</p>
+          <div style="padding: 30px 16px; text-align: center; color: var(--text-muted); background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.12); border-radius: 18px; margin: 10px 0;">
+            <div style="font-size: 34px; margin-bottom: 8px;">⏳</div>
+            <div style="color: #fff; font-weight: 800; font-size: 14.5px; margin-bottom: 4px;">Bob sahifalari hali yuklanmagan</div>
+            <p style="font-size: 12.5px; line-height: 1.45; margin: 0 auto; max-width: 270px; color: #94a3b8;">Admin bot orqali ushbu manganing bobini (PDF yoki rasm) yuklagach, shu yerda mutolaa qilishingiz mumkin bo'ladi.</p>
           </div>
         `;
       }
@@ -1139,29 +1490,25 @@
       const pages = (chData && Array.isArray(chData.pages)) ? chData.pages : [];
 
       if (pages.length > 0) {
-        const wrap = document.createElement('div');
-        wrap.style.cssText = 'display:flex; flex-direction:column; gap:8px; padding-bottom:60px; background:#000;';
         pages.forEach((pUrl, idx) => {
           const img = document.createElement('img');
           img.className = 'reader-panel-img';
           img.loading = 'lazy';
           img.src = pUrl;
           img.alt = `${currentManga.title} ${chNum}-bob ${idx + 1}-sahifa`;
-          img.style.cssText = 'width:100%; display:block; margin:0 auto;';
-          wrap.appendChild(img);
+          container.appendChild(img);
         });
         const finishDiv = document.createElement('div');
-        finishDiv.style.cssText = 'padding:24px 16px; text-align:center; color:#4ade80; font-size:13px; font-weight:700;';
-        finishDiv.innerText = `✅ ${chNum}-bob yakunlandi (${pages.length} ta sahifa)`;
-        wrap.appendChild(finishDiv);
-        container.appendChild(wrap);
+        finishDiv.style.cssText = 'padding: 30px 16px; text-align: center; color: #4ade80; font-size: 13.5px; font-weight: 800; background: #07090e; margin-top: 10px;';
+        finishDiv.innerText = `✅ ${chNum}-bob muvaffaqiyatli yakunlandi (${pages.length} ta sahifa)`;
+        container.appendChild(finishDiv);
       } else {
         container.innerHTML = `
-          <div style="padding: 60px 20px; text-align: center; color: var(--text-muted); background: #000;">
-            <div style="font-size: 40px; margin-bottom: 12px;">📑</div>
-            <h3 style="color: white; margin-bottom: 8px; font-size:17px;">${currentChapter}-bob sahifalari tez orada yuklanadi</h3>
-            <p style="font-size: 13px; max-width: 300px; margin: 0 auto 20px; line-height: 1.5;">Admin tomonidan ushbu bob sahifalari yuklanishi kutilmoqda.</p>
-            <img class="reader-panel-img" src="${currentManga.cover}" style="max-width: 200px; border-radius: 12px; margin: 0 auto 16px; display: block;" />
+          <div style="padding: 80px 20px; text-align: center; color: var(--text-muted); background: #07090e;">
+            <div style="font-size: 42px; margin-bottom: 12px;">📑</div>
+            <h3 style="color: white; margin-bottom: 8px; font-size: 18px; font-weight: 800;">${currentChapter}-bob sahifalari tez orada yuklanadi</h3>
+            <p style="font-size: 13px; max-width: 300px; margin: 0 auto 24px; line-height: 1.5; color: #94a3b8;">Admin tomonidan ushbu bob sahifalari yuklanishi kutilmoqda.</p>
+            <img class="reader-panel-img" src="${currentManga.cover}" style="max-width: 190px; border-radius: 16px; margin: 0 auto 16px; display: block; box-shadow: 0 10px 30px rgba(0,0,0,0.7);" />
           </div>
         `;
       }
