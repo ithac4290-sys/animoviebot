@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>AniMovie Manga — Telegram Mini App</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0b0e14;
+      --bg-card: #151a23;
+      --bg-card-hover: #1e2532;
+      --accent-red: #ff334b;
+      --accent-glow: rgba(255, 51, 75, 0.35);
+      --accent-blue: #0088cc;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      min-height: 100vh;
+      overflow-x: hidden;
+      padding-bottom: 40px;
+    }
+
+    /* Header */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(11, 14, 20, 0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, #ff334b 0%, #ff6b3d 100%);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 4px 14px var(--accent-glow);
+    }
+
+    .brand-text h1 {
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+      background: linear-gradient(90deg, #ffffff, #ff9ba5);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-text p {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .badge-bot {
+      background: rgba(0, 136, 204, 0.15);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    /* Search & Categories */
+    .controls {
+      padding: 14px 16px 6px;
+    }
+
+    .search-box {
+      position: relative;
+      margin-bottom: 14px;
+    }
+
+    .search-box input {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 12px 16px 12px 42px;
+      color: var(--text-main);
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .search-box input:focus {
+      border-color: var(--accent-red);
+      box-shadow: 0 0 0 3px rgba(255, 51, 75, 0.2);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 16px;
+      opacity: 0.6;
+    }
+
+    /* Category pills */
+    .categories {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding-bottom: 6px;
+    }
+
+    .categories::-webkit-scrollbar {
+      display: none;
+    }
+
+    .pill {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .pill.active {
+      background: linear-gradient(135deg, #ff334b, #ff5722);
+      color: white;
+      border-color: transparent;
+      box-shadow: 0 4px 12px var(--accent-glow);
+    }
+
+    /* Section titles */
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin: 16px 16px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .section-title span {
+      font-size: 12px;
+      color: var(--accent-red);
+      font-weight: 600;
+    }
+
+    /* Manga Grid */
+    .manga-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      padding: 0 16px;
+    }
+
+    .manga-card {
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      position: relative;
+    }
+
+    .manga-card:active {
+      transform: scale(0.97);
+    }
+
+    .cover-wrapper {
+      position: relative;
+      width: 100%;
+      padding-top: 140%;
+      background: #1b212d;
+      overflow: hidden;
+    }
+
+    .cover-img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s;
+    }
+
+    .card-badges {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      right: 8px;
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+    }
+
+    .rating-badge {
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      padding: 3px 7px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #facc15;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .status-badge {
+      background: linear-gradient(135deg, #ff334b, #e11d48);
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 700;
+      color: white;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .card-info {
+      padding: 10px 12px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .manga-title {
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 6px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .manga-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Modal / Reader */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+      display: none;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-header {
+      position: sticky;
+      top: 0;
+      background: rgba(15, 20, 29, 0.95);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 10;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      max-width: 75%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .close-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .modal-body {
+      padding: 18px 16px;
+    }
+
+    .detail-hero {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .detail-cover {
+      width: 110px;
+      height: 155px;
+      border-radius: var(--radius-md);
+      object-fit: cover;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+
+    .detail-info h2 {
+      font-size: 18px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .detail-info p {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+
+    .chapters-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .chapter-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .chapter-item:active {
+      background: var(--accent-red);
+      color: white;
+    }
+
+    /* Reader view */
+    .reader-view {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      background: #000;
+      min-height: 100vh;
+    }
+
+    .reader-view.active {
+      display: flex;
+    }
+
+    .reader-page {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .reader-controls {
+      position: sticky;
+      bottom: 0;
+      width: 100%;
+      background: rgba(11, 14, 20, 0.95);
+      backdrop-filter: blur(10px);
+      padding: 12px 18px;
+      display: flex;
+      justify-content: space-between;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .btn-nav {
+      background: var(--bg-card);
+      color: white;
+      border: 1px solid var(--border-subtle);
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">📖</div>
+      <div class="brand-text">
+        <h1>AniMovie Manga</h1>
+        <p>O'zbekcha tarjima mangalar</p>
+      </div>
+    </div>
+    <div class="badge-bot">Mini App</div>
+  </header>
+
+  <!-- Search & Filter Controls -->
+  <div class="controls">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="Manga nomini qidiring...">
+    </div>
+
+    <div class="categories">
+      <div class="pill active" data-genre="all">Barchasi</div>
+      <div class="pill" data-genre="action">⚔️ Jangari</div>
+      <div class="pill" data-genre="fantasy">🔮 Fantastika</div>
+      <div class="pill" data-genre="adventure">🏃 Sarguzasht</div>
+      <div class="pill" data-genre="romance">❤️ Romantika</div>
+      <div class="pill" data-genre="comedy">😂 Komediya</div>
+    </div>
+  </div>
+
+  <div class="section-title">
+    Ommabop Mangalar
+    <span>Hammasi</span>
+  </div>
+
+  <!-- Manga Grid -->
+  <div class="manga-grid" id="mangaGrid"></div>
+
+  <!-- Details / Chapters Modal -->
+  <div class="modal-overlay" id="detailsModal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Manga tafsilotlari</div>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-hero">
+        <img class="detail-cover" id="modalCover" src="" alt="Cover">
+        <div class="detail-info">
+          <h2 id="modalMangaName">Manga Nomi</h2>
+          <p id="modalDesc">Tavsif yuklanmoqda...</p>
+          <div style="display: flex; gap: 8px;">
+            <span class="rating-badge" id="modalRating">⭐ 4.9</span>
+            <span class="status-badge" id="modalStatus">Yangi</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title" style="margin-left: 0;">Boblar ro'yxati</div>
+      <div class="chapters-list" id="chaptersList"></div>
+    </div>
+  </div>
+
+  <!-- Reader View -->
+  <div class="reader-view" id="readerView">
+    <div class="modal-header" style="position: sticky; top:0; width: 100%;">
+      <div class="modal-title" id="readerTitle">1-bob o'qish</div>
+      <button class="close-btn" onclick="closeReader()">✕</button>
+    </div>
+    <div id="readerPages" style="width: 100%;"></div>
+    <div class="reader-controls">
+      <button class="btn-nav" onclick="prevChapter()">◀️ Oldingi bob</button>
+      <button class="btn-nav" onclick="nextChapter()">Keyingi bob ▶️</button>
+    </div>
+  </div>
+
+  <script>
+    // Initialize Telegram WebApp
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+      try {
+        tg.setHeaderColor('#0b0e14');
+        tg.setBackgroundColor('#0b0e14');
+      } catch(e) {}
+    }
+
+    function haptic() {
+      try {
+        tg?.HapticFeedback?.impactOccurred('medium');
+      } catch(e) {}
+    }
+
+    // Demo Data
+    const mangas = [
+      {
+        id: 1,
+        title: "Solo Leveling (Yolg'iz daraja ko'tarish)",
+        genre: "action",
+        rating: "4.9",
+        status: "Tugallangan",
+        chapters: 179,
+        cover: "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500&auto=format&fit=crop&q=60",
+        desc: "Dunyoning eng zaif ovchisi Son Jin-Vu kutilmaganda sirlar dunyosiga tushib qoladi va dunyodagi eng kuchli ovchiga aylanadi."
+      },
+      {
+        id: 2,
+        title: "Qora Klever (Black Clover)",
+        genre: "action",
+        rating: "4.8",
+        status: "Davom etmoqda",
+        chapters: 368,
+        cover: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=500&auto=format&fit=crop&q=60",
+        desc: "Hech qanday sehrsiz tug'ilgan Asta sehrgarlar qiroli bo'lish uchun o'zining noyob 5 bargli grimoire kuchi bilan kurashadi."
+      },
+      {
+        id: 3,
+        title: "Jujutsu Kaisen (Sehrli jang)",
+        genre: "fantasy",
+        rating: "4.9",
+        status: "Davom etmoqda",
+        chapters: 260,
+        cover: "https://images.unsplash.com/photo-1618336753974-aae8e04506aa?w=500&auto=format&fit=crop&q=60",
+        desc: "Yudzi Itadori la'natlangan narsani yutib yuboradi va dunyodagi eng dahshatli la'nat Sukunaning ruhiga mezbon bo'ladi."
+      },
+      {
+        id: 4,
+        title: "Chainsaw Man (Benzopila odam)",
+        genre: "fantasy",
+        rating: "4.7",
+        status: "Davom etmoqda",
+        chapters: 165,
+        cover: "https://images.unsplash.com/photo-1563089145-599997674d42?w=500&auto=format&fit=crop&q=60",
+        desc: "Denji o'zining iblis do'sti Pochita yordamida qarzlarini to'lash uchun iblislarni ovlaydi."
+      },
+      {
+        id: 5,
+        title: "Demon Slayer (Iblislar qotili)",
+        genre: "adventure",
+        rating: "4.9",
+        status: "Tugallangan",
+        chapters: 205,
+        cover: "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=500&auto=format&fit=crop&q=60",
+        desc: "Tandziro o'z oilasini o'ldirgan va singlisini iblisga aylantirgan maxluqlardan qasos olish uchun ovchi bo'ladi."
+      },
+      {
+        id: 6,
+        title: "Tokyo Revengers (Tokio qasoskorlari)",
+        genre: "action",
+        rating: "4.6",
+        status: "Tugallangan",
+        chapters: 278,
+        cover: "https://images.unsplash.com/photo-1541562232579-512a21360020?w=500&auto=format&fit=crop&q=60",
+        desc: "Takemichi o'tmishga qaytib o'z sevgilisi va do'stlarini qutqarish uchun jinoiy to'daga qo'shiladi."
+      }
+    ];
+
+    let currentManga = null;
+    let currentChapter = 1;
+
+    function renderManga(list) {
+      const grid = document.getElementById('mangaGrid');
+      grid.innerHTML = '';
+      list.forEach(m => {
+        const card = document.createElement('div');
+        card.className = 'manga-card';
+        card.onclick = () => openDetails(m);
+        card.innerHTML = `
+          <div class="cover-wrapper">
+            <img class="cover-img" src="${m.cover}" alt="${m.title}" loading="lazy">
+            <div class="card-badges">
+              <span class="rating-badge">★ ${m.rating}</span>
+              <span class="status-badge">${m.status}</span>
+            </div>
+          </div>
+          <div class="card-info">
+            <div class="manga-title">${m.title}</div>
+            <div class="manga-meta">
+              <span>📖 ${m.chapters} bob</span>
+              <span style="color: var(--accent-red); font-weight:700;">O'qish →</span>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    renderManga(mangas);
+
+    // Search
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase();
+      const filtered = mangas.filter(m => m.title.toLowerCase().includes(q) || m.desc.toLowerCase().includes(q));
+      renderManga(filtered);
+    });
+
+    // Category pills
+    document.querySelectorAll('.pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        haptic();
+        document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        const genre = pill.getAttribute('data-genre');
+        if (genre === 'all') {
+          renderManga(mangas);
+        } else {
+          renderManga(mangas.filter(m => m.genre === genre));
+        }
+      });
+    });
+
+    function openDetails(manga) {
+      haptic();
+      currentManga = manga;
+      document.getElementById('modalTitle').innerText = manga.title;
+      document.getElementById('modalMangaName').innerText = manga.title;
+      document.getElementById('modalCover').src = manga.cover;
+      document.getElementById('modalDesc').innerText = manga.desc;
+      document.getElementById('modalRating').innerText = '★ ' + manga.rating;
+      document.getElementById('modalStatus').innerText = manga.status;
+
+      const chaptersList = document.getElementById('chaptersList');
+      chaptersList.innerHTML = '';
+      for (let i = 1; i <= Math.min(manga.chapters, 30); i++) {
+        const item = document.createElement('div');
+        item.className = 'chapter-item';
+        item.innerHTML = `
+          <span>📖 ${i}-bob: Boshlanish</span>
+          <span style="color: var(--accent-red); font-weight:700;">Mutolaa</span>
+        `;
+        item.onclick = () => openReader(i);
+        chaptersList.appendChild(item);
+      }
+
+      document.getElementById('detailsModal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('detailsModal').classList.remove('active');
+    }
+
+    function openReader(chNum) {
+      haptic();
+      currentChapter = chNum;
+      document.getElementById('readerTitle').innerText = `${currentManga.title} — ${chNum}-bob`;
+      const container = document.getElementById('readerPages');
+      container.innerHTML = `
+        <div style="padding: 40px 20px; text-align: center; color: var(--text-muted);">
+          <div style="font-size: 40px; margin-bottom: 12px;">📑</div>
+          <h3 style="color: white; margin-bottom: 8px;">${currentChapter}-bob yuklandi</h3>
+          <p style="font-size: 13px; line-height: 1.6;">O'zbekcha tarjima AniMovie jamoasi tomonidan taqdim etilmoqda.</p>
+          <img src="${currentManga.cover}" style="max-width: 90%; border-radius: 12px; margin: 20px auto; display: block; box-shadow: 0 10px 30px rgba(0,0,0,0.8);" />
+          <p style="font-size: 13px; color: #4ade80;">✅ Yuqori sifatli sahifalar tayyor.</p>
+        </div>
+      `;
+      document.getElementById('readerView').classList.add('active');
+    }
+
+    function closeReader() {
+      document.getElementById('readerView').classList.remove('active');
+    }
+
+    function prevChapter() {
+      if (currentChapter > 1) {
+        openReader(currentChapter - 1);
+      }
+    }
+
+    function nextChapter() {
+      if (currentManga && currentChapter < currentManga.chapters) {
+        openReader(currentChapter + 1);
+      }
+    }
+  </script>
+</body>
+</html>

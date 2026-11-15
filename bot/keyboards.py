@@ -1,14 +1,15 @@
 import re
 from typing import List, Dict, Any, Optional
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
+from bot.config import config
 
 
 def get_main_menu_keyboard(bot_username: str) -> InlineKeyboardMarkup:
     """
     1. ASOSIY BOSH MENYU:
     - 1-qator: [ 🔍 𝗔𝗻𝗶𝗺𝗲 𝗶𝘇𝗹𝗮𝘀𝗵 ]
-    - 2-qator: [ 📖 𝗠𝗮𝗻𝗴𝗮 𝗸𝗼'𝗿𝗶𝘀𝗵 ] | [ ⚡️ 𝗦𝗵𝗼𝗿𝘁𝘀 𝗸𝗼'𝗿𝗶𝘀𝗵 ]
+    - 2-qator: [ 📖 𝗠𝗮𝗻𝗴𝗮 𝗸𝗼'𝗿𝗶𝘀𝗵 ] (Mini App) | [ ⚡️ 𝗦𝗵𝗼𝗿𝘁𝘀 𝗸𝗼'𝗿𝗶𝘀𝗵 ] (Mini App)
     - 3-qator: [ 👤 𝗞𝗮𝗯𝗶𝗻𝗲𝘁 ] | [ 👑 𝗩𝗜𝗣 𝗢𝗯𝘂𝗻𝗮 ]
     """
     builder = InlineKeyboardBuilder()
@@ -21,11 +22,18 @@ def get_main_menu_keyboard(bot_username: str) -> InlineKeyboardMarkup:
         )
     )
 
-    # 2-qator: 📖 Manga ko'rish | ⚡️ Shorts ko'rish
-    builder.row(
-        InlineKeyboardButton(text="📖 𝗠𝗮𝗻𝗴𝗮 𝗸𝗼'𝗿𝗶𝘀𝗵", callback_data="btn_manga"),
-        InlineKeyboardButton(text="⚡️ 𝗦𝗵𝗼𝗿𝘁𝘀 𝗸𝗼'𝗿𝗶𝘀𝗵", callback_data="btn_shorts")
+    # 2-qator: 📖 Manga ko'rish (Mini App) | ⚡️ Shorts ko'rish (Mini App)
+    manga_btn = (
+        InlineKeyboardButton(text="📖 𝗠𝗮𝗻𝗴𝗮 𝗸𝗼'𝗿𝗶𝘀𝗵", web_app=WebAppInfo(url=config.manga_webapp_url))
+        if getattr(config, 'manga_webapp_url', None)
+        else InlineKeyboardButton(text="📖 𝗠𝗮𝗻𝗴𝗮 𝗸𝗼'𝗿𝗶𝘀𝗵", callback_data="btn_manga")
     )
+    shorts_btn = (
+        InlineKeyboardButton(text="⚡️ 𝗦𝗵𝗼𝗿𝘁𝘀 𝗸𝗼'𝗿𝗶𝘀𝗵", web_app=WebAppInfo(url=config.shorts_webapp_url))
+        if getattr(config, 'shorts_webapp_url', None)
+        else InlineKeyboardButton(text="⚡️ 𝗦𝗵𝗼𝗿𝘁𝘀 𝗸𝗼'𝗿𝗶𝘀𝗵", callback_data="btn_shorts")
+    )
+    builder.row(manga_btn, shorts_btn)
 
     # 3-qator: 👤 Kabinet | 👑 VIP Obuna
     builder.row(

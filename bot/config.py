@@ -15,6 +15,8 @@ class Config:
     db_name: str
     database_url: str
     trace_moe_api_key: str
+    manga_webapp_url: str
+    shorts_webapp_url: str
 
 
 def load_config() -> Config:
@@ -28,6 +30,8 @@ def load_config() -> Config:
     ).strip()
 
     trace_moe_api_key = os.getenv("TRACE_MOE_API_KEY", "").strip()
+    manga_webapp_url = os.getenv("MANGA_WEBAPP_URL", "https://ithac4290-sys.github.io/animoviebot/manga/").strip()
+    shorts_webapp_url = os.getenv("SHORTS_WEBAPP_URL", "https://ithac4290-sys.github.io/animoviebot/shorts/").strip()
 
     admins_raw = os.getenv("ADMINS", "7285523919,8166740229")
     admins: List[int] = []
@@ -44,6 +48,8 @@ def load_config() -> Config:
         db_name=db_name,
         database_url=database_url,
         trace_moe_api_key=trace_moe_api_key,
+        manga_webapp_url=manga_webapp_url,
+        shorts_webapp_url=shorts_webapp_url,
     )
 
 
