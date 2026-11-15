@@ -634,284 +634,7 @@
 <body>
 
   <!-- Shorts Container -->
-  <div class="shorts-container" id="shortsContainer">
-
-    <!-- Short 1 -->
-    <div class="short-item" data-index="0">
-      <div class="overlay-top"></div>
-      <div class="overlay-bottom"></div>
-
-      <!-- Top Bar -->
-      <div class="top-bar">
-        <div class="brand">
-          <div class="brand-icon">⚡️</div>
-          <div class="brand-title">AniMovie Shorts</div>
-        </div>
-        <button class="auth-btn-header" id="authBtnHeader0" onclick="openAuthModal()">
-          <span id="authBadgeIcon0">👤</span>
-          <span id="authBadgeText0">Kirish</span>
-        </button>
-      </div>
-
-      <video autoplay muted loop playsinline webkit-playsinline preload="auto">
-        <source src="videos/short1.mp4" type="video/mp4">
-        <source src="https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_1MB.mp4" type="video/mp4">
-      </video>
-
-      <div class="center-indicator">
-        <svg width="34" height="34" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-      </div>
-
-      <!-- Actions Sidebar (SVG Icons) -->
-      <div class="actions-sidebar">
-        <!-- Like -->
-        <div class="action-btn" onclick="toggleLike(this, 24500)">
-          <div class="icon-bubble">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-            </svg>
-          </div>
-          <span class="action-label">24.5k</span>
-        </div>
-
-        <!-- Comments -->
-        <div class="action-btn" onclick="openComments('Solo Leveling — Son Jin-Vu')">
-          <div class="icon-bubble">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
-            </svg>
-          </div>
-          <span class="action-label">1.2k</span>
-        </div>
-
-        <!-- Share -->
-        <div class="action-btn" onclick="shareShort('Solo Leveling epik lahza')">
-          <div class="icon-bubble">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="18" cy="5" r="3"></circle>
-              <circle cx="6" cy="12" r="3"></circle>
-              <circle cx="18" cy="19" r="3"></circle>
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-            </svg>
-          </div>
-          <span class="action-label">Ulashish</span>
-        </div>
-
-        <!-- Sound / Mute -->
-        <div class="action-btn" onclick="toggleMute()">
-          <div class="icon-bubble mute-bubble">
-            <svg class="mute-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-              <line x1="23" y1="9" x2="17" y2="15"></line>
-              <line x1="17" y1="9" x2="23" y2="15"></line>
-            </svg>
-          </div>
-          <span class="action-label" id="muteLabel0">Ovoz</span>
-        </div>
-
-        <!-- Vinyl Disc -->
-        <div class="disc-container">
-          <div class="disc-center"></div>
-        </div>
-      </div>
-
-      <!-- Bottom Info -->
-      <div class="bottom-info">
-        <div class="creator-tag">
-          <div class="creator-avatar">S</div>
-          <span class="creator-name">@Ani_Movei_UZ</span>
-          <button class="follow-btn" onclick="openChannel()">Kanal</button>
-        </div>
-        <div class="caption-text">
-          Solo Leveling: Son Jin-Vu soyalar armiyasini uyg'otgan tarixiy lahza! 🔥
-          <span class="hashtags">#sololeveling #anime #jinwoo</span>
-        </div>
-        <div class="sound-info">
-          🎵 Asl ovoz — AniMovie Music Track
-        </div>
-      </div>
-    </div>
-
-    <!-- Short 2 -->
-    <div class="short-item" data-index="1">
-      <div class="overlay-top"></div>
-      <div class="overlay-bottom"></div>
-
-      <div class="top-bar">
-        <div class="brand">
-          <div class="brand-icon">⚡️</div>
-          <div class="brand-title">AniMovie Shorts</div>
-        </div>
-        <button class="auth-btn-header" id="authBtnHeader1" onclick="openAuthModal()">
-          <span id="authBadgeIcon1">👤</span>
-          <span id="authBadgeText1">Kirish</span>
-        </button>
-      </div>
-
-      <video autoplay muted loop playsinline webkit-playsinline preload="auto">
-        <source src="videos/short2.mp4" type="video/mp4">
-        <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4">
-      </video>
-
-      <div class="center-indicator">
-        <svg width="34" height="34" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-      </div>
-
-      <div class="actions-sidebar">
-        <div class="action-btn" onclick="toggleLike(this, 42100)">
-          <div class="icon-bubble">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-            </svg>
-          </div>
-          <span class="action-label">42.1k</span>
-        </div>
-
-        <div class="action-btn" onclick="openComments('Qora Klever — Asta & Yami')">
-          <div class="icon-bubble">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
-            </svg>
-          </div>
-          <span class="action-label">3.8k</span>
-        </div>
-
-        <div class="action-btn" onclick="shareShort('Qora Klever jangi')">
-          <div class="icon-bubble">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="18" cy="5" r="3"></circle>
-              <circle cx="6" cy="12" r="3"></circle>
-              <circle cx="18" cy="19" r="3"></circle>
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-            </svg>
-          </div>
-          <span class="action-label">Ulashish</span>
-        </div>
-
-        <div class="action-btn" onclick="toggleMute()">
-          <div class="icon-bubble mute-bubble">
-            <svg class="mute-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-              <line x1="23" y1="9" x2="17" y2="15"></line>
-              <line x1="17" y1="9" x2="23" y2="15"></line>
-            </svg>
-          </div>
-          <span class="action-label" id="muteLabel1">Ovoz</span>
-        </div>
-
-        <div class="disc-container">
-          <div class="disc-center"></div>
-        </div>
-      </div>
-
-      <div class="bottom-info">
-        <div class="creator-tag">
-          <div class="creator-avatar">Q</div>
-          <span class="creator-name">@Ani_Movei_UZ</span>
-          <button class="follow-btn" onclick="openChannel()">Kanal</button>
-        </div>
-        <div class="caption-text">
-          Qora Klever: Asta va Yami birgalikda Dantega qarshi jang qilmoqda! ⚔️
-          <span class="hashtags">#blackclover #asta #yami #anime</span>
-        </div>
-        <div class="sound-info">
-          🎵 Black Clover — Haruka Mirai (Epic Remix)
-        </div>
-      </div>
-    </div>
-
-    <!-- Short 3 -->
-    <div class="short-item" data-index="2">
-      <div class="overlay-top"></div>
-      <div class="overlay-bottom"></div>
-
-      <div class="top-bar">
-        <div class="brand">
-          <div class="brand-icon">⚡️</div>
-          <div class="brand-title">AniMovie Shorts</div>
-        </div>
-        <button class="auth-btn-header" id="authBtnHeader2" onclick="openAuthModal()">
-          <span id="authBadgeIcon2">👤</span>
-          <span id="authBadgeText2">Kirish</span>
-        </button>
-      </div>
-
-      <video autoplay muted loop playsinline webkit-playsinline preload="auto">
-        <source src="videos/short3.mp4" type="video/mp4">
-        <source src="https://raw.githubusercontent.com/intel-iot-devkit/sample-videos/master/person-bicycle-car-detection.mp4" type="video/mp4">
-      </video>
-
-      <div class="center-indicator">
-        <svg width="34" height="34" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-      </div>
-
-      <div class="actions-sidebar">
-        <div class="action-btn" onclick="toggleLike(this, 58900)">
-          <div class="icon-bubble">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-            </svg>
-          </div>
-          <span class="action-label">58.9k</span>
-        </div>
-
-        <div class="action-btn" onclick="openComments('Gojo Satoru — Cheksiz hudud')">
-          <div class="icon-bubble">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
-            </svg>
-          </div>
-          <span class="action-label">4.1k</span>
-        </div>
-
-        <div class="action-btn" onclick="shareShort('Gojo Satoru hudud kengayishi')">
-          <div class="icon-bubble">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="18" cy="5" r="3"></circle>
-              <circle cx="6" cy="12" r="3"></circle>
-              <circle cx="18" cy="19" r="3"></circle>
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-            </svg>
-          </div>
-          <span class="action-label">Ulashish</span>
-        </div>
-
-        <div class="action-btn" onclick="toggleMute()">
-          <div class="icon-bubble mute-bubble">
-            <svg class="mute-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-              <line x1="23" y1="9" x2="17" y2="15"></line>
-              <line x1="17" y1="9" x2="23" y2="15"></line>
-            </svg>
-          </div>
-          <span class="action-label" id="muteLabel2">Ovoz</span>
-        </div>
-
-        <div class="disc-container">
-          <div class="disc-center"></div>
-        </div>
-      </div>
-
-      <div class="bottom-info">
-        <div class="creator-tag">
-          <div class="creator-avatar">G</div>
-          <span class="creator-name">@Ani_Movei_UZ</span>
-          <button class="follow-btn" onclick="openChannel()">Kanal</button>
-        </div>
-        <div class="caption-text">
-          Gojo Satoru: "Ryoiki Tenkai: Muryokusho" — Cheksiz hudud kengayishi! 🔮
-          <span class="hashtags">#jujutsukaisen #gojo #sukuna #domain</span>
-        </div>
-        <div class="sound-info">
-          🎵 Jujutsu Kaisen — Hollow Purple Theme
-        </div>
-      </div>
-    </div>
-
-  </div>
+  <div class="shorts-container" id="shortsContainer"></div>
 
   <!-- Comments Bottom Sheet Modal -->
   <div class="bottom-sheet" id="commentsSheet" onclick="handleSheetBackdrop(event, 'commentsSheet')">
@@ -1155,8 +878,8 @@
     initAuth();
 
     // 3. Audio & Video Controls
-    let isMuted = true; // muted by default for guaranteed autoplay
-    const items = document.querySelectorAll('.short-item');
+    let isMuted = true;
+    let lastTap = 0;
 
     function toggleMute() {
       haptic('light');
@@ -1179,60 +902,10 @@
         svg.innerHTML = isMuted ? muteSvg : soundSvg;
       });
 
-      for (let i = 0; i < 3; i++) {
-        const label = document.getElementById(`muteLabel${i}`);
-        if (label) label.innerText = isMuted ? 'Ovoz' : 'Yoqildi';
-      }
-    }
-
-    // Video Tap to Play/Pause & Double Tap Heart
-    let lastTap = 0;
-    items.forEach((item) => {
-      const video = item.querySelector('video');
-      const indicator = item.querySelector('.center-indicator');
-
-      // Ensure video starts playing immediately
-      video.play().catch(() => {});
-
-      item.addEventListener('click', (e) => {
-        if (e.target.closest('.actions-sidebar') || e.target.closest('.creator-tag') || e.target.closest('.top-bar')) {
-          return;
-        }
-
-        const currentTime = new Date().getTime();
-        const tapLength = currentTime - lastTap;
-
-        if (tapLength < 300 && tapLength > 0) {
-          // Double Tap: Floating heart
-          createFloatingHeart(e.clientX, e.clientY, item);
-          const likeBtn = item.querySelector('.action-btn');
-          if (likeBtn) {
-            const bubble = likeBtn.querySelector('.icon-bubble');
-            if (!bubble.classList.contains('liked')) {
-              toggleLike(likeBtn, 24500);
-            }
-          }
-          lastTap = 0;
-        } else {
-          lastTap = currentTime;
-          setTimeout(() => {
-            if (new Date().getTime() - lastTap >= 280 && lastTap !== 0) {
-              // Single Tap: Play / Pause
-              haptic('light');
-              if (video.paused) {
-                video.play();
-                indicator.innerHTML = '<svg width="34" height="34" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
-              } else {
-                video.pause();
-                indicator.innerHTML = '<svg width="34" height="34" viewBox="0 0 24 24" fill="white"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
-              }
-              indicator.classList.add('show');
-              setTimeout(() => indicator.classList.remove('show'), 400);
-            }
-          }, 290);
-        }
+      document.querySelectorAll('.action-label-mute').forEach(label => {
+        label.innerText = isMuted ? 'Ovoz' : 'Yoqildi';
       });
-    });
+    }
 
     function createFloatingHeart(x, y, parent) {
       haptic('medium');
@@ -1249,21 +922,188 @@
       setTimeout(() => heart.remove(), 750);
     }
 
-    // Auto Play Observer
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        const video = entry.target.querySelector('video');
-        if (entry.isIntersecting) {
-          video.muted = isMuted;
-          video.play().catch(() => {});
-        } else {
-          video.pause();
-          video.currentTime = 0;
-        }
-      });
-    }, { threshold: 0.6 });
+    function renderShorts(list) {
+      const container = document.getElementById('shortsContainer');
+      container.innerHTML = '';
 
-    items.forEach(item => observer.observe(item));
+      if (!list || list.length === 0) {
+        container.innerHTML = `
+          <div style="height: 100vh; height: 100dvh; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--text-muted); padding: 24px;">
+            <div style="width: 72px; height: 72px; background: rgba(255,45,85,0.15); border: 1px solid rgba(255,45,85,0.3); border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 34px; margin-bottom: 16px;">⚡️</div>
+            <h3 style="color: white; font-size: 18px; font-weight: 800; margin-bottom: 8px;">Shorts videolar mavjud emas</h3>
+            <p style="font-size: 13px; max-width: 290px; line-height: 1.5;">Hozircha dataga yuklangan shortslar yo'q. Admin panel orqali yangi video yuklanganda bu yerda avtomatik ko'rsatiladi.</p>
+          </div>
+        `;
+        return;
+      }
+
+      list.forEach((s, idx) => {
+        const item = document.createElement('div');
+        item.className = 'short-item';
+        item.setAttribute('data-index', idx);
+        item.innerHTML = `
+          <div class="overlay-top"></div>
+          <div class="overlay-bottom"></div>
+
+          <div class="top-bar">
+            <div class="brand">
+              <div class="brand-icon">⚡️</div>
+              <div class="brand-title">AniMovie Shorts</div>
+            </div>
+            <button class="auth-btn-header" onclick="openAuthModal()">
+              <span>👤</span>
+              <span>Profil</span>
+            </button>
+          </div>
+
+          <video autoplay muted loop playsinline webkit-playsinline preload="auto">
+            <source src="${s.video_url}" type="video/mp4">
+          </video>
+
+          <div class="center-indicator">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
+
+          <div class="actions-sidebar">
+            <div class="action-btn" onclick="toggleLike(this, ${s.likes || 1000})">
+              <div class="icon-bubble">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                </svg>
+              </div>
+              <span class="action-label">${((s.likes || 1000)/1000).toFixed(1)}k</span>
+            </div>
+
+            <div class="action-btn" onclick="openComments('${(s.title || '').replace(/'/g, "\'")}')">
+              <div class="icon-bubble">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                </svg>
+              </div>
+              <span class="action-label">${((s.comments || 500)/1000).toFixed(1)}k</span>
+            </div>
+
+            <div class="action-btn" onclick="shareShort('${(s.title || '').replace(/'/g, "\'")}')">
+              <div class="icon-bubble">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="18" cy="5" r="3"></circle>
+                  <circle cx="6" cy="12" r="3"></circle>
+                  <circle cx="18" cy="19" r="3"></circle>
+                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                </svg>
+              </div>
+              <span class="action-label">Ulashish</span>
+            </div>
+
+            <div class="action-btn" onclick="toggleMute()">
+              <div class="icon-bubble mute-bubble">
+                <svg class="mute-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                  <line x1="23" y1="9" x2="17" y2="15"></line>
+                  <line x1="17" y1="9" x2="23" y2="15"></line>
+                </svg>
+              </div>
+              <span class="action-label action-label-mute">Ovoz</span>
+            </div>
+
+            <div class="disc-container">
+              <div class="disc-center"></div>
+            </div>
+          </div>
+
+          <div class="bottom-info">
+            <div class="creator-tag">
+              <div class="creator-avatar">${(s.creator || '@')[1] || 'A'}</div>
+              <span class="creator-name">${s.creator || '@Ani_Movei_UZ'}</span>
+              <button class="follow-btn" onclick="openChannel()">Kanal</button>
+            </div>
+            <div class="caption-text">
+              ${s.caption || s.title}
+            </div>
+            <div class="sound-info">
+              🎵 ${s.sound || 'AniMovie Asl ovoz'}
+            </div>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+
+      setupShortEvents();
+    }
+
+    function setupShortEvents() {
+      const items = document.querySelectorAll('.short-item');
+      if (items.length === 0) return;
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          const video = entry.target.querySelector('video');
+          if (video) {
+            if (entry.isIntersecting) {
+              video.muted = isMuted;
+              video.play().catch(() => {});
+            } else {
+              video.pause();
+              video.currentTime = 0;
+            }
+          }
+        });
+      }, { threshold: 0.6 });
+
+      items.forEach((item) => {
+        observer.observe(item);
+        const video = item.querySelector('video');
+        const indicator = item.querySelector('.center-indicator');
+
+        item.addEventListener('click', (e) => {
+          if (e.target.closest('.actions-sidebar') || e.target.closest('.creator-tag') || e.target.closest('.top-bar')) {
+            return;
+          }
+          const currentTime = new Date().getTime();
+          const tapLength = currentTime - lastTap;
+          if (tapLength < 300 && tapLength > 0) {
+            createFloatingHeart(e.clientX, e.clientY, item);
+            const likeBtn = item.querySelector('.action-btn');
+            if (likeBtn) {
+              const bubble = likeBtn.querySelector('.icon-bubble');
+              if (!bubble.classList.contains('liked')) {
+                toggleLike(likeBtn, 1000);
+              }
+            }
+            lastTap = 0;
+          } else {
+            lastTap = currentTime;
+            setTimeout(() => {
+              if (new Date().getTime() - lastTap >= 280 && lastTap !== 0) {
+                haptic('light');
+                if (video) {
+                  if (video.paused) {
+                    video.play();
+                    indicator.innerHTML = '<svg width="34" height="34" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+                  } else {
+                    video.pause();
+                    indicator.innerHTML = '<svg width="34" height="34" viewBox="0 0 24 24" fill="white"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+                  }
+                  indicator.classList.add('show');
+                  setTimeout(() => indicator.classList.remove('show'), 400);
+                }
+              }
+            }, 290);
+          }
+        });
+      });
+    }
+
+    // Faqat dataga yuklangan shortslarni yuklash
+    fetch('shorts.json?t=' + Date.now())
+      .then(res => res.json())
+      .then(list => {
+        renderShorts(Array.isArray(list) ? list : []);
+      })
+      .catch(() => {
+        renderShorts([]);
+      });
 
     // Like Button Toggle
     function toggleLike(btn, baseCount) {
