@@ -168,6 +168,7 @@ async def handle_play_episode(callback: CallbackQuery, bot: Bot):
     parts = callback.data.split("_")
     anime_id = int(parts[1])
     ep_num = int(parts[2])
+    page = int(parts[3]) if len(parts) > 3 else ((ep_num - 1) // 20 + 1)
 
     anime = await db.get_anime(anime_id)
     episode = await db.get_episode(anime_id, ep_num)
@@ -180,6 +181,15 @@ async def handle_play_episode(callback: CallbackQuery, bot: Bot):
         return
 
     await callback.answer(f"⏳ {ep_num}-qism yuborilmoqda...")
+
+    # Tanlangan qism belgisini klaviaturada yangilash ([ 📀 ] - {ep_num})
+    try:
+        episodes = await db.get_anime_episodes(anime_id)
+        uploaded_ep_nums = [ep["episode_num"] for ep in episodes]
+        updated_kb = get_anime_keyboard(anime_id, uploaded_ep_nums, page=page, current_ep=ep_num)
+        await callback.message.edit_reply_markup(reply_markup=updated_kb)
+    except Exception:
+        pass
 
     anime_title = anime.get("title", "Anime") if anime else "Anime"
     file_id = episode.get("file_id")
@@ -224,20 +234,32 @@ async def handle_close_view(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("ep_page_"))
 async def handle_episodes_page(callback: CallbackQuery):
-    """20 tadan oshganda qismlarni sahifalab ko'rsatish (< va > tugmalari)"""
+    """20 tadan oshganda qismlarni sahifalab ko'rsatish (Oldingi / Keyingi tugmalari)"""
     parts = callback.data.split("_")
+    # Format: ep_page_{anime_id}_{page}_{current_ep}
     anime_id = int(parts[2])
     page = int(parts[3])
+    current_ep = int(parts[4]) if len(parts) > 4 else None
 
     episodes = await db.get_anime_episodes(anime_id)
     uploaded_ep_nums = [ep["episode_num"] for ep in episodes]
-    kb = get_anime_keyboard(anime_id, uploaded_ep_nums, page=page)
+    kb = get_anime_keyboard(anime_id, uploaded_ep_nums, page=page, current_ep=current_ep)
 
     try:
         await callback.message.edit_reply_markup(reply_markup=kb)
     except Exception:
         pass
     await callback.answer()
+
+
+@router.callback_query(F.data == "ep_first_page_alert")
+async def handle_ep_first_page_alert(callback: CallbackQuery):
+    await callback.answer("ℹ️ Siz allaqachon birinchi sahifadasiz!", show_alert=False)
+
+
+@router.callback_query(F.data == "ep_last_page_alert")
+async def handle_ep_last_page_alert(callback: CallbackQuery):
+    await callback.answer("ℹ️ Siz oxirgi sahifadasiz!", show_alert=False)
 
 
 @router.callback_query(F.data == "noop_page")

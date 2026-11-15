@@ -149,14 +149,14 @@ def get_anime_keyboard(
     anime_id: int,
     episodes_list: Optional[List[int]] = None,
     page: int = 1,
-    per_page: int = 20
+    per_page: int = 20,
+    current_ep: Optional[int] = None
 ) -> InlineKeyboardMarkup:
     """
-    3. ANIME MENYUSI VA QISMLAR RO'YXATI (20 tadan sahifalash bilan):
-    - Har sahifada 20 tagacha qism 4 tadan ustun (grid) qilib chiqariladi.
-    - 20-qismdan oshganda navbatdagi sahifaga o'tish tugmasi chiqadi (>).
-    - 21-qism va keyingilar alohida sahifada ko'rsatiladi.
-    - Eng pastki qatorda alohida keng tugma: ❌ Yopish.
+    ANIME MENYUSI VA QISMLAR RO'YXATI (20 tadan sahifalash):
+    - Tanlangan/joriy qism: [ 📀 ] - {ep}
+    - Boshqa qismlar: faqat raqam ({ep}) 4 ustunli gridda
+    - Pastki qatorda 3 ta tugma bir qatorda: [ ⬅️ Oldingi ] [ ❌ Yopish ] [ ➡️ Keyingi ]
     """
     builder = InlineKeyboardBuilder()
 
@@ -166,17 +166,24 @@ def get_anime_keyboard(
         total_pages = max(1, (total_episodes + per_page - 1) // per_page)
         page = max(1, min(page, total_pages))
 
+        if current_ep is None:
+            current_ep = sorted_episodes[0]
+
         start_idx = (page - 1) * per_page
         end_idx = start_idx + per_page
         page_episodes = sorted_episodes[start_idx:end_idx]
 
         episode_buttons = []
         for ep in page_episodes:
+            if ep == current_ep:
+                btn_text = f"[ 📀 ] - {ep}"
+            else:
+                btn_text = f"{ep}"
+
             episode_buttons.append(
                 InlineKeyboardButton(
-                    text=f"▶️ {ep} - qism",
-                    callback_data=f"play_{anime_id}_{ep}",
-                    style="primary"
+                    text=btn_text,
+                    callback_data=f"play_{anime_id}_{ep}_{page}"
                 )
             )
 
@@ -184,57 +191,30 @@ def get_anime_keyboard(
         builder.add(*episode_buttons)
         builder.adjust(4)
 
-        # 20 tadan oshganda sahifalash navigatsiyasi ( < va > )
+        # Pastki navigatsiya qatori: ⬅️ Oldingi | ❌ Yopish | ➡️ Keyingi
         if total_pages > 1:
-            nav_buttons = []
+            prev_cb = f"ep_page_{anime_id}_{page - 1}_{current_ep}" if page > 1 else "ep_first_page_alert"
+            next_cb = f"ep_page_{anime_id}_{page + 1}_{current_ep}" if page < total_pages else "ep_last_page_alert"
 
-            # 1-sahifadan keyingi sahifalarda oldingisiga qaytish (<)
-            if page > 1:
-                prev_start = (page - 2) * per_page + 1
-                prev_end = (page - 1) * per_page
-                nav_buttons.append(
-                    InlineKeyboardButton(
-                        text=f"< {prev_start}-{prev_end}",
-                        callback_data=f"ep_page_{anime_id}_{page - 1}",
-                        style="primary"
-                    )
-                )
-
-            # Joriy sahifa indikatori
-            nav_buttons.append(
-                InlineKeyboardButton(
-                    text=f"📄 {page}/{total_pages}",
-                    callback_data="noop_page"
-                )
+            builder.row(
+                InlineKeyboardButton(text="⬅️ Oldingi", callback_data=prev_cb),
+                InlineKeyboardButton(text="❌ Yopish", callback_data="close_anime_view"),
+                InlineKeyboardButton(text="➡️ Keyingi", callback_data=next_cb)
             )
-
-            # Keyingi sahifaga o'tish tugmasi (>)
-            if page < total_pages:
-                next_start = page * per_page + 1
-                next_end = min((page + 1) * per_page, sorted_episodes[-1])
-                nav_buttons.append(
-                    InlineKeyboardButton(
-                        text=f"{next_start}-{next_end} >",
-                        callback_data=f"ep_page_{anime_id}_{page + 1}",
-                        style="primary"
-                    )
-                )
-
-            builder.row(*nav_buttons)
+        else:
+            builder.row(
+                InlineKeyboardButton(text="❌ Yopish", callback_data="close_anime_view")
+            )
     else:
-        # Agar admin hali hech qanday qism yuklamagan bo'lsa
         builder.row(
             InlineKeyboardButton(
                 text="⏳ Qismlar tez orada yuklanadi",
-                callback_data="episodes_coming_soon",
-                style="primary"
+                callback_data="episodes_coming_soon"
             )
         )
-
-    # Eng pastki qatorda alohida keng tugma: ❌ Yopish (danger / qizil rangda)
-    builder.row(
-        InlineKeyboardButton(text="❌ 𝗬𝗼𝗽𝗶𝘀𝗵", callback_data="close_anime_view", style="danger")
-    )
+        builder.row(
+            InlineKeyboardButton(text="❌ Yopish", callback_data="close_anime_view")
+        )
 
     return builder.as_markup()
 
