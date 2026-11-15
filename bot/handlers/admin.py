@@ -1208,7 +1208,8 @@ async def sync_mangas_json():
         "data/mangas.json",
         "miniapp/manga/mangas.json",
         "docs/manga/mangas.json",
-        "/var/www/html/manga/mangas.json"
+        "/var/www/html/manga/mangas.json",
+        "/var/www/html/data/mangas.json"
     ]
     for p in paths:
         try:
@@ -1239,7 +1240,8 @@ async def sync_shorts_json():
         "data/shorts.json",
         "miniapp/shorts/shorts.json",
         "docs/shorts/shorts.json",
-        "/var/www/html/shorts/shorts.json"
+        "/var/www/html/shorts/shorts.json",
+        "/var/www/html/data/shorts.json"
     ]
     for p in paths:
         try:
