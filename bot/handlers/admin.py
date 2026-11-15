@@ -1205,6 +1205,7 @@ async def sync_mangas_json():
             "desc": m.get("description", "")
         })
     paths = [
+        "data/mangas.json",
         "miniapp/manga/mangas.json",
         "docs/manga/mangas.json",
         "/var/www/html/manga/mangas.json"
@@ -1235,6 +1236,7 @@ async def sync_shorts_json():
             "comments": s.get("comments_count", 0)
         })
     paths = [
+        "data/shorts.json",
         "miniapp/shorts/shorts.json",
         "docs/shorts/shorts.json",
         "/var/www/html/shorts/shorts.json"

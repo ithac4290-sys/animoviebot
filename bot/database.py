@@ -851,8 +851,35 @@ class Database:
     async def add_manga(self, title: str, cover: str, genre: str, status: str,
                         chapters_count: int = 1, description: str = "",
                         rating: str = "4.9", data: Optional[Dict[str, Any]] = None) -> int:
-        """Yangi manga qo'shish"""
-        data_json = json.dumps(data or {"chapters": []})
+        """
+        Yangi manga qo'shish.
+        Barcha metama'lumotlar to'liq data JSONB maydoniga yuklanadi!
+        """
+        now_iso = datetime.now().isoformat()
+        full_data = {
+            "title": title,
+            "cover": cover,
+            "genre": genre,
+            "status": status,
+            "chapters_count": chapters_count,
+            "description": description,
+            "rating": rating,
+            "views": 0,
+            "likes": 0,
+            "chapters": [
+                {
+                    "chapter_num": i,
+                    "title": f"{i}-bob: Boshlanish",
+                    "created_at": now_iso
+                }
+                for i in range(1, min(chapters_count + 1, 31))
+            ],
+            "created_at": now_iso
+        }
+        if data and isinstance(data, dict):
+            full_data.update(data)
+
+        data_json = json.dumps(full_data)
         if self.is_postgres and self.pool:
             async with self.pool.acquire() as conn:
                 m_id = await conn.fetchval("""
@@ -935,8 +962,27 @@ class Database:
     async def add_short(self, title: str, video_file_id: str, video_url: Optional[str] = None,
                         caption: str = "", sound_title: str = "AniMovie Asl ovoz",
                         creator: str = "@Ani_Movei_UZ", data: Optional[Dict[str, Any]] = None) -> int:
-        """Yangi short video qo'shish"""
-        data_json = json.dumps(data or {})
+        """
+        Yangi short video qo'shish.
+        Barcha video metama'lumotlari to'liq data JSONB maydoniga yuklanadi!
+        """
+        now_iso = datetime.now().isoformat()
+        full_data = {
+            "title": title,
+            "video_file_id": video_file_id,
+            "video_url": video_url or "",
+            "caption": caption,
+            "sound_title": sound_title,
+            "creator": creator,
+            "likes_count": 0,
+            "comments_count": 0,
+            "views": 0,
+            "created_at": now_iso
+        }
+        if data and isinstance(data, dict):
+            full_data.update(data)
+
+        data_json = json.dumps(full_data)
         if self.is_postgres and self.pool:
             async with self.pool.acquire() as conn:
                 s_id = await conn.fetchval("""
