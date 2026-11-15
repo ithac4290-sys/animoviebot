@@ -5,11 +5,12 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from bot.config import config
 
 
-def get_main_menu_keyboard(bot_username: str) -> InlineKeyboardMarkup:
+def get_main_menu_keyboard(bot_username: str, is_vip: bool = False, user_id: int = 0) -> InlineKeyboardMarkup:
     """
     1. ASOSIY BOSH MENYU:
     - 1-qator: [ 🔍 𝗔𝗻𝗶𝗺𝗲 𝗶𝘇𝗹𝗮𝘀𝗵 ]
-    - 2-qator: [ 📖 𝗠𝗮𝗻𝗴𝗮 𝗸𝗼'𝗿𝗶𝘀𝗵 ] (Mini App) | [ ⚡️ 𝗦𝗵𝗼𝗿𝘁𝘀 𝗸𝗼'𝗿𝗶𝘀𝗵 ] (Mini App)
+    - 2-qator: [ 📖 𝗠𝗮𝗻𝗴𝗮 𝗸𝗼'𝗿𝗶𝘀𝗵 ] | [ ⚡️ 𝗦𝗵𝗼𝗿𝘁𝘀 𝗸𝗼'𝗿𝗶𝘀𝗵 ]
+      (Faqat VIP foydalanuvchilar uchun WebApp ochiladi, oddiy foydalanuvchilarga VIP ogohlantirish beriladi)
     - 3-qator: [ 👤 𝗞𝗮𝗯𝗶𝗻𝗲𝘁 ] | [ 👑 𝗩𝗜𝗣 𝗢𝗯𝘂𝗻𝗮 ]
     """
     builder = InlineKeyboardBuilder()
@@ -22,17 +23,21 @@ def get_main_menu_keyboard(bot_username: str) -> InlineKeyboardMarkup:
         )
     )
 
-    # 2-qator: 📖 Manga ko'rish (Mini App) | ⚡️ Shorts ko'rish (Mini App)
-    manga_btn = (
-        InlineKeyboardButton(text="📖 𝗠𝗮𝗻𝗴𝗮 𝗸𝗼'𝗿𝗶𝘀𝗵", web_app=WebAppInfo(url=config.manga_webapp_url))
-        if getattr(config, 'manga_webapp_url', None)
-        else InlineKeyboardButton(text="📖 𝗠𝗮𝗻𝗴𝗮 𝗸𝗼'𝗿𝗶𝘀𝗵", callback_data="btn_manga")
-    )
-    shorts_btn = (
-        InlineKeyboardButton(text="⚡️ 𝗦𝗵𝗼𝗿𝘁𝘀 𝗸𝗼'𝗿𝗶𝘀𝗵", web_app=WebAppInfo(url=config.shorts_webapp_url))
-        if getattr(config, 'shorts_webapp_url', None)
-        else InlineKeyboardButton(text="⚡️ 𝗦𝗵𝗼𝗿𝘁𝘀 𝗸𝗼'𝗿𝗶𝘀𝗵", callback_data="btn_shorts")
-    )
+    # 2-qator: 📖 Manga ko'rish | ⚡️ Shorts ko'rish
+    manga_base = config.manga_webapp_url
+    shorts_base = config.shorts_webapp_url
+    sep = "&" if "?" in manga_base else "?"
+    manga_url = f"{manga_base}{sep}vip=1&user_id={user_id}"
+    sep_s = "&" if "?" in shorts_base else "?"
+    shorts_url = f"{shorts_base}{sep_s}vip=1&user_id={user_id}"
+
+    if is_vip:
+        manga_btn = InlineKeyboardButton(text="📖 𝗠𝗮𝗻𝗴𝗮 𝗸𝗼'𝗿𝗶𝘀𝗵", web_app=WebAppInfo(url=manga_url))
+        shorts_btn = InlineKeyboardButton(text="⚡️ 𝗦𝗵𝗼𝗿𝘁𝘀 𝗸𝗼'𝗿𝗶𝘀𝗵", web_app=WebAppInfo(url=shorts_url))
+    else:
+        manga_btn = InlineKeyboardButton(text="📖 𝗠𝗮𝗻𝗴𝗮 [VIP 🔒]", callback_data="vip_required_manga")
+        shorts_btn = InlineKeyboardButton(text="⚡️ 𝗦𝗵𝗼𝗿𝘁𝘀 [VIP 🔒]", callback_data="vip_required_shorts")
+
     builder.row(manga_btn, shorts_btn)
 
     # 3-qator: 👤 Kabinet | 👑 VIP Obuna
@@ -289,6 +294,10 @@ def get_admin_main_keyboard() -> InlineKeyboardMarkup:
     builder.row(
         InlineKeyboardButton(text="➕ Yangi anime qo'shish", callback_data="admin_add_anime", style="success"),
         InlineKeyboardButton(text="🎬 Qism yuklash", callback_data="admin_add_episode", style="primary")
+    )
+    builder.row(
+        InlineKeyboardButton(text="📖 Manga yuklash", callback_data="admin_add_manga", style="primary"),
+        InlineKeyboardButton(text="⚡️ Shorts yuklash", callback_data="admin_add_shorts", style="primary")
     )
     builder.row(
         InlineKeyboardButton(text="📋 Animelar ro'yxati", callback_data="admin_list_animes_0", style="primary"),

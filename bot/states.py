@@ -48,3 +48,19 @@ class UserSearchState(StatesGroup):
 
 class VipPaymentState(StatesGroup):
     receipt = State()         # To'lov cheki (rasm)
+
+
+class AddMangaState(StatesGroup):
+    title = State()           # Manga nomi
+    cover = State()           # Muqova rasmi
+    genre = State()           # Janri
+    status = State()          # Holati
+    chapters_count = State()  # Jami boblar soni
+    description = State()     # Tavsif
+
+
+class AddShortsState(StatesGroup):
+    video = State()           # Qisqa video (MP4)
+    title = State()           # Anime / sahna nomi
+    caption = State()         # Tavsif va xeshteglar
+    sound = State()           # Ovoz / musiqa nomi

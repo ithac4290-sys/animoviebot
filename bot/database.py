@@ -97,6 +97,39 @@ class Database:
                     data JSONB DEFAULT '{}'::jsonb
                 );
             """)
+
+            # 5. Mangalar jadvali
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS mangas (
+                    id SERIAL PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    cover TEXT NOT NULL,
+                    genre TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    chapters_count INTEGER DEFAULT 1,
+                    description TEXT,
+                    rating TEXT DEFAULT '4.9',
+                    data JSONB DEFAULT '{"chapters": []}'::jsonb,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+
+            # 6. Shorts jadvali
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS shorts (
+                    id SERIAL PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    video_file_id TEXT NOT NULL,
+                    video_url TEXT,
+                    creator TEXT DEFAULT '@Ani_Movei_UZ',
+                    caption TEXT,
+                    sound_title TEXT DEFAULT 'AniMovie Asl ovoz',
+                    likes_count INTEGER DEFAULT 0,
+                    comments_count INTEGER DEFAULT 0,
+                    data JSONB DEFAULT '{}'::jsonb,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
             logger.info("PostgreSQL jadvallari tekshirildi va tayyor!")
 
     async def _init_sqlite_tables(self):
@@ -148,6 +181,35 @@ class Database:
                     title TEXT NOT NULL,
                     invite_link TEXT NOT NULL,
                     is_active INTEGER DEFAULT 1
+                );
+            """)
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS mangas (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    cover TEXT NOT NULL,
+                    genre TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    chapters_count INTEGER DEFAULT 1,
+                    description TEXT,
+                    rating TEXT DEFAULT '4.9',
+                    data TEXT DEFAULT '{"chapters": []}',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS shorts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    video_file_id TEXT NOT NULL,
+                    video_url TEXT,
+                    creator TEXT DEFAULT '@Ani_Movei_UZ',
+                    caption TEXT,
+                    sound_title TEXT DEFAULT 'AniMovie Asl ovoz',
+                    likes_count INTEGER DEFAULT 0,
+                    comments_count INTEGER DEFAULT 0,
+                    data TEXT DEFAULT '{}',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
             await db.commit()
@@ -783,6 +845,145 @@ class Database:
                 cursor = await db.execute("DELETE FROM sponsor_channels WHERE channel_id = ?", (channel_id,))
                 await db.commit()
                 return cursor.rowcount > 0
+
+    # ================= Manga bilan ishlash =================
+
+    async def add_manga(self, title: str, cover: str, genre: str, status: str,
+                        chapters_count: int = 1, description: str = "",
+                        rating: str = "4.9", data: Optional[Dict[str, Any]] = None) -> int:
+        """Yangi manga qo'shish"""
+        data_json = json.dumps(data or {"chapters": []})
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                m_id = await conn.fetchval("""
+                    INSERT INTO mangas (title, cover, genre, status, chapters_count, description, rating, data)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
+                    RETURNING id;
+                """, title, cover, genre, status, chapters_count, description, rating, data_json)
+                return m_id
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                cursor = await db.execute("""
+                    INSERT INTO mangas (title, cover, genre, status, chapters_count, description, rating, data)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (title, cover, genre, status, chapters_count, description, rating, data_json))
+                await db.commit()
+                return cursor.lastrowid
+
+    async def get_all_mangas(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """Barcha mangalar ro'yxati"""
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                rows = await conn.fetch("SELECT * FROM mangas ORDER BY id DESC LIMIT $1", limit)
+                res = []
+                for r in rows:
+                    d = dict(r)
+                    if isinstance(d.get("data"), str):
+                        try:
+                            d["data"] = json.loads(d["data"])
+                        except Exception:
+                            pass
+                    res.append(d)
+                return res
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                db.row_factory = aiosqlite.Row
+                cursor = await db.execute("SELECT * FROM mangas ORDER BY id DESC LIMIT ?", (limit,))
+                rows = await cursor.fetchall()
+                res = []
+                for r in rows:
+                    d = dict(r)
+                    if isinstance(d.get("data"), str):
+                        try:
+                            d["data"] = json.loads(d["data"])
+                        except Exception:
+                            pass
+                    res.append(d)
+                return res
+
+    async def get_manga(self, manga_id: int) -> Optional[Dict[str, Any]]:
+        """Alohida manga ma'lumotlari"""
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                row = await conn.fetchrow("SELECT * FROM mangas WHERE id = $1", manga_id)
+                if row:
+                    d = dict(row)
+                    if isinstance(d.get("data"), str):
+                        try:
+                            d["data"] = json.loads(d["data"])
+                        except Exception:
+                            pass
+                    return d
+                return None
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                db.row_factory = aiosqlite.Row
+                cursor = await db.execute("SELECT * FROM mangas WHERE id = ?", (manga_id,))
+                row = await cursor.fetchone()
+                if row:
+                    d = dict(row)
+                    if isinstance(d.get("data"), str):
+                        try:
+                            d["data"] = json.loads(d["data"])
+                        except Exception:
+                            pass
+                    return d
+                return None
+
+    # ================= Shorts bilan ishlash =================
+
+    async def add_short(self, title: str, video_file_id: str, video_url: Optional[str] = None,
+                        caption: str = "", sound_title: str = "AniMovie Asl ovoz",
+                        creator: str = "@Ani_Movei_UZ", data: Optional[Dict[str, Any]] = None) -> int:
+        """Yangi short video qo'shish"""
+        data_json = json.dumps(data or {})
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                s_id = await conn.fetchval("""
+                    INSERT INTO shorts (title, video_file_id, video_url, caption, sound_title, creator, data)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+                    RETURNING id;
+                """, title, video_file_id, video_url or "", caption, sound_title, creator, data_json)
+                return s_id
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                cursor = await db.execute("""
+                    INSERT INTO shorts (title, video_file_id, video_url, caption, sound_title, creator, data)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (title, video_file_id, video_url or "", caption, sound_title, creator, data_json))
+                await db.commit()
+                return cursor.lastrowid
+
+    async def get_all_shorts(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """Barcha shortslar ro'yxati"""
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                rows = await conn.fetch("SELECT * FROM shorts ORDER BY id DESC LIMIT $1", limit)
+                res = []
+                for r in rows:
+                    d = dict(r)
+                    if isinstance(d.get("data"), str):
+                        try:
+                            d["data"] = json.loads(d["data"])
+                        except Exception:
+                            pass
+                    res.append(d)
+                return res
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                db.row_factory = aiosqlite.Row
+                cursor = await db.execute("SELECT * FROM shorts ORDER BY id DESC LIMIT ?", (limit,))
+                rows = await cursor.fetchall()
+                res = []
+                for r in rows:
+                    d = dict(r)
+                    if isinstance(d.get("data"), str):
+                        try:
+                            d["data"] = json.loads(d["data"])
+                        except Exception:
+                            pass
+                    res.append(d)
+                return res
 
 
 db = Database()

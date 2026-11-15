@@ -83,8 +83,10 @@ async def handle_start(message: Message, command: CommandObject, bot: Bot, state
             return
 
     # Parametr bo'lmaganda: ASOSIY BOSH MENYU (3-rasm dizayni)
+    user_id = message.from_user.id
+    is_vip = (user_id in config.admins) or await db.check_user_vip_status(user_id)
     text = get_welcome_text(message.from_user.full_name)
-    kb = get_main_menu_keyboard(bot_username)
+    kb = get_main_menu_keyboard(bot_username, is_vip=is_vip, user_id=user_id)
     await message.answer(text=text, reply_markup=kb, parse_mode="HTML")
 
 
@@ -927,11 +929,32 @@ async def handle_shorts(callback: CallbackQuery):
 @router.callback_query(F.data == "btn_home")
 async def handle_back_home(callback: CallbackQuery, bot: Bot):
     await callback.answer()
+    user_id = callback.from_user.id
+    is_vip = (user_id in config.admins) or await db.check_user_vip_status(user_id)
     bot_info = await bot.get_me()
     bot_username = bot_info.username or config.bot_username
     text = get_welcome_text(callback.from_user.full_name)
-    kb = get_main_menu_keyboard(bot_username)
+    kb = get_main_menu_keyboard(bot_username, is_vip=is_vip, user_id=user_id)
     await callback.message.edit_text(text=text, reply_markup=kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data.in_(["vip_required_manga", "vip_required_shorts"]))
+async def handle_vip_required_notice(callback: CallbackQuery):
+    await callback.answer("🔒 Ushbu bo'lim faqat VIP foydalanuvchilar uchun!", show_alert=True)
+    text = (
+        "👑 <b>Hurmatli foydalanuvchi!</b>\n\n"
+        "📖 <b>Manga</b> va ⚡️ <b>Shorts</b> Mini App bo'limlari faqat <b>VIP obunachilarimiz</b> uchun ochiq!\n\n"
+        "💎 <b>VIP obuna imtiyozlari:</b>\n"
+        "• Barcha o'zbekcha tarjima mangalarni cheklovlarsiz o'qish\n"
+        "• Eng sara anime shortslarni reklamasiz tomosha qilish\n"
+        "• Barcha premyera animelarni birinchilardan 1080p sifatda yuklash\n"
+        "• Sponsor kanallarga majburiy a'zo bo'lish talab etilmaydi\n\n"
+        "<i>VIP obunani faollashtirish uchun quyidagi tugmani bosing:</i>"
+    )
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="💎 VIP Obuna xarid qilish", callback_data="btn_vip"))
+    builder.row(InlineKeyboardButton(text="⬅️ Bosh menyuga qaytish", callback_data="btn_home"))
+    await callback.message.edit_text(text=text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
 
 # 9. ✅ Obunani tekshirish callback
@@ -960,7 +983,8 @@ async def handle_check_subscription(callback: CallbackQuery, bot: Bot):
             await show_anime_by_id(callback, target_anime_id, bot, bot_username)
         else:
             text = get_welcome_text(callback.from_user.full_name)
-            kb = get_main_menu_keyboard(bot_username)
+            is_vip = (user_id in config.admins) or await db.check_user_vip_status(user_id)
+            kb = get_main_menu_keyboard(bot_username, is_vip=is_vip, user_id=user_id)
             await callback.message.answer(text=text, reply_markup=kb, parse_mode="HTML")
     else:
         await callback.answer("❌ Hali barcha kanallarga a'zo bo'lmadingiz!", show_alert=True)

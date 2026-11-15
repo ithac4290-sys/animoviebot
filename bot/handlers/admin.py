@@ -15,7 +15,9 @@ from bot.states import (
     AddChannelState,
     GiveVipState,
     BroadcastState,
-    DeleteAnimeState
+    DeleteAnimeState,
+    AddMangaState,
+    AddShortsState
 )
 from bot.keyboards import (
     get_admin_main_keyboard,
@@ -1179,4 +1181,321 @@ async def handle_confirm_delete_anime(callback: CallbackQuery):
         await callback.message.edit_text(text, reply_markup=get_admin_main_keyboard(), parse_mode="HTML")
     except Exception:
         await callback.message.answer(text, reply_markup=get_admin_main_keyboard(), parse_mode="HTML")
+
+
+# ================= MANGA VA SHORTS YUKLASH BO'LIMI =================
+
+import os
+import json
+
+
+async def sync_mangas_json():
+    """Mini App uchun mangas.json faylini yangilash"""
+    mangas = await db.get_all_mangas(limit=200)
+    data = []
+    for m in mangas:
+        data.append({
+            "id": m["id"],
+            "title": m["title"],
+            "cover": m["cover"],
+            "genre": m["genre"],
+            "status": m["status"],
+            "chapters": m.get("chapters_count", 1),
+            "rating": m.get("rating", "4.9"),
+            "desc": m.get("description", "")
+        })
+    paths = [
+        "miniapp/manga/mangas.json",
+        "docs/manga/mangas.json",
+        "/var/www/html/manga/mangas.json"
+    ]
+    for p in paths:
+        try:
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            with open(p, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
+
+
+async def sync_shorts_json():
+    """Mini App uchun shorts.json faylini yangilash"""
+    shorts = await db.get_all_shorts(limit=200)
+    data = []
+    for s in shorts:
+        data.append({
+            "id": s["id"],
+            "title": s["title"],
+            "video_url": s.get("video_url") or f"videos/short_{s['id']}.mp4",
+            "file_id": s.get("video_file_id", ""),
+            "caption": s.get("caption", ""),
+            "sound": s.get("sound_title", "AniMovie Asl ovoz"),
+            "creator": s.get("creator", "@Ani_Movei_UZ"),
+            "likes": s.get("likes_count", 0),
+            "comments": s.get("comments_count", 0)
+        })
+    paths = [
+        "miniapp/shorts/shorts.json",
+        "docs/shorts/shorts.json",
+        "/var/www/html/shorts/shorts.json"
+    ]
+    for p in paths:
+        try:
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            with open(p, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
+
+
+# 1. Manga yuklash
+@router.callback_query(F.data == "admin_add_manga")
+async def start_add_manga(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(AddMangaState.title)
+    text = (
+        "📖 <b>Yangi manga qo'shish</b>\n\n"
+        "Manga nomini kiriting (Masalan: <code>Solo Leveling</code> yoki <code>Attack on Titan</code>):"
+    )
+    await callback.message.edit_text(text, reply_markup=get_admin_cancel_keyboard(), parse_mode="HTML")
+
+
+@router.message(AddMangaState.title)
+async def process_manga_title(message: Message, state: FSMContext):
+    title = message.text.strip()
+    await state.update_data(title=title)
+    await state.set_state(AddMangaState.cover)
+    text = (
+        f"📖 Manga nomi: <b>{html.escape(title)}</b>\n\n"
+        "Endi manga muqovasi (poster) rasmini yuboring yoki rasm havolasini (URL) yozing:"
+    )
+    await message.answer(text, reply_markup=get_admin_cancel_keyboard(), parse_mode="HTML")
+
+
+@router.message(AddMangaState.cover)
+async def process_manga_cover(message: Message, state: FSMContext, bot: Bot):
+    cover_url = ""
+    if message.photo:
+        photo = message.photo[-1]
+        try:
+            file_info = await bot.get_file(photo.file_id)
+            cover_url = f"https://api.telegram.org/file/bot{config.bot_token}/{file_info.file_path}"
+        except Exception:
+            cover_url = "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500"
+        await state.update_data(cover_file_id=photo.file_id)
+    elif message.text and (message.text.startswith("http://") or message.text.startswith("https://")):
+        cover_url = message.text.strip()
+    else:
+        await message.answer("⚠️ Iltimos, muqova rasmini yuboring yoki rasm URL havolasini kiriting:")
+        return
+
+    await state.update_data(cover=cover_url)
+    await state.set_state(AddMangaState.genre)
+
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="⚔️ Jangari", callback_data="genre_action"),
+        InlineKeyboardButton(text="🔮 Fantastika", callback_data="genre_fantasy")
+    )
+    builder.row(
+        InlineKeyboardButton(text="🏃 Sarguzasht", callback_data="genre_adventure"),
+        InlineKeyboardButton(text="❤️ Romantika", callback_data="genre_romance")
+    )
+    builder.row(
+        InlineKeyboardButton(text="😂 Komediya", callback_data="genre_comedy")
+    )
+    builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel"))
+
+    await message.answer("🎭 Manga janrini tanlang yoki matn ko'rinishida yozing:", reply_markup=builder.as_markup())
+
+
+@router.callback_query(AddMangaState.genre, F.data.startswith("genre_"))
+async def process_manga_genre_cb(callback: CallbackQuery, state: FSMContext):
+    genre_map = {
+        "genre_action": "action",
+        "genre_fantasy": "fantasy",
+        "genre_adventure": "adventure",
+        "genre_romance": "romance",
+        "genre_comedy": "comedy"
+    }
+    genre = genre_map.get(callback.data, "action")
+    await state.update_data(genre=genre)
+    await state.set_state(AddMangaState.status)
+
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="🟢 Davom etmoqda", callback_data="mstatus_ongoing"),
+        InlineKeyboardButton(text="🔴 Tugallangan", callback_data="mstatus_completed")
+    )
+    builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel"))
+    await callback.message.edit_text("📌 Manga holatini tanlang:", reply_markup=builder.as_markup())
+
+
+@router.message(AddMangaState.genre)
+async def process_manga_genre_text(message: Message, state: FSMContext):
+    await state.update_data(genre=message.text.strip().lower())
+    await state.set_state(AddMangaState.status)
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="🟢 Davom etmoqda", callback_data="mstatus_ongoing"),
+        InlineKeyboardButton(text="🔴 Tugallangan", callback_data="mstatus_completed")
+    )
+    builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel"))
+    await message.answer("📌 Manga holatini tanlang:", reply_markup=builder.as_markup())
+
+
+@router.callback_query(AddMangaState.status, F.data.startswith("mstatus_"))
+async def process_manga_status_cb(callback: CallbackQuery, state: FSMContext):
+    status = "Davom etmoqda" if callback.data == "mstatus_ongoing" else "Tugallangan"
+    await state.update_data(status=status)
+    await state.set_state(AddMangaState.chapters_count)
+    await callback.message.edit_text(
+        "🔢 <b>Jami boblar sonini kiriting</b> (Masalan: <code>150</code>):",
+        reply_markup=get_admin_cancel_keyboard(),
+        parse_mode="HTML"
+    )
+
+
+@router.message(AddMangaState.chapters_count)
+async def process_manga_chapters(message: Message, state: FSMContext):
+    raw = message.text.strip()
+    if not raw.isdigit():
+        await message.answer("⚠️ Iltimos, faqat raqam kiriting (masalan: 120):")
+        return
+    await state.update_data(chapters_count=int(raw))
+    await state.set_state(AddMangaState.description)
+    await message.answer(
+        "📝 <b>Manga haqida qisqacha tavsif yozing:</b>",
+        reply_markup=get_admin_cancel_keyboard(),
+        parse_mode="HTML"
+    )
+
+
+@router.message(AddMangaState.description)
+async def process_manga_desc(message: Message, state: FSMContext):
+    desc = message.text.strip()
+    data = await state.get_data()
+    title = data.get("title", "Manga")
+    cover = data.get("cover", "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500")
+    genre = data.get("genre", "action")
+    status = data.get("status", "Davom etmoqda")
+    chapters_count = data.get("chapters_count", 1)
+
+    m_id = await db.add_manga(
+        title=title,
+        cover=cover,
+        genre=genre,
+        status=status,
+        chapters_count=chapters_count,
+        description=desc,
+        rating="4.9"
+    )
+
+    await sync_mangas_json()
+    await state.clear()
+
+    text = (
+        f"✅ <b>Manga muvaffaqiyatli saqlandi va Mini App'ga qo'shildi!</b>\n\n"
+        f"🆔 <b>ID:</b> <code>{m_id}</code>\n"
+        f"📖 <b>Nomi:</b> {html.escape(title)}\n"
+        f"🎭 <b>Janri:</b> {genre}\n"
+        f"📌 <b>Holati:</b> {status}\n"
+        f"🔢 <b>Boblar soni:</b> {chapters_count} ta\n"
+        f"📝 <b>Tavsif:</b> {html.escape(desc[:100])}..."
+    )
+    await message.answer(text, reply_markup=get_admin_main_keyboard(), parse_mode="HTML")
+
+
+# 2. Shorts yuklash
+@router.callback_query(F.data == "admin_add_shorts")
+async def start_add_shorts(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(AddShortsState.video)
+    text = (
+        "⚡️ <b>Yangi Shorts video yuklash</b>\n\n"
+        "Shorts uchun qisqa videoni (MP4) yuboring:\n"
+        "<i>Eslatma: Vertikal video (9:16 formatda) bo'lishi tavsiya etiladi.</i>"
+    )
+    await callback.message.edit_text(text, reply_markup=get_admin_cancel_keyboard(), parse_mode="HTML")
+
+
+@router.message(AddShortsState.video)
+async def process_shorts_video(message: Message, state: FSMContext, bot: Bot):
+    if not message.video:
+        await message.answer("⚠️ Iltimos, video fayl yuboring:")
+        return
+
+    video = message.video
+    file_id = video.file_id
+
+    video_rel_url = f"videos/short_{video.file_unique_id}.mp4"
+    dest_dir = "/var/www/html/shorts/videos"
+    if os.path.exists("/var/www/html/shorts"):
+        try:
+            os.makedirs(dest_dir, exist_ok=True)
+            file_dest = os.path.join(dest_dir, f"short_{video.file_unique_id}.mp4")
+            await bot.download(video, destination=file_dest)
+        except Exception:
+            pass
+
+    await state.update_data(video_file_id=file_id, video_url=video_rel_url)
+    await state.set_state(AddShortsState.title)
+    text = (
+        "✅ Video qabul qilindi!\n\n"
+        "Endi ushbu shortning <b>sarlavhasini</b> kiriting (Masalan: <code>Qora Klever: Asta vs Dante</code>):"
+    )
+    await message.answer(text, reply_markup=get_admin_cancel_keyboard(), parse_mode="HTML")
+
+
+@router.message(AddShortsState.title)
+async def process_shorts_title(message: Message, state: FSMContext):
+    title = message.text.strip()
+    await state.update_data(title=title)
+    await state.set_state(AddShortsState.caption)
+    text = (
+        f"🎬 Sarlavha: <b>{html.escape(title)}</b>\n\n"
+        "Endi video <b>tavsifi va xeshteglarini</b> kiriting (Masalan: <code>Epik jang sahnasi! #blackclover #anime #asta</code>):"
+    )
+    await message.answer(text, reply_markup=get_admin_cancel_keyboard(), parse_mode="HTML")
+
+
+@router.message(AddShortsState.caption)
+async def process_shorts_caption(message: Message, state: FSMContext):
+    caption = message.text.strip()
+    await state.update_data(caption=caption)
+    await state.set_state(AddShortsState.sound)
+    text = (
+        "🎵 <b>Musiqa / Ovoz nomini kiriting:</b>\n"
+        "(Masalan: <code>Haruka Mirai — Epic Remix</code> yoki <code>AniMovie Asl ovoz</code>):"
+    )
+    await message.answer(text, reply_markup=get_admin_cancel_keyboard(), parse_mode="HTML")
+
+
+@router.message(AddShortsState.sound)
+async def process_shorts_sound(message: Message, state: FSMContext):
+    sound = message.text.strip()
+    data = await state.get_data()
+    title = data.get("title", "Shorts Video")
+    video_file_id = data.get("video_file_id", "")
+    video_url = data.get("video_url", "videos/short1.mp4")
+    caption = data.get("caption", "")
+
+    s_id = await db.add_short(
+        title=title,
+        video_file_id=video_file_id,
+        video_url=video_url,
+        caption=caption,
+        sound_title=sound,
+        creator="@Ani_Movei_UZ"
+    )
+
+    await sync_shorts_json()
+    await state.clear()
+
+    text = (
+        f"✅ <b>Shorts video muvaffaqiyatli yuklandi va Mini App'ga qo'shildi!</b>\n\n"
+        f"🆔 <b>ID:</b> <code>{s_id}</code>\n"
+        f"⚡️ <b>Sarlavha:</b> {html.escape(title)}\n"
+        f"📝 <b>Tavsif:</b> {html.escape(caption)}\n"
+        f"🎵 <b>Musiqa:</b> {html.escape(sound)}"
+    )
+    await message.answer(text, reply_markup=get_admin_main_keyboard(), parse_mode="HTML")
 

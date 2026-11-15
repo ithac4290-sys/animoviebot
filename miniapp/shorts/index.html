@@ -1025,6 +1025,28 @@
       } catch(e) {}
     }
 
+    // VIP ruxsat tekshiruvi (faqat VIP obunachilar va adminlar uchun)
+    const urlParams = new URLSearchParams(window.location.search);
+    const isVipParam = urlParams.get('vip') === '1';
+    const tgUserId = tg?.initDataUnsafe?.user?.id;
+    const adminIds = [7285523919, 8166740229];
+    const isAdmin = tgUserId && adminIds.includes(Number(tgUserId));
+
+    if (!isVipParam && !isAdmin && !localStorage.getItem('animovie_is_vip')) {
+      document.body.innerHTML = `
+        <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; background: #000; color: white; font-family: 'Plus Jakarta Sans', sans-serif;">
+          <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #f59e0b, #ef4444); border-radius: 24px; display: flex; align-items: center; justify-content: center; font-size: 40px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(245, 158, 11, 0.4);">👑</div>
+          <h2 style="font-size: 22px; font-weight: 800; margin-bottom: 10px;">Faqat VIP Obunachilar Uchun</h2>
+          <p style="font-size: 14px; color: #94a3b8; line-height: 1.6; max-width: 320px; margin-bottom: 28px;">
+            Hurmatli foydalanuvchi, Shorts Mini App bo'limi faqat AniMovie VIP foydalanuvchilari uchun ochiq!
+          </p>
+          <a href="https://t.me/AniMovieuz_bot?start=vip" style="background: linear-gradient(135deg, #ff2d55, #ff6b3d); color: white; text-decoration: none; padding: 14px 28px; border-radius: 14px; font-size: 15px; font-weight: 800; box-shadow: 0 8px 24px rgba(255, 45, 85, 0.4); display: inline-block;">
+            💎 VIP Obunani Xarid Qilish
+          </a>
+        </div>
+      `;
+    }
+
     function haptic(type = 'light') {
       try {
         tg?.HapticFeedback?.impactOccurred(type);
