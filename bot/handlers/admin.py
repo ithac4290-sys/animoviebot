@@ -374,7 +374,52 @@ async def handle_repost_to_channel(callback: CallbackQuery, bot: Bot):
         await callback.answer(f"❌ Xatolik: {str(e)[:100]}", show_alert=True)
 
 
-# ================= 2. QISM YUKLASH =================
+# ================= 2. QISM YUKLASH (BIR NECHTA VIDEOLARNI AVTO ANIQLASH) =================
+
+def extract_episode_number(caption: Optional[str] = None, filename: Optional[str] = None) -> Optional[int]:
+    """
+    Video sarlavhasi (caption) yoki fayl nomidan qism raqamini avtomatik aniqlash.
+    Qo'llab-quvvatlanadigan formatlar:
+    - 1-qism, 2 qism, Qism: 3
+    - 1-seriya, 2 seriya, Seriya 3
+    - Episode 5, Ep. 6, EP07
+    - S01E08, E09
+    - Fayl nomi: Naruto - 10.mp4, Black_Clover_11_[1080p].mkv, 12.mp4
+    - Yolg'iz raqam: 13
+    """
+    patterns = [
+        r'(?i)(\d+)\s*[-_]?\s*qism',
+        r'(?i)qism\s*[-_:#]?\s*(\d+)',
+        r'(?i)(\d+)\s*[-_]?\s*seriya',
+        r'(?i)seriya\s*[-_:#]?\s*(\d+)',
+        r'(?i)\bep(?:isode)?\.?\s*[-_:#]?\s*(\d+)',
+        r'(?i)\bs\d+e(\d+)',
+        r'(?i)\be(\d{1,4})\b'
+    ]
+    for p in patterns:
+        if caption:
+            m = re.search(p, caption)
+            if m:
+                return int(m.group(1))
+        if filename:
+            m = re.search(p, filename)
+            if m:
+                return int(m.group(1))
+
+    # Fayl nomi yoki matndan qism raqamini ajratish
+    for source in [caption, filename]:
+        if not source:
+            continue
+        clean = re.sub(r'(?i)\b(1080p|720p|480p|360p|2160p|4k|x264|x265|hevc|aac)\b', '', source)
+        clean = re.sub(r'\[.*?\]|\(.*?\)', '', clean)
+        clean = clean.replace('_', ' ').replace('-', ' ')
+        nums = re.findall(r'\b(\d{1,4})\b', clean)
+        valid_nums = [int(n) for n in nums if not (1950 <= int(n) <= 2030)]
+        if valid_nums:
+            return valid_nums[-1]
+
+    return None
+
 
 async def _setup_episode_upload(anime_id: int, reply_target: Any, state: FSMContext):
     """Anime qismini yuklash uchun qadamni tayyorlash"""
@@ -391,26 +436,33 @@ async def _setup_episode_upload(anime_id: int, reply_target: Any, state: FSMCont
     next_ep = max(existing_nums, default=0) + 1
     nums_str = ", ".join(str(n) for n in sorted(existing_nums)) if existing_nums else "Hozircha qismlar yo'q"
 
-    await state.update_data(anime_id=anime_id, anime_title=anime["title"], next_ep=next_ep)
-    await state.set_state(AddEpisodeState.episode_num)
+    await state.update_data(
+        anime_id=anime_id,
+        anime_title=anime["title"],
+        next_ep=next_ep,
+        manual_ep_num=None,
+        uploaded_in_session=[]
+    )
+    # Admin darhol videolarni tashlashi mumkin bo'lishi uchun video holatiga o'tkazamiz
+    await state.set_state(AddEpisodeState.video)
 
-    from aiogram.utils.keyboard import InlineKeyboardBuilder
-    from aiogram.types import InlineKeyboardButton
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
             text=f"▶️ Tavsiya etilgan: {next_ep}-qism",
-            callback_data=f"set_ep_num_{anime_id}_{next_ep}",
-            style="success"
+            callback_data=f"set_ep_num_{anime_id}_{next_ep}"
         )
     )
-    builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel", style="danger"))
+    builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel"))
 
     text = (
         f"🎬 Tanlangan anime: <b>{html.escape(anime['title'])}</b>\n\n"
         f"📁 <b>Yuklangan qismlar ({len(existing_nums)} ta):</b> {nums_str}\n"
         f"💡 <b>Tavsiya etilgan navbatdagi qism:</b> {next_ep}\n\n"
-        f"Qism raqamini tugmadan tanlang yoki boshqa raqam kiriting:\n<i>(Masalan: 1 yoki 2)</i>"
+        f"📹 <b>Videolarni yuboring (bitta yoki birdaniga ko'plab tashlashingiz mumkin):</b>\n"
+        f"• Bot video matni (caption) yoki fayl nomidan qismni o'zi avtomatik aniqlaydi (masalan: <i>1-qism, Episode 2, 03.mp4</i>).\n"
+        f"• Agar matnda raqam bo'lmasa, navbatdagi <b>{next_ep}-qismdan</b> boshlab ketma-ket joylaydi.\n\n"
+        f"<i>Yoki aniq bitta qismga yuklash uchun qism raqamini yozing yoki tavsiya tugmasini bosing:</i>"
     )
 
     if isinstance(reply_target, CallbackQuery):
@@ -458,12 +510,18 @@ async def handle_set_ep_num_cb(callback: CallbackQuery, state: FSMContext):
     anime = await db.get_anime(anime_id)
     anime_title = anime["title"] if anime else "Anime"
 
-    await state.update_data(anime_id=anime_id, episode_num=ep_num, anime_title=anime_title)
+    await state.update_data(
+        anime_id=anime_id,
+        episode_num=ep_num,
+        manual_ep_num=ep_num,
+        next_ep=ep_num,
+        anime_title=anime_title
+    )
     await state.set_state(AddEpisodeState.video)
 
     await callback.message.edit_text(
         f"🎬 <b>{html.escape(anime_title)}</b>\n\n"
-        f"3-qadam: <b>{ep_num}-qism</b> videosini (yoki fayl ko'rinishida) yuboring:",
+        f"➡️ <b>{ep_num}-qism</b> videosini yuboring (yoki birdaniga bir nechta videolarni tashlang):",
         reply_markup=get_admin_cancel_keyboard(),
         parse_mode="HTML"
     )
@@ -481,12 +539,19 @@ async def handle_quick_add_ep_cb(callback: CallbackQuery, state: FSMContext):
         await callback.answer("Anime topilmadi!", show_alert=True)
         return
 
-    await state.update_data(anime_id=anime_id, episode_num=ep_num, anime_title=anime["title"])
+    await state.update_data(
+        anime_id=anime_id,
+        episode_num=ep_num,
+        manual_ep_num=ep_num,
+        next_ep=ep_num,
+        anime_title=anime["title"],
+        uploaded_in_session=[]
+    )
     await state.set_state(AddEpisodeState.video)
 
     text = (
         f"🎬 <b>{html.escape(anime['title'])}</b>\n\n"
-        f"➡️ <b>{ep_num}-qism</b> videosini (yoki hujjat/fayl sifatida) yuboring:"
+        f"➡️ <b>{ep_num}-qism</b> videosini yuboring (yoki birdaniga bir nechta videolarni tashlang):"
     )
     try:
         await callback.message.edit_text(text, reply_markup=get_admin_cancel_keyboard(), parse_mode="HTML")
@@ -519,22 +584,47 @@ async def process_episode_num(message: Message, state: FSMContext):
     data = await state.get_data()
     anime_title = data.get("anime_title", "Anime")
 
-    await state.update_data(episode_num=ep_num)
+    await state.update_data(episode_num=ep_num, manual_ep_num=ep_num, next_ep=ep_num)
     await state.set_state(AddEpisodeState.video)
     await message.answer(
         f"🎬 <b>{html.escape(anime_title)}</b>\n\n"
-        f"3-qadam: <b>{ep_num}-qism</b> videosini (yoki fayl ko'rinishida) yuboring:",
+        f"➡️ <b>{ep_num}-qism</b> videosini yuboring (yoki birdaniga bir nechta videolarni tashlang):",
         reply_markup=get_admin_cancel_keyboard(),
         parse_mode="HTML"
     )
 
 
 @router.message(AddEpisodeState.video, F.video | F.document)
+@router.message(AddEpisodeState.episode_num, F.video | F.document)
 async def process_episode_file(message: Message, state: FSMContext):
     data = await state.get_data()
-    anime_id = data["anime_id"]
-    ep_num = data["episode_num"]
+    anime_id = data.get("anime_id")
     anime_title = data.get("anime_title", "Anime")
+    manual_ep_num = data.get("manual_ep_num")
+
+    if not anime_id:
+        await message.answer("⚠️ Avval animeni tanlang!")
+        return
+
+    # Sarlavha yoki fayl nomidan qism raqamini avtomatik aniqlash
+    filename = message.document.file_name if message.document else None
+    detected_ep = extract_episode_number(message.caption, filename)
+
+    if manual_ep_num is not None:
+        ep_num = manual_ep_num
+        await state.update_data(manual_ep_num=None)
+    elif detected_ep is not None:
+        ep_num = detected_ep
+    else:
+        next_ep = data.get("next_ep")
+        if not next_ep:
+            episodes = await db.get_anime_episodes(anime_id)
+            existing_nums = [e["episode_num"] for e in episodes]
+            next_ep = max(existing_nums, default=0) + 1
+        ep_num = next_ep
+
+    # Keyingi videolar uchun navbatdagi qism raqamini yangilaymiz
+    await state.update_data(next_ep=ep_num + 1)
 
     if message.video:
         file_id = message.video.file_id
@@ -551,13 +641,93 @@ async def process_episode_file(message: Message, state: FSMContext):
         caption=message.caption
     )
 
-    await state.clear()
-    next_ep = ep_num + 1
-    await message.answer(
-        f"✅ <b>{html.escape(anime_title)}</b> animesining <b>{ep_num}-qismi</b> muvaffaqiyatli saqlandi!\n\n"
-        f"Keyingi <b>{next_ep}-qismni</b> darhol yuklashni xohlaysizmi?",
-        reply_markup=get_admin_after_episode_keyboard(anime_id, next_ep),
+    uploaded_in_session = data.get("uploaded_in_session", [])
+    if ep_num not in uploaded_in_session:
+        uploaded_in_session.append(ep_num)
+    await state.update_data(uploaded_in_session=uploaded_in_session)
+    await state.set_state(AddEpisodeState.video)
+
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(
+            text=f"✅ Yakunlash ({len(uploaded_in_session)} ta yuklandi)",
+            callback_data=f"finish_upload_episodes_{anime_id}"
+        )
+    )
+    builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel"))
+
+    await message.reply(
+        f"✅ <b>{html.escape(anime_title)}</b>: <b>{ep_num}-qism</b> muvaffaqiyatli saqlandi!\n\n"
+        f"<i>Yana videolarni tashlashingiz mumkin yoki tugatgach '✅ Yakunlash' tugmasini bosing.</i>",
+        reply_markup=builder.as_markup(),
         parse_mode="HTML"
+    )
+
+
+async def _finish_episodes_upload(target: Any, state: FSMContext, anime_id: int, anime_title: str):
+    data = await state.get_data()
+    uploaded = data.get("uploaded_in_session", [])
+    await state.clear()
+
+    nums_str = ", ".join(str(n) for n in sorted(set(uploaded))) if uploaded else "0"
+
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="🎬 Animeni ko'rish", callback_data=f"admin_view_anime_{anime_id}"),
+        InlineKeyboardButton(text="➕ Yana qism yuklash", callback_data=f"admin_pick_anime_{anime_id}")
+    )
+    builder.row(InlineKeyboardButton(text="🏠 Admin panel", callback_data="admin_panel"))
+
+    msg_text = (
+        f"🎉 <b>{html.escape(anime_title)}</b> animesiga "
+        f"<b>{len(uploaded)} ta qism</b> ({nums_str}) muvaffaqiyatli saqlandi!\n\n"
+        f"Kerakli bo'limni tanlang:"
+    )
+
+    if isinstance(target, CallbackQuery):
+        try:
+            await target.message.edit_text(msg_text, reply_markup=builder.as_markup(), parse_mode="HTML")
+        except Exception:
+            await target.message.answer(msg_text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    elif isinstance(target, Message):
+        await target.answer(msg_text, reply_markup=builder.as_markup(), parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("finish_upload_episodes_"))
+async def handle_finish_upload_cb(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    parts = callback.data.split("_")
+    anime_id = int(parts[3])
+    anime = await db.get_anime(anime_id)
+    data = await state.get_data()
+    anime_title = anime["title"] if anime else data.get("anime_title", "Anime")
+    await _finish_episodes_upload(callback, state, anime_id, anime_title)
+
+
+@router.message(AddEpisodeState.video, F.text)
+async def process_episode_text(message: Message, state: FSMContext):
+    text = message.text.strip().lower()
+    data = await state.get_data()
+    anime_id = data.get("anime_id")
+    anime_title = data.get("anime_title", "Anime")
+
+    if text in ["/done", "done", "tayyor", "yakunlash", "tugadi", "tamom"]:
+        await _finish_episodes_upload(message, state, anime_id, anime_title)
+        return
+
+    if message.text.strip().isdigit():
+        ep_num = int(message.text.strip())
+        await state.update_data(manual_ep_num=ep_num, next_ep=ep_num)
+        await message.answer(
+            f"💡 <b>{ep_num}-qism</b> tanlandi. Endi videoni yuboring:",
+            reply_markup=get_admin_cancel_keyboard(),
+            parse_mode="HTML"
+        )
+        return
+
+    await message.answer(
+        "📹 <b>Videolarni yuboring</b> (bir nechta bo'lsa birdaniga tashlashingiz mumkin).\n"
+        "Tugatgach <b>/done</b> deb yozing yoki pastdagi <b>✅ Yakunlash</b> tugmasini bosing."
     )
 
 
