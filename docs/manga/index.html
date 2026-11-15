@@ -1068,15 +1068,34 @@
 
       const chaptersList = document.getElementById('chaptersList');
       chaptersList.innerHTML = '';
-      for (let i = 1; i <= Math.min(manga.chapters, 30); i++) {
-        const item = document.createElement('div');
-        item.className = 'chapter-item';
-        item.innerHTML = `
-          <span>📖 ${i}-bob: Boshlanish</span>
-          <span style="color: var(--accent-red); font-weight:700;">Mutolaa</span>
-        `;
-        item.onclick = () => openReader(i);
-        chaptersList.appendChild(item);
+
+      const realChapters = (manga.data && Array.isArray(manga.data.chapters)) ? manga.data.chapters : [];
+      if (realChapters.length > 0) {
+        realChapters.forEach(ch => {
+          const chNum = ch.chapter_num || 1;
+          const chTitle = ch.title || `${chNum}-bob`;
+          const pCount = ch.pages_count || (ch.pages ? ch.pages.length : 0);
+          const item = document.createElement('div');
+          item.className = 'chapter-item';
+          item.innerHTML = `
+            <span>📖 ${chTitle} ${pCount > 0 ? `<small style="color:var(--text-muted); font-size:11px;">(${pCount} sahifa)</small>` : ''}</span>
+            <span style="color: var(--accent-red); font-weight:700;">Mutolaa</span>
+          `;
+          item.onclick = () => openReader(chNum);
+          chaptersList.appendChild(item);
+        });
+      } else {
+        const count = manga.chapters || 1;
+        for (let i = 1; i <= Math.min(count, 30); i++) {
+          const item = document.createElement('div');
+          item.className = 'chapter-item';
+          item.innerHTML = `
+            <span>📖 ${i}-bob</span>
+            <span style="color: var(--accent-red); font-weight:700;">Mutolaa</span>
+          `;
+          item.onclick = () => openReader(i);
+          chaptersList.appendChild(item);
+        }
       }
 
       document.getElementById('detailsModal').classList.add('active');
@@ -1091,18 +1110,42 @@
       currentChapter = chNum;
       document.getElementById('readerTitle').innerText = `${currentManga.title} — ${chNum}-bob`;
       const container = document.getElementById('readerPages');
-      container.innerHTML = `
-        <div style="padding: 24px 16px; text-align: center; color: var(--text-muted); background: #000;">
-          <div style="font-size: 32px; margin-bottom: 8px;">📑</div>
-          <h3 style="color: white; margin-bottom: 6px; font-size:16px;">${currentChapter}-bob: Tarjima tayyor</h3>
-          <p style="font-size: 12px; margin-bottom: 16px;">AniMovie Uz jamoasi tomonidan taqdim etildi</p>
-          <img class="reader-panel-img" src="${currentManga.cover}" style="border-radius: 8px; margin-bottom: 12px;" />
-          <img class="reader-panel-img" src="https://images.unsplash.com/photo-1578632767115-351597cf2477?w=700&auto=format&fit=crop&q=80" style="border-radius: 8px; margin-bottom: 12px;" />
-          <div style="padding: 20px 0; color: #4ade80; font-size: 13px; font-weight: 700;">
-            ✅ Bob yakunlandi. Keyingi bobga o'tishingiz mumkin!
+      container.innerHTML = '';
+
+      let chData = null;
+      if (currentManga.data && Array.isArray(currentManga.data.chapters)) {
+        chData = currentManga.data.chapters.find(c => c.chapter_num === chNum);
+      }
+
+      const pages = (chData && Array.isArray(chData.pages)) ? chData.pages : [];
+
+      if (pages.length > 0) {
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'display:flex; flex-direction:column; gap:8px; padding-bottom:60px; background:#000;';
+        pages.forEach((pUrl, idx) => {
+          const img = document.createElement('img');
+          img.className = 'reader-panel-img';
+          img.loading = 'lazy';
+          img.src = pUrl;
+          img.alt = `${currentManga.title} ${chNum}-bob ${idx + 1}-sahifa`;
+          img.style.cssText = 'width:100%; display:block; margin:0 auto;';
+          wrap.appendChild(img);
+        });
+        const finishDiv = document.createElement('div');
+        finishDiv.style.cssText = 'padding:24px 16px; text-align:center; color:#4ade80; font-size:13px; font-weight:700;';
+        finishDiv.innerText = `✅ ${chNum}-bob yakunlandi (${pages.length} ta sahifa)`;
+        wrap.appendChild(finishDiv);
+        container.appendChild(wrap);
+      } else {
+        container.innerHTML = `
+          <div style="padding: 60px 20px; text-align: center; color: var(--text-muted); background: #000;">
+            <div style="font-size: 40px; margin-bottom: 12px;">📑</div>
+            <h3 style="color: white; margin-bottom: 8px; font-size:17px;">${currentChapter}-bob sahifalari tez orada yuklanadi</h3>
+            <p style="font-size: 13px; max-width: 300px; margin: 0 auto 20px; line-height: 1.5;">Admin tomonidan ushbu bob sahifalari yuklanishi kutilmoqda.</p>
+            <img class="reader-panel-img" src="${currentManga.cover}" style="max-width: 200px; border-radius: 12px; margin: 0 auto 16px; display: block;" />
           </div>
-        </div>
-      `;
+        `;
+      }
       document.getElementById('readerView').classList.add('active');
     }
 

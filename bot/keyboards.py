@@ -292,23 +292,26 @@ def get_admin_main_keyboard() -> InlineKeyboardMarkup:
     """Admin asosiy paneli tugmalari"""
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="➕ Yangi anime qo'shish", callback_data="admin_add_anime", style="success"),
+        InlineKeyboardButton(text="➕ Yangi anime", callback_data="admin_add_anime", style="success"),
         InlineKeyboardButton(text="🎬 Qism yuklash", callback_data="admin_add_episode", style="primary")
     )
     builder.row(
-        InlineKeyboardButton(text="📖 Manga yuklash", callback_data="admin_add_manga", style="primary"),
-        InlineKeyboardButton(text="⚡️ Shorts yuklash", callback_data="admin_add_shorts", style="primary")
+        InlineKeyboardButton(text="📖 Yangi manga", callback_data="admin_add_manga", style="primary"),
+        InlineKeyboardButton(text="📑 Manga bobi yuklash", callback_data="admin_add_chapter", style="success")
     )
     builder.row(
-        InlineKeyboardButton(text="📋 Animelar ro'yxati", callback_data="admin_list_animes_0", style="primary"),
-        InlineKeyboardButton(text="🗑 Animeni o'chirish", callback_data="admin_delete_anime", style="danger")
+        InlineKeyboardButton(text="⚡️ Shorts yuklash", callback_data="admin_add_shorts", style="primary"),
+        InlineKeyboardButton(text="📋 Animelar ro'yxati", callback_data="admin_list_animes_0", style="primary")
     )
     builder.row(
-        InlineKeyboardButton(text="📢 Sponsor kanallar", callback_data="admin_channels", style="primary"),
-        InlineKeyboardButton(text="💎 VIP berish", callback_data="admin_give_vip", style="success")
+        InlineKeyboardButton(text="🗑 Animeni o'chirish", callback_data="admin_delete_anime", style="danger"),
+        InlineKeyboardButton(text="📢 Sponsor kanallar", callback_data="admin_channels", style="primary")
     )
     builder.row(
-        InlineKeyboardButton(text="📊 Statistika", callback_data="admin_stats", style="primary"),
+        InlineKeyboardButton(text="💎 VIP berish", callback_data="admin_give_vip", style="success"),
+        InlineKeyboardButton(text="📊 Statistika", callback_data="admin_stats", style="primary")
+    )
+    builder.row(
         InlineKeyboardButton(text="✉️ Xabar tarqatish", callback_data="admin_broadcast", style="primary")
     )
     return builder.as_markup()
@@ -358,6 +361,62 @@ def get_admin_after_episode_keyboard(anime_id: int, next_ep: int) -> InlineKeybo
         InlineKeyboardButton(text="⬅️ Admin panel", callback_data="admin_home", style="primary")
     )
     return builder.as_markup()
+
+
+def get_admin_recent_mangas_keyboard(mangas: List[Dict[str, Any]], action_prefix: str = "select_manga_") -> InlineKeyboardMarkup:
+    """Bob yuklash uchun mangalar ro'yxati tugmalari"""
+    builder = InlineKeyboardBuilder()
+    for m in mangas:
+        ch_count = m.get("chapters_count", 0)
+        builder.row(
+            InlineKeyboardButton(
+                text=f"📖 {m['id']}. {m['title'][:24]} ({ch_count} bob)",
+                callback_data=f"{action_prefix}{m['id']}",
+                style="primary"
+            )
+        )
+    builder.row(
+        InlineKeyboardButton(text="➕ Yangi manga yaratish", callback_data="admin_add_manga", style="success")
+    )
+    builder.row(
+        InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel", style="danger")
+    )
+    return builder.as_markup()
+
+
+def get_admin_finish_chapter_keyboard(pages_count: int = 0) -> InlineKeyboardMarkup:
+    """Manga bobi sahifalarini yuklashni yakunlash tugmasi"""
+    builder = InlineKeyboardBuilder()
+    if pages_count > 0:
+        builder.row(
+            InlineKeyboardButton(
+                text=f"✅ Yuklashni yakunlash ({pages_count} ta sahifa)",
+                callback_data="admin_finish_chapter",
+                style="success"
+            )
+        )
+    builder.row(
+        InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel", style="danger")
+    )
+    return builder.as_markup()
+
+
+def get_admin_after_chapter_keyboard(manga_id: int, next_ch: int) -> InlineKeyboardMarkup:
+    """Bob yuklangandan so'ng keyingi bobni tezkor yuklash tugmalari"""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(
+            text=f"➕ Keyingi {next_ch}-bobni yuklash",
+            callback_data=f"quick_add_ch_{manga_id}_{next_ch}",
+            style="success"
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(text="📑 Boshqa manga tanlash", callback_data="admin_add_chapter", style="primary"),
+        InlineKeyboardButton(text="⬅️ Admin panel", callback_data="admin_home", style="primary")
+    )
+    return builder.as_markup()
+
 
 
 def get_animes_list_keyboard(animes: List[Dict[str, Any]], page: int, total_pages: int) -> InlineKeyboardMarkup:

@@ -957,6 +957,83 @@ class Database:
                     return d
                 return None
 
+    async def add_manga_chapter(self, manga_id: int, chapter_num: int, pages: List[str],
+                                title: Optional[str] = None) -> bool:
+        """
+        Manga uchun yangi bob (sahifalar) yuklash.
+        data JSONB maydonidagi chapters ro'yxatini va sahifalarni yangilaydi.
+        """
+        now_iso = datetime.now().isoformat()
+        manga = await self.get_manga(manga_id)
+        if not manga:
+            return False
+
+        m_data = manga.get("data") or {}
+        if isinstance(m_data, str):
+            try:
+                m_data = json.loads(m_data)
+            except Exception:
+                m_data = {}
+
+        chapters = m_data.get("chapters", [])
+        if not isinstance(chapters, list):
+            chapters = []
+
+        new_chapter = {
+            "chapter_num": chapter_num,
+            "title": title or f"{chapter_num}-bob",
+            "pages": pages,
+            "pages_count": len(pages),
+            "created_at": now_iso
+        }
+
+        # Mavjud bob bo'lsa yangilash, bo'lmasa qo'shish
+        updated = False
+        for idx, ch in enumerate(chapters):
+            if isinstance(ch, dict) and ch.get("chapter_num") == chapter_num:
+                chapters[idx] = new_chapter
+                updated = True
+                break
+
+        if not updated:
+            chapters.append(new_chapter)
+
+        chapters.sort(key=lambda x: x.get("chapter_num", 0))
+        m_data["chapters"] = chapters
+
+        # Yangi boblar soni
+        max_ch = max([ch.get("chapter_num", 0) for ch in chapters] + [manga.get("chapters_count", 0), chapter_num])
+        m_data["chapters_count"] = max_ch
+
+        data_json = json.dumps(m_data)
+
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                await conn.execute("""
+                    UPDATE mangas
+                    SET chapters_count = $1, data = $2::jsonb
+                    WHERE id = $3;
+                """, max_ch, data_json, manga_id)
+                return True
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                await db.execute("""
+                    UPDATE mangas
+                    SET chapters_count = ?, data = ?
+                    WHERE id = ?;
+                """, (max_ch, data_json, manga_id))
+                await db.commit()
+                return True
+
+    async def get_manga_chapters(self, manga_id: int) -> List[Dict[str, Any]]:
+        """Manga boblari ro'yxatini olish"""
+        manga = await self.get_manga(manga_id)
+        if not manga:
+            return []
+        m_data = manga.get("data") or {}
+        return m_data.get("chapters", [])
+
+
     # ================= Shorts bilan ishlash =================
 
     async def add_short(self, title: str, video_file_id: str, video_url: Optional[str] = None,

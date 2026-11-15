@@ -64,3 +64,10 @@ class AddShortsState(StatesGroup):
     title = State()           # Anime / sahna nomi
     caption = State()         # Tavsif va xeshteglar
     sound = State()           # Ovoz / musiqa nomi
+
+
+class AddChapterState(StatesGroup):
+    manga_id = State()        # Qaysi manga ID
+    chapter_num = State()     # Bob raqami
+    pages = State()           # Bob sahifalari (rasmlar)
+

@@ -17,7 +17,8 @@ from bot.states import (
     BroadcastState,
     DeleteAnimeState,
     AddMangaState,
-    AddShortsState
+    AddShortsState,
+    AddChapterState
 )
 from bot.keyboards import (
     get_admin_main_keyboard,
@@ -29,7 +30,10 @@ from bot.keyboards import (
     get_admin_recent_animes_keyboard,
     get_admin_after_episode_keyboard,
     get_animes_list_keyboard,
-    get_anime_manage_keyboard
+    get_anime_manage_keyboard,
+    get_admin_recent_mangas_keyboard,
+    get_admin_finish_chapter_keyboard,
+    get_admin_after_chapter_keyboard
 )
 
 router = Router()
@@ -1194,6 +1198,12 @@ async def sync_mangas_json():
     mangas = await db.get_all_mangas(limit=200)
     data = []
     for m in mangas:
+        m_data = m.get("data") or {}
+        if isinstance(m_data, str):
+            try:
+                m_data = json.loads(m_data)
+            except Exception:
+                m_data = {}
         data.append({
             "id": m["id"],
             "title": m["title"],
@@ -1202,7 +1212,8 @@ async def sync_mangas_json():
             "status": m["status"],
             "chapters": m.get("chapters_count", 1),
             "rating": m.get("rating", "4.9"),
-            "desc": m.get("description", "")
+            "desc": m.get("description", ""),
+            "data": m_data
         })
     paths = [
         "data/mangas.json",
@@ -1406,7 +1417,173 @@ async def process_manga_desc(message: Message, state: FSMContext):
         f"🔢 <b>Boblar soni:</b> {chapters_count} ta\n"
         f"📝 <b>Tavsif:</b> {html.escape(desc[:100])}..."
     )
-    await message.answer(text, reply_markup=get_admin_main_keyboard(), parse_mode="HTML")
+    await message.answer(
+        text,
+        reply_markup=get_admin_after_chapter_keyboard(m_id, 1),
+        parse_mode="HTML"
+    )
+
+
+# 1.1 Manga bobi va sahifalarini yuklash
+@router.callback_query(F.data == "admin_add_chapter")
+async def start_add_chapter(callback: CallbackQuery, state: FSMContext):
+    mangas = await db.get_all_mangas(limit=30)
+    if not mangas:
+        builder = InlineKeyboardBuilder()
+        builder.row(InlineKeyboardButton(text="➕ Yangi manga yaratish", callback_data="admin_add_manga"))
+        builder.row(InlineKeyboardButton(text="⬅️ Admin panel", callback_data="admin_home"))
+        await callback.message.edit_text(
+            "⚠️ <b>Hozircha birorta ham manga yaratilmagan!</b>\n\n"
+            "Bob yuklashdan oldin yangi manga profilini yarating.",
+            reply_markup=builder.as_markup(),
+            parse_mode="HTML"
+        )
+        return
+
+    text = (
+        "📑 <b>Manga bobi va sahifalarini yuklash</b>\n\n"
+        "Qaysi manga uchun yangi bob yuklamoqchisiz? Quyidagilardan birini tanlang:"
+    )
+    await callback.message.edit_text(text, reply_markup=get_admin_recent_mangas_keyboard(mangas), parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("select_manga_"))
+async def handle_pick_manga_cb(callback: CallbackQuery, state: FSMContext):
+    manga_id = int(callback.data.split("_")[-1])
+    manga = await db.get_manga(manga_id)
+    if not manga:
+        await callback.answer("⚠️ Manga topilmadi!", show_alert=True)
+        return
+
+    m_data = manga.get("data") or {}
+    if isinstance(m_data, str):
+        try:
+            m_data = json.loads(m_data)
+        except Exception:
+            m_data = {}
+    chapters = m_data.get("chapters", [])
+    existing_nums = [c.get("chapter_num", 0) for c in chapters if isinstance(c, dict)]
+    next_ch = (max(existing_nums) + 1) if existing_nums else 1
+
+    await state.update_data(manga_id=manga_id, manga_title=manga["title"], pages=[])
+    await state.set_state(AddChapterState.chapter_num)
+
+    text = (
+        f"📖 Tanlangan manga: <b>{html.escape(manga['title'])}</b>\n"
+        f"Mavjud boblar: <b>{len(existing_nums)}</b> ta\n\n"
+        f"Yuklanadigan <b>bob raqamini</b> kiriting (Masalan: <code>{next_ch}</code>):"
+    )
+    await callback.message.edit_text(text, reply_markup=get_admin_cancel_keyboard(), parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("quick_add_ch_"))
+async def handle_quick_add_ch_cb(callback: CallbackQuery, state: FSMContext):
+    parts = callback.data.split("_")
+    manga_id = int(parts[3])
+    next_ch = int(parts[4])
+    manga = await db.get_manga(manga_id)
+    if not manga:
+        await callback.answer("⚠️ Manga topilmadi!", show_alert=True)
+        return
+
+    await state.update_data(manga_id=manga_id, manga_title=manga["title"], chapter_num=next_ch, pages=[])
+    await state.set_state(AddChapterState.pages)
+
+    text = (
+        f"📑 <b>{html.escape(manga['title'])} — {next_ch}-bob</b>\n\n"
+        f"Ushbu bobning <b>sahifalarini (rasmlarini)</b> ketma-ket yuboring:\n"
+        f"• Sahifalarni bittalab yoki foto-albom (media group) qilib yuborishingiz mumkin.\n"
+        f"• Barcha sahifalarni yuborib bo'lgach, <b>[ ✅ Yuklashni yakunlash ]</b> tugmasini bosing!\n\n"
+        f"<i>📸 Qabul qilingan sahifalar: 0 ta</i>"
+    )
+    await callback.message.edit_text(text, reply_markup=get_admin_finish_chapter_keyboard(0), parse_mode="HTML")
+
+
+@router.message(AddChapterState.chapter_num)
+async def process_chapter_num(message: Message, state: FSMContext):
+    raw = message.text.strip()
+    if not raw.isdigit():
+        await message.answer("⚠️ Iltimos, bob raqamini faqat son shaklida kiriting (Masalan: <code>1</code>):", parse_mode="HTML")
+        return
+
+    ch_num = int(raw)
+    data = await state.get_data()
+    manga_title = data.get("manga_title", "Manga")
+    await state.update_data(chapter_num=ch_num, pages=[])
+    await state.set_state(AddChapterState.pages)
+
+    text = (
+        f"📑 <b>{html.escape(manga_title)} — {ch_num}-bob</b>\n\n"
+        f"Ushbu bobning <b>sahifalarini (rasmlarini)</b> yuboring:\n"
+        f"• Sahifalarni bittalab yoki foto-albom (media group) ko'rinishida yuborishingiz mumkin.\n"
+        f"• Barcha sahifalarni yuborib bo'lgach, <b>[ ✅ Yuklashni yakunlash ]</b> tugmasini bosing!\n\n"
+        f"<i>📸 Qabul qilingan sahifalar: 0 ta</i>"
+    )
+    await message.answer(text, reply_markup=get_admin_finish_chapter_keyboard(0), parse_mode="HTML")
+
+
+@router.message(AddChapterState.pages, F.photo)
+async def process_chapter_photo(message: Message, state: FSMContext, bot: Bot):
+    photo = message.photo[-1]
+    file_id = photo.file_id
+
+    try:
+        f = await bot.get_file(file_id)
+        page_url = f"https://api.telegram.org/file/bot{config.bot_token}/{f.file_path}"
+    except Exception:
+        page_url = file_id
+
+    data = await state.get_data()
+    pages = data.get("pages", [])
+    pages.append(page_url)
+    await state.update_data(pages=pages)
+
+    manga_title = data.get("manga_title", "Manga")
+    ch_num = data.get("chapter_num", 1)
+
+    text = (
+        f"📸 <b>{len(pages)}-sahifa qabul qilindi!</b>\n\n"
+        f"📖 <i>{html.escape(manga_title)} ({ch_num}-bob)</i>\n"
+        f"Keyingi sahifani yuboring yoki barchasi tayyor bo'lsa yakunlang:"
+    )
+    await message.answer(text, reply_markup=get_admin_finish_chapter_keyboard(len(pages)), parse_mode="HTML")
+
+
+@router.callback_query(AddChapterState.pages, F.data == "admin_finish_chapter")
+async def handle_finish_chapter_cb(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    manga_id = data.get("manga_id")
+    manga_title = data.get("manga_title", "Manga")
+    ch_num = data.get("chapter_num", 1)
+    pages = data.get("pages", [])
+
+    if not pages:
+        await callback.answer("⚠️ Hech bo'lmaganda 1 ta sahifa rasmini yuboring!", show_alert=True)
+        return
+
+    await db.add_manga_chapter(
+        manga_id=manga_id,
+        chapter_num=ch_num,
+        pages=pages,
+        title=f"{ch_num}-bob"
+    )
+
+    await sync_mangas_json()
+    await state.clear()
+
+    text = (
+        f"🎉 <b>Manga bobi muvaffaqiyatli saqlandi!</b>\n\n"
+        f"📖 <b>Manga:</b> {html.escape(manga_title)}\n"
+        f"📑 <b>Bob:</b> {ch_num}-bob\n"
+        f"📄 <b>Sahifalar soni:</b> {len(pages)} ta\n"
+        f"✅ <i>Sahifalar PostgreSQL data bazasiga va Manga Mini App'ga joylandi!</i>"
+    )
+    await callback.message.edit_text(
+        text,
+        reply_markup=get_admin_after_chapter_keyboard(manga_id, ch_num + 1),
+        parse_mode="HTML"
+    )
+
 
 
 # 2. Shorts yuklash
