@@ -1203,13 +1203,13 @@ async def push_to_github():
     """VPS da ma'lumotlarni avtomatik GitHub Pages ga push qilish"""
     try:
         proc = await asyncio.create_subprocess_shell(
-            "git add . && git commit -m 'sync: update shorts & manga data' && git push origin main && git push --force origin main:gh-pages",
+            "git pull --rebase origin main && git add . && (git commit -m 'sync: update shorts & manga data' || true) && git push origin main && git push --force origin main:gh-pages",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
         await proc.communicate()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f"Error pushing to github: {e}")
 
 
 async def sync_mangas_json():

@@ -866,14 +866,7 @@ class Database:
             "rating": rating,
             "views": 0,
             "likes": 0,
-            "chapters": [
-                {
-                    "chapter_num": i,
-                    "title": f"{i}-bob: Boshlanish",
-                    "created_at": now_iso
-                }
-                for i in range(1, min(chapters_count + 1, 31))
-            ],
+            "chapters": [],
             "created_at": now_iso
         }
         if data and isinstance(data, dict):

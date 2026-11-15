@@ -998,6 +998,8 @@
         return;
       }
       list.forEach(manga => {
+        const validChs = (manga.data && Array.isArray(manga.data.chapters)) ? manga.data.chapters.filter(ch => (ch.pages && ch.pages.length > 0) || (ch.pages_count && ch.pages_count > 0)) : [];
+        const chDisplay = validChs.length > 0 ? `${validChs.length} bob` : `${manga.chapters || 0} bob (kutilmoqda)`;
         const card = document.createElement('div');
         card.className = 'manga-card';
         card.innerHTML = `
@@ -1009,8 +1011,8 @@
           <div class="card-info">
             <h3>${manga.title}</h3>
             <div class="card-meta">
-              <span>📖 ${manga.chapters} bob</span>
-              <span class="read-badge">O'qish →</span>
+              <span>📖 ${chDisplay}</span>
+              <span class="read-badge">${validChs.length > 0 ? "O'qish →" : "Kutilmoqda"}</span>
             </div>
           </div>
         `;
@@ -1088,33 +1090,31 @@
       const chaptersList = document.getElementById('chaptersList');
       chaptersList.innerHTML = '';
 
-      const realChapters = (manga.data && Array.isArray(manga.data.chapters)) ? manga.data.chapters : [];
-      if (realChapters.length > 0) {
-        realChapters.forEach(ch => {
+      const allChapters = (manga.data && Array.isArray(manga.data.chapters)) ? manga.data.chapters : [];
+      const validChapters = allChapters.filter(ch => (ch.pages && ch.pages.length > 0) || (ch.pages_count && ch.pages_count > 0));
+
+      if (validChapters.length > 0) {
+        validChapters.forEach(ch => {
           const chNum = ch.chapter_num || 1;
           const chTitle = ch.title || `${chNum}-bob`;
           const pCount = ch.pages_count || (ch.pages ? ch.pages.length : 0);
           const item = document.createElement('div');
           item.className = 'chapter-item';
           item.innerHTML = `
-            <span>📖 ${chTitle} ${pCount > 0 ? `<small style="color:var(--text-muted); font-size:11px;">(${pCount} sahifa)</small>` : ''}</span>
-            <span style="color: var(--accent-red); font-weight:700;">Mutolaa</span>
+            <span>📖 ${chTitle} <small style="color:var(--text-muted); font-size:11px;">(${pCount} sahifa)</small></span>
+            <span style="color: #4ade80; font-weight:700;">Mutolaa →</span>
           `;
           item.onclick = () => openReader(chNum);
           chaptersList.appendChild(item);
         });
       } else {
-        const count = manga.chapters || 1;
-        for (let i = 1; i <= Math.min(count, 30); i++) {
-          const item = document.createElement('div');
-          item.className = 'chapter-item';
-          item.innerHTML = `
-            <span>📖 ${i}-bob</span>
-            <span style="color: var(--accent-red); font-weight:700;">Mutolaa</span>
-          `;
-          item.onclick = () => openReader(i);
-          chaptersList.appendChild(item);
-        }
+        chaptersList.innerHTML = `
+          <div style="padding: 28px 16px; text-align: center; color: var(--text-muted); background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.1); border-radius: 12px; margin: 10px 0;">
+            <div style="font-size: 32px; margin-bottom: 6px;">⏳</div>
+            <div style="color: #fff; font-weight: 700; font-size: 14px; margin-bottom: 4px;">Bob sahifalari hali yuklanmagan</div>
+            <p style="font-size: 12px; line-height: 1.4; margin: 0 auto; max-width: 260px;">Admin bot orqali ushbu manganing bobini (PDF yoki rasm) yuklagach, shu yerda mutolaa qilishingiz mumkin bo'ladi.</p>
+          </div>
+        `;
       }
 
       document.getElementById('detailsModal').classList.add('active');
