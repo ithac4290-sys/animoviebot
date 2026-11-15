@@ -4,7 +4,8 @@ from aiogram.types import (
     InlineQuery,
     InlineQueryResultArticle,
     InputTextMessageContent,
-    InlineQueryResultPhoto
+    InlineQueryResultPhoto,
+    InlineQueryResultCachedPhoto
 )
 from bot.database import db
 from bot.config import config
@@ -49,12 +50,21 @@ async def handle_inline_search(inline_query: InlineQuery, bot: Bot):
         uploaded_ep_nums = [ep["episode_num"] for ep in episodes]
         reply_markup = get_anime_keyboard(anime_id, uploaded_ep_nums)
 
-        # Agar poster mavjud bo'lsa InlineQueryResultPhoto, aks holda Article
+        # Agar poster mavjud bo'lsa InlineQueryResultCachedPhoto yoki Photo, aks holda Article
         if poster and not poster.startswith("http"):
             # Telegram file_id photo
-            item = InlineQueryResultPhoto(
+            item = InlineQueryResultCachedPhoto(
                 id=str(anime_id),
                 photo_file_id=poster,
+                caption=caption,
+                reply_markup=reply_markup,
+                parse_mode="HTML"
+            )
+        elif poster and poster.startswith("http"):
+            item = InlineQueryResultPhoto(
+                id=str(anime_id),
+                photo_url=poster,
+                thumbnail_url=poster,
                 title=title,
                 caption=caption,
                 description=f"ID: {anime_id} | {episodes_count} | {status}",
