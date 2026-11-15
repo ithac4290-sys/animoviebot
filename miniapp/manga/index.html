@@ -1021,27 +1021,37 @@
 
     initUserAuth();
 
-    // Faqat dataga yuklangan haqiqiy mangalarni yuklash
-    fetch('mangas.json?t=' + Date.now())
-      .then(res => res.json())
-      .then(customMangas => {
-        if (Array.isArray(customMangas)) {
-          mangas = customMangas;
-        }
-        renderManga(mangas);
-
-        // URL parametrida manga_id berilgan bo'lsa darhol o'sha mangani ochish
-        const targetMangaId = urlParams.get('manga_id');
-        if (targetMangaId) {
-          const found = mangas.find(m => String(m.id) === String(targetMangaId));
-          if (found) {
-            openDetails(found);
+    // Faqat dataga yuklangan haqiqiy mangalarni yuklash (bir nechta yo'llar orqali kafolatli yuklash)
+    async function loadMangas() {
+      const candidates = [
+        'mangas.json?t=' + Date.now(),
+        'https://ithac4290-sys.github.io/animoviebot/manga/mangas.json?t=' + Date.now(),
+        'https://ithac4290-sys.github.io/animoviebot/docs/manga/mangas.json?t=' + Date.now(),
+        'https://ithac4290-sys.github.io/animoviebot/data/mangas.json?t=' + Date.now()
+      ];
+      for (const url of candidates) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) {
+            const list = await res.json();
+            if (Array.isArray(list) && list.length > 0) {
+              mangas = list;
+              renderManga(mangas);
+              const targetMangaId = urlParams.get('manga_id');
+              if (targetMangaId) {
+                const found = mangas.find(m => String(m.id) === String(targetMangaId));
+                if (found) {
+                  openDetails(found);
+                }
+              }
+              return;
+            }
           }
-        }
-      })
-      .catch(() => {
-        renderManga(mangas);
-      });
+        } catch (e) {}
+      }
+      renderManga(mangas);
+    }
+    loadMangas();
 
     // Search filter
     document.getElementById('searchInput').addEventListener('input', (e) => {

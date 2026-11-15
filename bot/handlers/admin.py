@@ -1193,6 +1193,19 @@ import os
 import json
 
 
+async def push_to_github():
+    """VPS da ma'lumotlarni avtomatik GitHub Pages ga push qilish"""
+    try:
+        proc = await asyncio.create_subprocess_shell(
+            "git add . && git commit -m 'sync: update shorts & manga data' && git push origin main && git push --force origin main:gh-pages",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        await proc.communicate()
+    except Exception:
+        pass
+
+
 async def sync_mangas_json():
     """Mini App uchun mangas.json faylini yangilash"""
     mangas = await db.get_all_mangas(limit=200)
@@ -1217,6 +1230,7 @@ async def sync_mangas_json():
         })
     paths = [
         "data/mangas.json",
+        "manga/mangas.json",
         "miniapp/manga/mangas.json",
         "docs/manga/mangas.json",
         "/var/www/html/manga/mangas.json",
@@ -1249,6 +1263,7 @@ async def sync_shorts_json():
         })
     paths = [
         "data/shorts.json",
+        "shorts/shorts.json",
         "miniapp/shorts/shorts.json",
         "docs/shorts/shorts.json",
         "/var/www/html/shorts/shorts.json",
@@ -1425,6 +1440,7 @@ async def process_manga_desc(message: Message, state: FSMContext):
     )
 
     await sync_mangas_json()
+    asyncio.create_task(push_to_github())
     await state.clear()
 
     # Kanalga post tayyorlash va yuborish (https://t.me/AniMovie_manga)
@@ -1634,6 +1650,7 @@ async def handle_finish_chapter_cb(callback: CallbackQuery, state: FSMContext):
     )
 
     await sync_mangas_json()
+    asyncio.create_task(push_to_github())
     await state.clear()
 
     # Bob yangilanganda kanalga post yuborish
@@ -1724,11 +1741,16 @@ async def process_shorts_video(message: Message, state: FSMContext, bot: Bot):
     file_id = video.file_id
 
     video_rel_url = f"videos/short_{video.file_unique_id}.mp4"
-    dest_dir = "/var/www/html/shorts/videos"
-    if os.path.exists("/var/www/html/shorts"):
+    dest_dirs = [
+        "shorts/videos",
+        "docs/shorts/videos",
+        "miniapp/shorts/videos",
+        "/var/www/html/shorts/videos"
+    ]
+    for d in dest_dirs:
         try:
-            os.makedirs(dest_dir, exist_ok=True)
-            file_dest = os.path.join(dest_dir, f"short_{video.file_unique_id}.mp4")
+            os.makedirs(d, exist_ok=True)
+            file_dest = os.path.join(d, f"short_{video.file_unique_id}.mp4")
             await bot.download(video, destination=file_dest)
         except Exception:
             pass
@@ -1785,6 +1807,7 @@ async def process_shorts_sound(message: Message, state: FSMContext):
     )
 
     await sync_shorts_json()
+    asyncio.create_task(push_to_github())
     await state.clear()
 
     text = (

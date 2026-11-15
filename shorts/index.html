@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>AniMovie Shorts — Telegram Mini App</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #ff2d55;
+      --primary-glow: rgba(255, 45, 85, 0.45);
+      --bg-dark: #000000;
+      --surface: #12151b;
+      --surface-glass: rgba(18, 21, 27, 0.75);
+      --text: #ffffff;
+      --text-muted: #94a3b8;
+      --border: rgba(255, 255, 255, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text);
+      overflow: hidden;
+      height: 100vh;
+      height: 100dvh;
+      width: 100vw;
+    }
+
+    /* Container */
+    .shorts-container {
+      height: 100%;
+      width: 100%;
+      overflow-y: scroll;
+      scroll-snap-type: y mandatory;
+      scrollbar-width: none;
+    }
+
+    .shorts-container::-webkit-scrollbar {
+      display: none;
+    }
+
+    .short-item {
+      height: 100vh;
+      height: 100dvh;
+      width: 100vw;
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+      position: relative;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: #000;
+    }
+
+    /* Gradients */
+    .overlay-top {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 140px;
+      background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 60%, transparent 100%);
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .overlay-bottom {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 280px;
+      background: linear-gradient(0deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.5) 60%, transparent 100%);
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    /* Top Bar */
+    .top-bar {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 20;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-icon {
+      background: linear-gradient(135deg, #ff2d55, #ff6b3d);
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      box-shadow: 0 4px 14px var(--primary-glow);
+    }
+
+    .brand-title {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+    }
+
+    .auth-btn-header {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .auth-btn-header:active {
+      transform: scale(0.95);
+      background: rgba(255, 45, 85, 0.3);
+    }
+
+    .auth-btn-header.logged-in {
+      background: rgba(34, 197, 94, 0.2);
+      border-color: rgba(34, 197, 94, 0.4);
+      color: #86efac;
+    }
+
+    /* Right Action Sidebar */
+    .actions-sidebar {
+      position: absolute;
+      right: 14px;
+      bottom: 85px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      z-index: 20;
+    }
+
+    .action-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+    }
+
+    .icon-bubble {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(20, 24, 33, 0.75);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.2s;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+    }
+
+    .icon-bubble:active {
+      transform: scale(0.85);
+    }
+
+    .icon-bubble.liked {
+      background: rgba(255, 45, 85, 0.9);
+      border-color: #ff2d55;
+      color: white;
+      animation: like-bounce 0.35s ease;
+    }
+
+    .icon-bubble.liked svg {
+      fill: #ffffff;
+      stroke: #ffffff;
+    }
+
+    @keyframes like-bounce {
+      0% { transform: scale(0.8); }
+      50% { transform: scale(1.25); }
+      100% { transform: scale(1); }
+    }
+
+    .action-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #f1f5f9;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+    }
+
+    /* Rotating vinyl disc */
+    .disc-container {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #11141a;
+      border: 3px solid #222834;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: spin 3.5s linear infinite;
+      box-shadow: 0 0 12px rgba(0,0,0,0.9);
+      margin-top: 4px;
+    }
+
+    .disc-center {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ff2d55, #ff7b00);
+    }
+
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Bottom Info */
+    .bottom-info {
+      position: absolute;
+      left: 16px;
+      bottom: 26px;
+      right: 80px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .creator-tag {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .creator-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ff2d55, #3b82f6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .creator-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .follow-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 4px 11px;
+      border-radius: 14px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .caption-text {
+      font-size: 13px;
+      line-height: 1.4;
+      color: #e2e8f0;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+    }
+
+    .hashtags {
+      font-weight: 700;
+      color: #38bdf8;
+    }
+
+    .sound-info {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    /* Play/Pause center overlay */
+    .center-indicator {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.5);
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      pointer-events: none;
+      z-index: 15;
+    }
+
+    .center-indicator.show {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    /* Floating heart animation for double tap */
+    .floating-heart {
+      position: absolute;
+      width: 90px;
+      height: 90px;
+      pointer-events: none;
+      z-index: 30;
+      animation: float-heart 0.75s ease-out forwards;
+      transform: translate(-50%, -50%);
+    }
+
+    @keyframes float-heart {
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+      30% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+      70% { opacity: 0.9; transform: translate(-50%, -60%) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -80%) scale(1.4); }
+    }
+
+    /* Bottom Sheet Modal for Comments & Auth */
+    .bottom-sheet {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      display: none;
+      align-items: flex-end;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .bottom-sheet.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    .sheet-card {
+      width: 100%;
+      max-height: 80vh;
+      background: #141720;
+      border-top-left-radius: 24px;
+      border-top-right-radius: 24px;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      display: flex;
+      flex-direction: column;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.15);
+      box-shadow: 0 -10px 40px rgba(0,0,0,0.7);
+    }
+
+    .bottom-sheet.active .sheet-card {
+      transform: translateY(0);
+    }
+
+    .sheet-handle {
+      width: 44px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+      margin: 10px auto 4px;
+    }
+
+    .sheet-header {
+      padding: 12px 18px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .sheet-title {
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    .sheet-close {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: white;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .sheet-body {
+      padding: 16px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    /* Comments */
+    .comments-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .comment-item {
+      display: flex;
+      gap: 12px;
+      font-size: 13px;
+    }
+
+    .comment-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: #2a3142;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .comment-content {
+      flex: 1;
+    }
+
+    .comment-author {
+      font-weight: 700;
+      color: #94a3b8;
+      font-size: 12px;
+      margin-bottom: 2px;
+    }
+
+    .comment-text {
+      color: #f1f5f9;
+      line-height: 1.4;
+    }
+
+    .comment-input-bar {
+      display: flex;
+      gap: 10px;
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      background: #0f1218;
+    }
+
+    .comment-input-bar input {
+      flex: 1;
+      background: #1b202c;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 10px 16px;
+      color: white;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+    }
+
+    .comment-input-bar input:focus {
+      border-color: var(--primary);
+    }
+
+    .comment-send-btn {
+      background: var(--primary);
+      border: none;
+      color: white;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    /* Auth Modal Specifics */
+    .auth-banner {
+      text-align: center;
+      padding: 14px 10px 20px;
+    }
+
+    .auth-icon-big {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, #0088cc, #00b4d8);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      margin: 0 auto 14px;
+      box-shadow: 0 8px 24px rgba(0, 136, 204, 0.4);
+    }
+
+    .auth-title {
+      font-size: 18px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .auth-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+
+    .btn-telegram-auth {
+      background: linear-gradient(135deg, #0088cc, #0099e6);
+      color: white;
+      border: none;
+      width: 100%;
+      padding: 14px;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(0, 136, 204, 0.35);
+      margin-bottom: 12px;
+    }
+
+    .btn-telegram-auth:active {
+      transform: scale(0.98);
+    }
+
+    .profile-card {
+      background: #1a202c;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .profile-avatar-big {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ff2d55, #3b82f6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 800;
+    }
+
+    .profile-details h3 {
+      font-size: 15px;
+      font-weight: 800;
+      margin-bottom: 2px;
+    }
+
+    .profile-details p {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .stat-box {
+      background: #1a202c;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .stat-val {
+      font-size: 16px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Shorts Container -->
+  <div class="shorts-container" id="shortsContainer"></div>
+
+  <!-- Comments Bottom Sheet Modal -->
+  <div class="bottom-sheet" id="commentsSheet" onclick="handleSheetBackdrop(event, 'commentsSheet')">
+    <div class="sheet-card">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title" id="commentsSheetTitle">Izohlar (1.2k)</div>
+        <button class="sheet-close" onclick="closeSheet('commentsSheet')">✕</button>
+      </div>
+      <div class="sheet-body">
+        <div class="comments-list" id="commentsList">
+          <div class="comment-item">
+            <div class="comment-avatar">A</div>
+            <div class="comment-content">
+              <div class="comment-author">Azizbek • 2 daqiqa oldin</div>
+              <div class="comment-text">Bu sahna haqiqatdan ham anime tarixidagi eng zo'r lahza! 🔥🔥🔥</div>
+            </div>
+          </div>
+          <div class="comment-item">
+            <div class="comment-avatar">M</div>
+            <div class="comment-content">
+              <div class="comment-author">Madina • 15 daqiqa oldin</div>
+              <div class="comment-text">Ovoz va montaj juda zo'r chiqibdi, davomini kutamiz! 👏</div>
+            </div>
+          </div>
+          <div class="comment-item">
+            <div class="comment-avatar">J</div>
+            <div class="comment-content">
+              <div class="comment-author">Javohir • 1 soat oldin</div>
+              <div class="comment-text">AniMovie eng zo'r anime boti, sifatiga gap yo'q! 🚀</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="comment-input-bar">
+        <input type="text" id="newCommentInput" placeholder="Izoh qoldiring...">
+        <button class="comment-send-btn" onclick="sendComment()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Telegram Auth & Profile Bottom Sheet Modal -->
+  <div class="bottom-sheet" id="authSheet" onclick="handleSheetBackdrop(event, 'authSheet')">
+    <div class="sheet-card">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">Foydalanuvchi Profili</div>
+        <button class="sheet-close" onclick="closeSheet('authSheet')">✕</button>
+      </div>
+      <div class="sheet-body">
+
+        <!-- Not Logged In View -->
+        <div id="unauthView" style="display: none;">
+          <div class="auth-banner">
+            <div class="auth-icon-big">✈️</div>
+            <h2 class="auth-title">AniMovie ga xush kelibsiz!</h2>
+            <p class="auth-subtitle">Shorts videolarga layk bosish, izoh qoldirish va sevimli animelaringizni saqlash uchun profilingizga kiring.</p>
+            <button class="btn-telegram-auth" onclick="doTelegramLogin()">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 0 0-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.52 2.77-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+              Telegram orqali 1 bosishda kirish
+            </button>
+          </div>
+        </div>
+
+        <!-- Logged In Profile View -->
+        <div id="authProfileView" style="display: none;">
+          <div class="profile-card">
+            <div class="profile-avatar-big" id="userAvatarBig">J</div>
+            <div class="profile-details">
+              <h3 id="userNameBig">Mirzayev Jahongir</h3>
+              <p id="userHandleBig">@AniMovie_User</p>
+              <p style="color: #4ade80; font-size: 11px; font-weight:700; margin-top:3px;">● Telegram orqali faol</p>
+            </div>
+          </div>
+
+          <div class="stats-row">
+            <div class="stat-box">
+              <div class="stat-val" id="userLikesCount">18</div>
+              <div class="stat-label">Yoqqanlar</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-val" id="userCommentsCount">5</div>
+              <div class="stat-label">Izohlar</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-val">VIP 💎</div>
+              <div class="stat-label">Status</div>
+            </div>
+          </div>
+
+          <button class="btn-telegram-auth" style="background: #232936; border: 1px solid var(--border); box-shadow: none;" onclick="logout()">
+            Hisobdan chiqish
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 1. Telegram WebApp Setup
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+      try {
+        tg.setHeaderColor('#000000');
+        tg.setBackgroundColor('#000000');
+      } catch(e) {}
+    }
+
+    // VIP ruxsat tekshiruvi (faqat VIP obunachilar va adminlar uchun)
+    const urlParams = new URLSearchParams(window.location.search);
+    const isVipParam = urlParams.get('vip') === '1';
+    const tgUserId = tg?.initDataUnsafe?.user?.id;
+    const adminIds = [7285523919, 8166740229];
+    const isAdmin = tgUserId && adminIds.includes(Number(tgUserId));
+
+    if (!isVipParam && !isAdmin && !localStorage.getItem('animovie_is_vip')) {
+      document.body.innerHTML = `
+        <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; background: #000; color: white; font-family: 'Plus Jakarta Sans', sans-serif;">
+          <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #f59e0b, #ef4444); border-radius: 24px; display: flex; align-items: center; justify-content: center; font-size: 40px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(245, 158, 11, 0.4);">👑</div>
+          <h2 style="font-size: 22px; font-weight: 800; margin-bottom: 10px;">Faqat VIP Obunachilar Uchun</h2>
+          <p style="font-size: 14px; color: #94a3b8; line-height: 1.6; max-width: 320px; margin-bottom: 28px;">
+            Hurmatli foydalanuvchi, Shorts Mini App bo'limi faqat AniMovie VIP foydalanuvchilari uchun ochiq!
+          </p>
+          <a href="https://t.me/AniMovieuz_bot?start=vip" style="background: linear-gradient(135deg, #ff2d55, #ff6b3d); color: white; text-decoration: none; padding: 14px 28px; border-radius: 14px; font-size: 15px; font-weight: 800; box-shadow: 0 8px 24px rgba(255, 45, 85, 0.4); display: inline-block;">
+            💎 VIP Obunani Xarid Qilish
+          </a>
+        </div>
+      `;
+    }
+
+    function haptic(type = 'light') {
+      try {
+        tg?.HapticFeedback?.impactOccurred(type);
+      } catch(e) {}
+    }
+
+    // 2. User Authentication State Management
+    let currentUser = null;
+
+    function initAuth() {
+      // Check if open inside Telegram
+      const tgUser = tg?.initDataUnsafe?.user;
+      const savedUser = localStorage.getItem('animovie_user');
+
+      if (tgUser && tgUser.id) {
+        currentUser = {
+          id: tgUser.id,
+          name: `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || 'Telegram Foydalanuvchi',
+          username: tgUser.username ? `@${tgUser.username}` : `ID: ${tgUser.id}`,
+          avatar: (tgUser.first_name || 'U')[0].toUpperCase(),
+          photo_url: tgUser.photo_url || null
+        };
+        localStorage.setItem('animovie_user', JSON.stringify(currentUser));
+      } else if (savedUser) {
+        try {
+          currentUser = JSON.parse(savedUser);
+        } catch(e) {}
+      }
+
+      updateAuthUI();
+    }
+
+    function updateAuthUI() {
+      for (let i = 0; i < 3; i++) {
+        const btn = document.getElementById(`authBtnHeader${i}`);
+        const icon = document.getElementById(`authBadgeIcon${i}`);
+        const text = document.getElementById(`authBadgeText${i}`);
+        if (!btn) continue;
+
+        if (currentUser) {
+          btn.classList.add('logged-in');
+          icon.innerText = currentUser.avatar;
+          text.innerText = currentUser.name.split(' ')[0];
+        } else {
+          btn.classList.remove('logged-in');
+          icon.innerText = '👤';
+          text.innerText = 'Kirish';
+        }
+      }
+    }
+
+    function openAuthModal() {
+      haptic('medium');
+      const unauth = document.getElementById('unauthView');
+      const profile = document.getElementById('authProfileView');
+
+      if (currentUser) {
+        unauth.style.display = 'none';
+        profile.style.display = 'block';
+        document.getElementById('userAvatarBig').innerText = currentUser.avatar;
+        document.getElementById('userNameBig').innerText = currentUser.name;
+        document.getElementById('userHandleBig').innerText = currentUser.username;
+      } else {
+        unauth.style.display = 'block';
+        profile.style.display = 'none';
+      }
+
+      document.getElementById('authSheet').classList.add('active');
+    }
+
+    function doTelegramLogin() {
+      haptic('medium');
+      const tgUser = tg?.initDataUnsafe?.user;
+      if (tgUser) {
+        currentUser = {
+          id: tgUser.id,
+          name: `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || 'Telegram Foydalanuvchi',
+          username: tgUser.username ? `@${tgUser.username}` : `ID: ${tgUser.id}`,
+          avatar: (tgUser.first_name || 'U')[0].toUpperCase()
+        };
+      } else {
+        // Fallback for browser testing
+        currentUser = {
+          id: 7285523919,
+          name: "Jahongir Mirzayev",
+          username: "@Jahongir02_02",
+          avatar: "J"
+        };
+      }
+      localStorage.setItem('animovie_user', JSON.stringify(currentUser));
+      updateAuthUI();
+      closeSheet('authSheet');
+      if (tg) {
+        tg.showAlert(`Xush kelibsiz, ${currentUser.name}! Ro'yxatdan muvaffaqiyatli o'tdingiz.`);
+      }
+    }
+
+    function logout() {
+      haptic('light');
+      currentUser = null;
+      localStorage.removeItem('animovie_user');
+      updateAuthUI();
+      closeSheet('authSheet');
+    }
+
+    initAuth();
+
+    // 3. Audio & Video Controls
+    let isMuted = true;
+    let lastTap = 0;
+
+    function toggleMute() {
+      haptic('light');
+      isMuted = !isMuted;
+      document.querySelectorAll('video').forEach(v => {
+        v.muted = isMuted;
+      });
+
+      const soundSvg = `
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+      `;
+      const muteSvg = `
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <line x1="23" y1="9" x2="17" y2="15"></line>
+        <line x1="17" y1="9" x2="23" y2="15"></line>
+      `;
+
+      document.querySelectorAll('.mute-svg').forEach(svg => {
+        svg.innerHTML = isMuted ? muteSvg : soundSvg;
+      });
+
+      document.querySelectorAll('.action-label-mute').forEach(label => {
+        label.innerText = isMuted ? 'Ovoz' : 'Yoqildi';
+      });
+    }
+
+    function createFloatingHeart(x, y, parent) {
+      haptic('medium');
+      const heart = document.createElement('div');
+      heart.className = 'floating-heart';
+      heart.style.left = `${x}px`;
+      heart.style.top = `${y}px`;
+      heart.innerHTML = `
+        <svg width="70" height="70" viewBox="0 0 24 24" fill="#ff2d55" stroke="#ff2d55" stroke-width="1.5">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+        </svg>
+      `;
+      parent.appendChild(heart);
+      setTimeout(() => heart.remove(), 750);
+    }
+
+    function renderShorts(list) {
+      const container = document.getElementById('shortsContainer');
+      container.innerHTML = '';
+
+      if (!list || list.length === 0) {
+        container.innerHTML = `
+          <div style="height: 100vh; height: 100dvh; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--text-muted); padding: 24px;">
+            <div style="width: 72px; height: 72px; background: rgba(255,45,85,0.15); border: 1px solid rgba(255,45,85,0.3); border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 34px; margin-bottom: 16px;">⚡️</div>
+            <h3 style="color: white; font-size: 18px; font-weight: 800; margin-bottom: 8px;">Shorts videolar mavjud emas</h3>
+            <p style="font-size: 13px; max-width: 290px; line-height: 1.5;">Hozircha dataga yuklangan shortslar yo'q. Admin panel orqali yangi video yuklanganda bu yerda avtomatik ko'rsatiladi.</p>
+          </div>
+        `;
+        return;
+      }
+
+      list.forEach((s, idx) => {
+        const item = document.createElement('div');
+        item.className = 'short-item';
+        item.setAttribute('data-index', idx);
+        item.innerHTML = `
+          <div class="overlay-top"></div>
+          <div class="overlay-bottom"></div>
+
+          <div class="top-bar">
+            <div class="brand">
+              <div class="brand-icon">⚡️</div>
+              <div class="brand-title">AniMovie Shorts</div>
+            </div>
+            <button class="auth-btn-header" onclick="openAuthModal()">
+              <span>👤</span>
+              <span>Profil</span>
+            </button>
+          </div>
+
+          <video src="${s.video_url}" autoplay muted loop playsinline webkit-playsinline preload="auto" poster="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='700'><rect width='100%' height='100%' fill='%230b0e14'/><text x='50%' y='50%' fill='%23ff2d55' font-size='24' font-weight='bold' text-anchor='middle'>⚡️ AniMovie Shorts</text></svg>">
+            <source src="${s.video_url}" type="video/mp4">
+          </video>
+
+          <div class="center-indicator">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
+
+          <div class="actions-sidebar">
+            <div class="action-btn" onclick="toggleLike(this, ${s.likes || 1000})">
+              <div class="icon-bubble">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                </svg>
+              </div>
+              <span class="action-label">${((s.likes || 1000)/1000).toFixed(1)}k</span>
+            </div>
+
+            <div class="action-btn" onclick="openComments('${(s.title || '').replace(/'/g, "\'")}')">
+              <div class="icon-bubble">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                </svg>
+              </div>
+              <span class="action-label">${((s.comments || 500)/1000).toFixed(1)}k</span>
+            </div>
+
+            <div class="action-btn" onclick="shareShort('${(s.title || '').replace(/'/g, "\'")}')">
+              <div class="icon-bubble">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="18" cy="5" r="3"></circle>
+                  <circle cx="6" cy="12" r="3"></circle>
+                  <circle cx="18" cy="19" r="3"></circle>
+                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                </svg>
+              </div>
+              <span class="action-label">Ulashish</span>
+            </div>
+
+            <div class="action-btn" onclick="toggleMute()">
+              <div class="icon-bubble mute-bubble">
+                <svg class="mute-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                  <line x1="23" y1="9" x2="17" y2="15"></line>
+                  <line x1="17" y1="9" x2="23" y2="15"></line>
+                </svg>
+              </div>
+              <span class="action-label action-label-mute">Ovoz</span>
+            </div>
+
+            <div class="disc-container">
+              <div class="disc-center"></div>
+            </div>
+          </div>
+
+          <div class="bottom-info">
+            <div class="creator-tag">
+              <div class="creator-avatar">${(s.creator || '@')[1] || 'A'}</div>
+              <span class="creator-name">${s.creator || '@Ani_Movei_UZ'}</span>
+              <button class="follow-btn" onclick="openChannel()">Kanal</button>
+            </div>
+            <div class="caption-text">
+              ${s.caption || s.title}
+            </div>
+            <div class="sound-info">
+              🎵 ${s.sound || 'AniMovie Asl ovoz'}
+            </div>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+
+      setupShortEvents();
+    }
+
+    function setupShortEvents() {
+      const items = document.querySelectorAll('.short-item');
+      if (items.length === 0) return;
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          const video = entry.target.querySelector('video');
+          if (video) {
+            if (entry.isIntersecting) {
+              video.muted = isMuted;
+              const p = video.play();
+              if (p !== undefined) {
+                p.catch(() => {
+                  video.muted = true;
+                  video.play().catch(() => {});
+                });
+              }
+            } else {
+              video.pause();
+              video.currentTime = 0;
+            }
+          }
+        });
+      }, { threshold: 0.6 });
+
+      items.forEach((item) => {
+        observer.observe(item);
+        const video = item.querySelector('video');
+        const indicator = item.querySelector('.center-indicator');
+
+        item.addEventListener('click', (e) => {
+          if (e.target.closest('.actions-sidebar') || e.target.closest('.creator-tag') || e.target.closest('.top-bar')) {
+            return;
+          }
+          const currentTime = new Date().getTime();
+          const tapLength = currentTime - lastTap;
+          if (tapLength < 300 && tapLength > 0) {
+            createFloatingHeart(e.clientX, e.clientY, item);
+            const likeBtn = item.querySelector('.action-btn');
+            if (likeBtn) {
+              const bubble = likeBtn.querySelector('.icon-bubble');
+              if (!bubble.classList.contains('liked')) {
+                toggleLike(likeBtn, 1000);
+              }
+            }
+            lastTap = 0;
+          } else {
+            lastTap = currentTime;
+            setTimeout(() => {
+              if (new Date().getTime() - lastTap >= 280 && lastTap !== 0) {
+                haptic('light');
+                if (video) {
+                  if (video.paused) {
+                    video.play();
+                    indicator.innerHTML = '<svg width="34" height="34" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+                  } else {
+                    video.pause();
+                    indicator.innerHTML = '<svg width="34" height="34" viewBox="0 0 24 24" fill="white"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+                  }
+                  indicator.classList.add('show');
+                  setTimeout(() => indicator.classList.remove('show'), 400);
+                }
+              }
+            }, 290);
+          }
+        });
+      });
+    }
+
+    // Faqat dataga yuklangan shortslarni yuklash (bir nechta yo'llar orqali kafolatli yuklash)
+    async function loadShorts() {
+      const candidates = [
+        'shorts.json?t=' + Date.now(),
+        'https://ithac4290-sys.github.io/animoviebot/shorts/shorts.json?t=' + Date.now(),
+        'https://ithac4290-sys.github.io/animoviebot/docs/shorts/shorts.json?t=' + Date.now(),
+        'https://ithac4290-sys.github.io/animoviebot/data/shorts.json?t=' + Date.now()
+      ];
+      for (const url of candidates) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) {
+            const list = await res.json();
+            if (Array.isArray(list) && list.length > 0) {
+              renderShorts(list);
+              return;
+            }
+          }
+        } catch (e) {}
+      }
+      renderShorts([]);
+    }
+    loadShorts();
+
+    // Like Button Toggle
+    function toggleLike(btn, baseCount) {
+      haptic('medium');
+      const bubble = btn.querySelector('.icon-bubble');
+      const label = btn.querySelector('.action-label');
+      const isLiked = bubble.classList.toggle('liked');
+
+      if (isLiked) {
+        label.innerText = ((baseCount + 1) / 1000).toFixed(1) + 'k';
+      } else {
+        label.innerText = (baseCount / 1000).toFixed(1) + 'k';
+      }
+    }
+
+    // Comments Sheet
+    function openComments(title) {
+      haptic('light');
+      document.getElementById('commentsSheetTitle').innerText = `${title} — Izohlar`;
+      document.getElementById('commentsSheet').classList.add('active');
+    }
+
+    function sendComment() {
+      const input = document.getElementById('newCommentInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      haptic('medium');
+      const name = currentUser ? currentUser.name : "Foydalanuvchi";
+      const initial = currentUser ? currentUser.avatar : "F";
+
+      const list = document.getElementById('commentsList');
+      const item = document.createElement('div');
+      item.className = 'comment-item';
+      item.innerHTML = `
+        <div class="comment-avatar" style="background:#ff2d55; color:white;">${initial}</div>
+        <div class="comment-content">
+          <div class="comment-author">${name} • Hozirgina</div>
+          <div class="comment-text">${text}</div>
+        </div>
+      `;
+      list.prepend(item);
+      input.value = '';
+    }
+
+    // Share Action
+    function shareShort(title) {
+      haptic('medium');
+      const text = encodeURIComponent(`AniMovie da ${title} qisqa videosini tomosha qiling! 🔥`);
+      const url = `https://t.me/share/url?url=https://t.me/AniMovieuz_bot&text=${text}`;
+      if (tg) {
+        tg.openTelegramLink(url);
+      } else {
+        window.open(url, '_blank');
+      }
+    }
+
+    function openChannel() {
+      haptic('medium');
+      if (tg) {
+        tg.openTelegramLink('https://t.me/Ani_Movei_UZ');
+      } else {
+        window.open('https://t.me/Ani_Movei_UZ', '_blank');
+      }
+    }
+
+    // Bottom Sheet Helpers
+    function closeSheet(id) {
+      document.getElementById(id).classList.remove('active');
+    }
+
+    function handleSheetBackdrop(e, id) {
+      if (e.target.id === id) {
+        closeSheet(id);
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1101,15 +1101,29 @@
       });
     }
 
-    // Faqat dataga yuklangan shortslarni yuklash
-    fetch('shorts.json?t=' + Date.now())
-      .then(res => res.json())
-      .then(list => {
-        renderShorts(Array.isArray(list) ? list : []);
-      })
-      .catch(() => {
-        renderShorts([]);
-      });
+    // Faqat dataga yuklangan shortslarni yuklash (bir nechta yo'llar orqali kafolatli yuklash)
+    async function loadShorts() {
+      const candidates = [
+        'shorts.json?t=' + Date.now(),
+        'https://ithac4290-sys.github.io/animoviebot/shorts/shorts.json?t=' + Date.now(),
+        'https://ithac4290-sys.github.io/animoviebot/docs/shorts/shorts.json?t=' + Date.now(),
+        'https://ithac4290-sys.github.io/animoviebot/data/shorts.json?t=' + Date.now()
+      ];
+      for (const url of candidates) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) {
+            const list = await res.json();
+            if (Array.isArray(list) && list.length > 0) {
+              renderShorts(list);
+              return;
+            }
+          }
+        } catch (e) {}
+      }
+      renderShorts([]);
+    }
+    loadShorts();
 
     // Like Button Toggle
     function toggleLike(btn, baseCount) {
