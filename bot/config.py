@@ -17,6 +17,7 @@ class Config:
     trace_moe_api_key: str
     manga_webapp_url: str
     shorts_webapp_url: str
+    manga_channel_id: str
 
 
 def load_config() -> Config:
@@ -32,6 +33,7 @@ def load_config() -> Config:
     trace_moe_api_key = os.getenv("TRACE_MOE_API_KEY", "").strip()
     manga_webapp_url = os.getenv("MANGA_WEBAPP_URL", "https://ithac4290-sys.github.io/animoviebot/manga/?v=3").strip()
     shorts_webapp_url = os.getenv("SHORTS_WEBAPP_URL", "https://ithac4290-sys.github.io/animoviebot/shorts/?v=3").strip()
+    manga_channel_id = os.getenv("MANGA_CHANNEL_ID", "@AniMovie_manga").strip()
 
     admins_raw = os.getenv("ADMINS", "7285523919,8166740229")
     admins: List[int] = []
@@ -50,6 +52,7 @@ def load_config() -> Config:
         trace_moe_api_key=trace_moe_api_key,
         manga_webapp_url=manga_webapp_url,
         shorts_webapp_url=shorts_webapp_url,
+        manga_channel_id=manga_channel_id,
     )
 
 

@@ -1029,6 +1029,15 @@
           mangas = customMangas;
         }
         renderManga(mangas);
+
+        // URL parametrida manga_id berilgan bo'lsa darhol o'sha mangani ochish
+        const targetMangaId = urlParams.get('manga_id');
+        if (targetMangaId) {
+          const found = mangas.find(m => String(m.id) === String(targetMangaId));
+          if (found) {
+            openDetails(found);
+          }
+        }
       })
       .catch(() => {
         renderManga(mangas);

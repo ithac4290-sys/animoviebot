@@ -1,6 +1,6 @@
 import html
 from aiogram import Router, F, Bot
-from aiogram.types import Message, CallbackQuery, InlineKeyboardButton
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, WebAppInfo
 from aiogram.filters import CommandStart, Command, CommandObject, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -70,9 +70,15 @@ async def handle_start(message: Message, command: CommandObject, bot: Bot, state
     bot_info = await bot.get_me()
     bot_username = bot_info.username or config.bot_username
 
-    # Agar parametr bo'lsa (Deep-link: masalan /start 961)
+    # Agar parametr bo'lsa (Deep-link: masalan /start 961 yoki /start manga_1)
     if args:
         clean_arg = args.strip()
+        if clean_arg.startswith("manga_"):
+            m_id = clean_arg.replace("manga_", "")
+            if m_id.isdigit():
+                await show_manga_by_id(message, int(m_id), bot, bot_username)
+                return
+
         # "anime_961" yoki "961"
         if clean_arg.startswith("anime_"):
             clean_arg = clean_arg.replace("anime_", "")
@@ -966,9 +972,14 @@ async def handle_check_subscription(callback: CallbackQuery, bot: Bot):
     bot_username = bot_info.username or config.bot_username
 
     target_anime_id = None
+    target_manga_id = None
     if callback.data.startswith("check_sub_"):
-        raw_id = callback.data.replace("check_sub_", "")
-        if raw_id.isdigit():
+        raw_id = callback.data.replace("check_sub_", "").strip()
+        if raw_id.startswith("manga_"):
+            m_str = raw_id.replace("manga_", "")
+            if m_str.isdigit():
+                target_manga_id = int(m_str)
+        elif raw_id.isdigit():
             target_anime_id = int(raw_id)
 
     if is_subbed:
@@ -978,8 +989,10 @@ async def handle_check_subscription(callback: CallbackQuery, bot: Bot):
         except Exception:
             pass
 
-        # Agar foydalanuvchi anime ko'rish uchun tekshirgan bo'lsa, o'sha animeni darhol ochish!
-        if target_anime_id:
+        # Agar foydalanuvchi anime yoki manga ko'rish uchun tekshirgan bo'lsa, darhol ochish!
+        if target_manga_id:
+            await show_manga_by_id(callback, target_manga_id, bot, bot_username)
+        elif target_anime_id:
             await show_anime_by_id(callback, target_anime_id, bot, bot_username)
         else:
             text = get_welcome_text(callback.from_user.full_name)
@@ -988,17 +1001,130 @@ async def handle_check_subscription(callback: CallbackQuery, bot: Bot):
             await callback.message.answer(text=text, reply_markup=kb, parse_mode="HTML")
     else:
         await callback.answer("❌ Hali barcha kanallarga a'zo bo'lmadingiz!", show_alert=True)
-        if target_anime_id:
+        sub_param = f"manga_{target_manga_id}" if target_manga_id else (str(target_anime_id) if target_anime_id else "")
+        if sub_param:
             builder = InlineKeyboardBuilder()
             for idx, ch in enumerate(unsubbed, 1):
                 title = ch.get("title", f"Kanal #{idx}")
                 link = ch.get("invite_link", "https://t.me")
                 builder.row(InlineKeyboardButton(text=f"📢 {title}", url=link))
-            builder.row(InlineKeyboardButton(text="✅ Obunani tekshirish", callback_data=f"check_sub_{target_anime_id}"))
+            builder.row(InlineKeyboardButton(text="✅ Obunani tekshirish", callback_data=f"check_sub_{sub_param}"))
             await callback.message.edit_reply_markup(reply_markup=builder.as_markup())
         else:
             kb = get_subscription_keyboard(unsubbed)
             await callback.message.edit_reply_markup(reply_markup=kb)
+
+
+async def show_manga_by_id(message_or_query, manga_id: int, bot: Bot, bot_username: str):
+    """Manga ma'lumotlarini kanaldagi dizaynda ko'rsatish va mutolaa tugmasi berish"""
+    user_id = message_or_query.from_user.id
+    is_message = isinstance(message_or_query, Message)
+
+    # 1. Majburiy obunani tekshirish
+    is_subbed, unsubbed = await check_user_subscriptions(bot, user_id)
+    if not is_subbed:
+        text = (
+            "⚠️ <b>Kechirasiz, manga mutolaa qilish uchun quyidagi homiy kanallarimizga obuna bo'lishingiz kerak:</b>\n\n"
+            "<i>Iltimos, kanallarga a'zo bo'lib, '✅ Obunani tekshirish' tugmasini bosing!</i>"
+        )
+        builder = InlineKeyboardBuilder()
+        for idx, ch in enumerate(unsubbed, 1):
+            title = ch.get("title", f"Kanal #{idx}")
+            link = ch.get("invite_link", "https://t.me")
+            builder.row(InlineKeyboardButton(text=f"📢 {title}", url=link))
+        builder.row(InlineKeyboardButton(text="✅ Obunani tekshirish", callback_data=f"check_sub_manga_{manga_id}"))
+        kb = builder.as_markup()
+
+        if is_message:
+            await message_or_query.answer(text=text, reply_markup=kb, parse_mode="HTML")
+        else:
+            await message_or_query.message.answer(text=text, reply_markup=kb, parse_mode="HTML")
+        return
+
+    # 2. Manga ma'lumotlarini olish
+    manga = await db.get_manga(manga_id)
+    if not manga:
+        not_found_text = f"❌ <b>Kechirasiz, {manga_id} ID raqamli manga topilmadi!</b>"
+        if is_message:
+            await message_or_query.answer(not_found_text, parse_mode="HTML")
+        else:
+            await message_or_query.answer(not_found_text, show_alert=True)
+        return
+
+    m_data = manga.get("data") or {}
+    if isinstance(m_data, str):
+        try:
+            m_data = json.loads(m_data)
+        except Exception:
+            m_data = {}
+
+    m_type = m_data.get("type", "Manhwa") if isinstance(m_data, dict) else "Manhwa"
+    m_genre = manga.get("genre", "Jangari").title()
+    status = manga.get("status", "Davom etmoqda")
+    ch_count = manga.get("chapters_count", 1)
+
+    caption = (
+        f"• <b>{html.escape(manga['title'])}</b>\n"
+        f"╭━━━━━━━━━━━━━━━━━━━━━\n"
+        f"▸ <b>Janr :</b> {html.escape(m_genre)}\n"
+        f"▸ <b>Turi :</b> {html.escape(m_type)}\n"
+        f"▸ <b>Til :</b> Uzbek\n"
+        f"▸ <b>Holati :</b> {html.escape(status)}\n"
+        f"▸ <b>Mavjud boblar :</b> {ch_count} ta\n"
+        f"╰━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"{html.escape(manga.get('description', ''))}\n\n"
+        f"<b>Asosiy kanal:</b> {config.manga_channel_id}"
+    )
+
+    is_vip = (user_id in config.admins) or await db.check_user_vip_status(user_id)
+    manga_base = config.manga_webapp_url
+    sep = "&" if "?" in manga_base else "?"
+    manga_url = f"{manga_base}{sep}vip=1&user_id={user_id}&manga_id={manga_id}"
+
+    builder = InlineKeyboardBuilder()
+    if is_vip:
+        builder.row(
+            InlineKeyboardButton(
+                text="📚 Hoziroq O'qish (Mini App) 📚",
+                web_app=WebAppInfo(url=manga_url)
+            )
+        )
+    else:
+        builder.row(
+            InlineKeyboardButton(
+                text="📚 Hoziroq O'qish [VIP 🔒] 📚",
+                callback_data="vip_required_manga"
+            )
+        )
+        builder.row(
+            InlineKeyboardButton(
+                text="👑 VIP Obunani faollashtirish",
+                callback_data="btn_vip"
+            )
+        )
+    builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="btn_home"))
+
+    cover = manga.get("cover")
+    try:
+        if is_message:
+            await message_or_query.answer_photo(
+                photo=cover,
+                caption=caption,
+                reply_markup=builder.as_markup(),
+                parse_mode="HTML"
+            )
+        else:
+            await message_or_query.message.answer_photo(
+                photo=cover,
+                caption=caption,
+                reply_markup=builder.as_markup(),
+                parse_mode="HTML"
+            )
+    except Exception:
+        if is_message:
+            await message_or_query.answer(text=caption, reply_markup=builder.as_markup(), parse_mode="HTML")
+        else:
+            await message_or_query.message.answer(text=caption, reply_markup=builder.as_markup(), parse_mode="HTML")
 
 
 @router.message(Command("admin"))

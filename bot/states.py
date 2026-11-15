@@ -54,6 +54,7 @@ class AddMangaState(StatesGroup):
     title = State()           # Manga nomi
     cover = State()           # Muqova rasmi
     genre = State()           # Janri
+    manga_type = State()      # Turi (Manhwa / Manga / Manhua)
     status = State()          # Holati
     chapters_count = State()  # Jami boblar soni
     description = State()     # Tavsif

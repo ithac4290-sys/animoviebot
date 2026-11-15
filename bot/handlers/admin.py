@@ -1326,14 +1326,44 @@ async def process_manga_cover(message: Message, state: FSMContext, bot: Bot):
 @router.callback_query(AddMangaState.genre, F.data.startswith("genre_"))
 async def process_manga_genre_cb(callback: CallbackQuery, state: FSMContext):
     genre_map = {
-        "genre_action": "action",
-        "genre_fantasy": "fantasy",
-        "genre_adventure": "adventure",
-        "genre_romance": "romance",
-        "genre_comedy": "comedy"
+        "genre_action": "Jangari",
+        "genre_fantasy": "Fantastika",
+        "genre_adventure": "Sarguzasht",
+        "genre_romance": "Romantika",
+        "genre_comedy": "Komediya"
     }
-    genre = genre_map.get(callback.data, "action")
+    genre = genre_map.get(callback.data, "Jangari")
     await state.update_data(genre=genre)
+    await state.set_state(AddMangaState.manga_type)
+
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="🇰🇷 Manhwa", callback_data="mtype_Manhwa"),
+        InlineKeyboardButton(text="🇯🇵 Manga", callback_data="mtype_Manga"),
+        InlineKeyboardButton(text="🇨🇳 Manhua", callback_data="mtype_Manhua")
+    )
+    builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel"))
+    await callback.message.edit_text("📚 <b>Manga turini tanlang:</b>", reply_markup=builder.as_markup(), parse_mode="HTML")
+
+
+@router.message(AddMangaState.genre)
+async def process_manga_genre_text(message: Message, state: FSMContext):
+    await state.update_data(genre=message.text.strip())
+    await state.set_state(AddMangaState.manga_type)
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="🇰🇷 Manhwa", callback_data="mtype_Manhwa"),
+        InlineKeyboardButton(text="🇯🇵 Manga", callback_data="mtype_Manga"),
+        InlineKeyboardButton(text="🇨🇳 Manhua", callback_data="mtype_Manhua")
+    )
+    builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel"))
+    await message.answer("📚 <b>Manga turini tanlang:</b>", reply_markup=builder.as_markup(), parse_mode="HTML")
+
+
+@router.callback_query(AddMangaState.manga_type, F.data.startswith("mtype_"))
+async def process_manga_type_cb(callback: CallbackQuery, state: FSMContext):
+    m_type = callback.data.split("_", 1)[1]
+    await state.update_data(manga_type=m_type)
     await state.set_state(AddMangaState.status)
 
     builder = InlineKeyboardBuilder()
@@ -1343,19 +1373,6 @@ async def process_manga_genre_cb(callback: CallbackQuery, state: FSMContext):
     )
     builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel"))
     await callback.message.edit_text("📌 Manga holatini tanlang:", reply_markup=builder.as_markup())
-
-
-@router.message(AddMangaState.genre)
-async def process_manga_genre_text(message: Message, state: FSMContext):
-    await state.update_data(genre=message.text.strip().lower())
-    await state.set_state(AddMangaState.status)
-    builder = InlineKeyboardBuilder()
-    builder.row(
-        InlineKeyboardButton(text="🟢 Davom etmoqda", callback_data="mstatus_ongoing"),
-        InlineKeyboardButton(text="🔴 Tugallangan", callback_data="mstatus_completed")
-    )
-    builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel"))
-    await message.answer("📌 Manga holatini tanlang:", reply_markup=builder.as_markup())
 
 
 @router.callback_query(AddMangaState.status, F.data.startswith("mstatus_"))
@@ -1391,7 +1408,8 @@ async def process_manga_desc(message: Message, state: FSMContext):
     data = await state.get_data()
     title = data.get("title", "Manga")
     cover = data.get("cover", "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500")
-    genre = data.get("genre", "action")
+    genre = data.get("genre", "Jangari")
+    manga_type = data.get("manga_type", "Manhwa")
     status = data.get("status", "Davom etmoqda")
     chapters_count = data.get("chapters_count", 1)
 
@@ -1402,20 +1420,67 @@ async def process_manga_desc(message: Message, state: FSMContext):
         status=status,
         chapters_count=chapters_count,
         description=desc,
-        rating="4.9"
+        rating="4.9",
+        data={"type": manga_type, "lang": "Uzbek"}
     )
 
     await sync_mangas_json()
     await state.clear()
+
+    # Kanalga post tayyorlash va yuborish (https://t.me/AniMovie_manga)
+    bot_info = await message.bot.get_me()
+    bot_username = bot_info.username or config.bot_username
+    manga_channel = config.manga_channel_id
+
+    channel_caption = (
+        f"• <b>{html.escape(title)}</b>\n"
+        f"╭━━━━━━━━━━━━━━━━━━━━━\n"
+        f"▸ <b>Janr :</b> {html.escape(genre)}\n"
+        f"▸ <b>Turi :</b> {html.escape(manga_type)}\n"
+        f"▸ <b>Til :</b> Uzbek\n"
+        f"▸ <b>Holati :</b> {html.escape(status)}\n"
+        f"╰━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"<b>Asosiy kanal:</b> {manga_channel}"
+    )
+
+    channel_kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="📚 Hoziroq O'qish 📚",
+                    url=f"https://t.me/{bot_username}?start=manga_{m_id}"
+                )
+            ]
+        ]
+    )
+
+    posted_to_channel = False
+    error_msg = ""
+    try:
+        await message.bot.send_photo(
+            chat_id=manga_channel,
+            photo=cover,
+            caption=channel_caption,
+            reply_markup=channel_kb,
+            parse_mode="HTML"
+        )
+        posted_to_channel = True
+    except Exception as e:
+        error_msg = str(e)
+
+    post_status_str = f"📢 <b>{manga_channel} kanaliga post muvaffaqiyatli yuborildi!</b>" if posted_to_channel else f"⚠️ <i>Kanalga yuborishda ogohlantirish: {html.escape(error_msg)}</i>"
 
     text = (
         f"✅ <b>Manga muvaffaqiyatli saqlandi va Mini App'ga qo'shildi!</b>\n\n"
         f"🆔 <b>ID:</b> <code>{m_id}</code>\n"
         f"📖 <b>Nomi:</b> {html.escape(title)}\n"
         f"🎭 <b>Janri:</b> {genre}\n"
+        f"📚 <b>Turi:</b> {manga_type}\n"
         f"📌 <b>Holati:</b> {status}\n"
         f"🔢 <b>Boblar soni:</b> {chapters_count} ta\n"
-        f"📝 <b>Tavsif:</b> {html.escape(desc[:100])}..."
+        f"📝 <b>Tavsif:</b> {html.escape(desc[:100])}...\n\n"
+        f"{post_status_str}\n\n"
+        f"Endi ushbu mangaga birinchi bob sahifalarini yuklashingiz mumkin:"
     )
     await message.answer(
         text,
@@ -1571,12 +1636,63 @@ async def handle_finish_chapter_cb(callback: CallbackQuery, state: FSMContext):
     await sync_mangas_json()
     await state.clear()
 
+    # Bob yangilanganda kanalga post yuborish
+    bot_info = await callback.bot.get_me()
+    bot_username = bot_info.username or config.bot_username
+    manga_channel = config.manga_channel_id
+
+    channel_posted = False
+    try:
+        manga = await db.get_manga(manga_id)
+        if manga:
+            m_data = manga.get("data") or {}
+            if isinstance(m_data, str):
+                try:
+                    m_data = json.loads(m_data)
+                except Exception:
+                    m_data = {}
+            m_type = m_data.get("type", "Manhwa")
+            m_genre = manga.get("genre", "Jangari").title()
+            ch_caption = (
+                f"• <b>{html.escape(manga_title)} — {ch_num}-bob</b>\n"
+                f"╭━━━━━━━━━━━━━━━━━━━━━\n"
+                f"▸ <b>Janr :</b> {html.escape(m_genre)}\n"
+                f"▸ <b>Turi :</b> {html.escape(m_type)}\n"
+                f"▸ <b>Til :</b> Uzbek\n"
+                f"▸ <b>Holati :</b> {html.escape(manga.get('status', 'Davom etmoqda'))}\n"
+                f"╰━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"<b>Asosiy kanal:</b> {manga_channel}"
+            )
+            ch_kb = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(
+                            text="📚 Hoziroq O'qish 📚",
+                            url=f"https://t.me/{bot_username}?start=manga_{manga_id}"
+                        )
+                    ]
+                ]
+            )
+            await callback.bot.send_photo(
+                chat_id=manga_channel,
+                photo=manga["cover"],
+                caption=ch_caption,
+                reply_markup=ch_kb,
+                parse_mode="HTML"
+            )
+            channel_posted = True
+    except Exception:
+        pass
+
+    chan_note = f"\n📢 <b>{manga_channel}</b> kanaliga xabar yuborildi!" if channel_posted else ""
+
     text = (
         f"🎉 <b>Manga bobi muvaffaqiyatli saqlandi!</b>\n\n"
         f"📖 <b>Manga:</b> {html.escape(manga_title)}\n"
         f"📑 <b>Bob:</b> {ch_num}-bob\n"
         f"📄 <b>Sahifalar soni:</b> {len(pages)} ta\n"
         f"✅ <i>Sahifalar PostgreSQL data bazasiga va Manga Mini App'ga joylandi!</i>"
+        f"{chan_note}"
     )
     await callback.message.edit_text(
         text,
