@@ -508,16 +508,28 @@ async def process_search_by_image(message: Message, state: FSMContext, bot: Bot)
                     })
                     break
 
-                if saved_hash and user_hash:
-                    sim = hash_similarity(user_hash, saved_hash)
-                    if sim >= 0.80:
-                        candidates.append({
-                            "anime": a,
-                            "similarity": round(sim * 100, 1),
-                            "raw_similarity": sim,
-                            "matched_db_title": a.get("title", ""),
-                            "matched_search_title": a.get("title", "")
-                        })
+                # Barcha saqlangan poster va kadrlarning hashlarini tekshirish
+                saved_hashes = a_data.get("poster_hashes") or []
+                if isinstance(saved_hashes, str):
+                    saved_hashes = [saved_hashes]
+                if saved_hash and saved_hash not in saved_hashes:
+                    saved_hashes.append(saved_hash)
+
+                best_h_sim = 0.0
+                if user_hash and saved_hashes:
+                    for sh in saved_hashes:
+                        h_sim = hash_similarity(user_hash, sh)
+                        if h_sim > best_h_sim:
+                            best_h_sim = h_sim
+
+                if best_h_sim >= 0.78:
+                    candidates.append({
+                        "anime": a,
+                        "similarity": round(best_h_sim * 100, 1),
+                        "raw_similarity": best_h_sim,
+                        "matched_db_title": a.get("title", ""),
+                        "matched_search_title": a.get("title", "")
+                    })
 
             candidates.sort(key=lambda x: x["raw_similarity"], reverse=True)
             candidates = candidates[:3]
@@ -528,9 +540,25 @@ async def process_search_by_image(message: Message, state: FSMContext, bot: Bot)
             top_cand = candidates[0]
             poster = top_cand["anime"].get("poster")
             db_anime_title = top_cand["anime"].get("title", "")
+            db_alts = (top_cand["anime"].get("data") or {}).get("alt_titles") or []
+            if isinstance(db_alts, str):
+                db_alts = [db_alts]
 
-            raw_en = (detected_info or {}).get("title_en") or db_anime_title
-            raw_uz = (detected_info or {}).get("title_uz") or db_anime_title
+            # Bazadagi haqiqiy rasmiy inglizcha nomni aniqlash
+            db_en = ""
+            for alt in db_alts:
+                if isinstance(alt, str) and not has_cyrillic(alt):
+                    if not re.search(r"[\u3040-\u30ff\u4e00-\u9faf]", alt):
+                        db_en = alt.strip()
+                        break
+
+            # Agar anime bazadan aniqlangan bo'lsa, bazadagi asl inglizcha nomni olamiz
+            if db_en and top_cand["similarity"] >= 80.0:
+                raw_en = db_en
+            else:
+                raw_en = (detected_info or {}).get("title_en") or db_anime_title
+
+            raw_uz = db_anime_title if top_cand["similarity"] >= 80.0 else ((detected_info or {}).get("title_uz") or db_anime_title)
             raw_ru = (detected_info or {}).get("title_ru") or ""
 
             title_en, title_uz, title_ru = await ensure_multilingual_titles(

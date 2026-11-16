@@ -243,7 +243,7 @@ async def identify_anime_with_trace_moe(image_bytes: bytes, trace_key: str = "")
                     if results:
                         best = results[0]
                         similarity = best.get("similarity", 0)
-                        if similarity >= 0.70:
+                        if similarity >= 0.82:
                             anilist = best.get("anilist") or {}
                             title_info = anilist.get("title") or {}
                             romaji_title = title_info.get("romaji") or ""
