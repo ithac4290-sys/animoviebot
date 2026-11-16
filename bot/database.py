@@ -130,6 +130,23 @@ class Database:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
+
+            # 7. TezCheck To'lovlar jadvali (Click, Payme, Uzum orqali avtomat to'lovlar)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS tezcheck_payments (
+                    id SERIAL PRIMARY KEY,
+                    bill_id TEXT UNIQUE NOT NULL,
+                    user_id BIGINT NOT NULL,
+                    plan_key TEXT NOT NULL,
+                    days INTEGER NOT NULL,
+                    amount_uzs INTEGER NOT NULL,
+                    status TEXT DEFAULT 'pending',
+                    payment_url TEXT,
+                    data JSONB DEFAULT '{}'::jsonb,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
             logger.info("PostgreSQL jadvallari tekshirildi va tayyor!")
 
     async def _init_sqlite_tables(self):
@@ -210,6 +227,23 @@ class Database:
                     comments_count INTEGER DEFAULT 0,
                     data TEXT DEFAULT '{}',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+
+            # 7. TezCheck To'lovlar jadvali (SQLite)
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS tezcheck_payments (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    bill_id TEXT UNIQUE NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    plan_key TEXT NOT NULL,
+                    days INTEGER NOT NULL,
+                    amount_uzs INTEGER NOT NULL,
+                    status TEXT DEFAULT 'pending',
+                    payment_url TEXT,
+                    data TEXT DEFAULT '{}',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
             await db.commit()
@@ -348,6 +382,90 @@ class Database:
                 return False
         except Exception:
             return False
+
+    # ================= TezCheck To'lovlari bilan ishlash =================
+
+    async def create_tezcheck_payment(
+        self,
+        bill_id: str,
+        user_id: int,
+        plan_key: str,
+        days: int,
+        amount_uzs: int,
+        payment_url: str,
+        data: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        """Yangi TezCheck to'lov yozuvini yaratish"""
+        data_json = json.dumps(data or {})
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                await conn.execute("""
+                    INSERT INTO tezcheck_payments (bill_id, user_id, plan_key, days, amount_uzs, payment_url, data, status)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, 'pending')
+                    ON CONFLICT (bill_id) DO UPDATE SET
+                        status = 'pending',
+                        payment_url = EXCLUDED.payment_url,
+                        data = EXCLUDED.data;
+                """, bill_id, user_id, plan_key, days, amount_uzs, payment_url, data_json)
+                return True
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                await db.execute("""
+                    INSERT OR REPLACE INTO tezcheck_payments (bill_id, user_id, plan_key, days, amount_uzs, payment_url, data, status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+                """, (bill_id, user_id, plan_key, days, amount_uzs, payment_url, data_json))
+                await db.commit()
+                return True
+
+    async def get_tezcheck_payment(self, bill_id: str) -> Optional[Dict[str, Any]]:
+        """Bill ID orqali TezCheck to'lovini olish"""
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                row = await conn.fetchrow("SELECT * FROM tezcheck_payments WHERE bill_id = $1", bill_id)
+                if not row:
+                    return None
+                res = dict(row)
+                if isinstance(res.get("data"), str):
+                    try:
+                        res["data"] = json.loads(res["data"])
+                    except Exception:
+                        res["data"] = {}
+                return res
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                db.row_factory = aiosqlite.Row
+                cursor = await db.execute("SELECT * FROM tezcheck_payments WHERE bill_id = ?", (bill_id,))
+                row = await cursor.fetchone()
+                if not row:
+                    return None
+                res = dict(row)
+                if isinstance(res.get("data"), str):
+                    try:
+                        res["data"] = json.loads(res["data"])
+                    except Exception:
+                        res["data"] = {}
+                return res
+
+    async def update_tezcheck_payment_status(self, bill_id: str, status: str) -> bool:
+        """To'lov holatini yangilash ('paid', 'expired', 'canceled')"""
+        now_str = datetime.now().isoformat()
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                res = await conn.execute("""
+                    UPDATE tezcheck_payments
+                    SET status = $1, updated_at = CURRENT_TIMESTAMP
+                    WHERE bill_id = $2
+                """, status, bill_id)
+                return "UPDATE" in res
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                cursor = await db.execute("""
+                    UPDATE tezcheck_payments
+                    SET status = ?, updated_at = ?
+                    WHERE bill_id = ?
+                """, (status, now_str, bill_id))
+                await db.commit()
+                return cursor.rowcount > 0
 
     # ================= Animelar bilan ishlash =================
 

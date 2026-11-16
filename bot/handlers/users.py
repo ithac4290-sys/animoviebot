@@ -2,6 +2,7 @@ import html
 import json
 import logging
 import re
+import time
 from aiogram import Router, F, Bot
 from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, WebAppInfo
 from aiogram.filters import CommandStart, Command, CommandObject, StateFilter
@@ -913,9 +914,9 @@ async def handle_select_vip_plan(callback: CallbackQuery, state: FSMContext):
     plan_key = callback.data
 
     plans = {
-        "buy_vip_1": {"name": "1 oylik VIP", "days": 30, "price": "15,000 so'm"},
-        "buy_vip_3": {"name": "3 oylik VIP", "days": 90, "price": "50,000 so'm"},
-        "buy_vip_unlimited": {"name": "Doimiy (cheksiz) VIP", "days": 3650, "price": "100,000 so'm"}
+        "buy_vip_1": {"name": "1 oylik VIP", "days": 30, "price": "15,000 so'm", "amount": 15000},
+        "buy_vip_3": {"name": "3 oylik VIP", "days": 90, "price": "50,000 so'm", "amount": 50000},
+        "buy_vip_unlimited": {"name": "Doimiy (cheksiz) VIP", "days": 3650, "price": "100,000 so'm", "amount": 100000}
     }
     selected = plans.get(plan_key)
     await state.update_data(
@@ -925,17 +926,104 @@ async def handle_select_vip_plan(callback: CallbackQuery, state: FSMContext):
         price=selected["price"]
     )
 
+    from bot.tezcheck import tezcheck_client
+    tezcheck_url = None
+    bill_id = None
+
+    # Agar TezCheck integratsiyasi faollashtirilgan bo'lsa
+    if tezcheck_client.is_enabled:
+        try:
+            bill_res = await tezcheck_client.create_bill(
+                amount_uzs=selected["amount"],
+                title=f"VIP Obuna - {selected['name']}",
+                external_reference=f"VIP-{callback.from_user.id}-{int(time.time())}"
+            )
+            if bill_res.get("ok"):
+                tezcheck_url = bill_res.get("payment_url")
+                bill_id = bill_res.get("bill_id")
+                await db.create_tezcheck_payment(
+                    bill_id=bill_id,
+                    user_id=callback.from_user.id,
+                    plan_key=plan_key,
+                    days=selected["days"],
+                    amount_uzs=selected["amount"],
+                    payment_url=tezcheck_url,
+                    data=bill_res.get("raw")
+                )
+        except Exception as e:
+            logging.getLogger("Users").error(f"TezCheck to'lov havolasi yaratishda xatolik: {e}")
+
     text = (
         f"💎 <b>Tanlangan tarif:</b> {selected['name']}\n"
         f"💵 <b>To'lov summasi:</b> {selected['price']}\n\n"
-        f"💳 <b>To'lov uchun karta / rekvizitlar:</b>\n"
-        f"Hozirda to'lovni adminimiz orqali amalga oshirishingiz mumkin:\n\n"
-        f"👨🏻‍💻 <b>Admin:</b> @Jahongir02_02\n\n"
-        f"<i>To'lov chekini (skrinshotini) to'g'ridan-to'g'ri botga yuborish uchun quyidagi <b>'📤 Chek yuborish'</b> tugmasini bosing:</i>"
     )
 
-    kb = get_vip_payment_keyboard(plan_key, callback.from_user.id)
+    if tezcheck_url:
+        text += (
+            "💳 <b>To'lov usullari:</b>\n"
+            "1️⃣ <b>Avtomatik onlayn to'lov (TezCheck):</b>\n"
+            "Quyidagi <b>'💳 Click / Payme / Uzum orqali to'lash'</b> tugmasini bosing va to'lang.\n"
+            "To'lov yakunlangach, <b>'🔄 To'lovni tekshirish'</b> tugmasini bosing!\n\n"
+            "2️⃣ <b>Qo'lda to'lov (Admin orqali):</b>\n"
+            "👨🏻‍💻 <b>Admin:</b> @Jahongir02_02\n"
+            "<i>To'lov chekini botga yuborish uchun <b>'📤 Chek yuborish'</b> tugmasini bosing:</i>"
+        )
+    else:
+        text += (
+            f"💳 <b>To'lov uchun karta / rekvizitlar:</b>\n"
+            f"Hozirda to'lovni adminimiz orqali amalga oshirishingiz mumkin:\n\n"
+            f"👨🏻‍💻 <b>Admin:</b> @Jahongir02_02\n\n"
+            f"<i>To'lov chekini (skrinshotini) to'g'ridan-to'g'ri botga yuborish uchun quyidagi <b>'📤 Chek yuborish'</b> tugmasini bosing:</i>"
+        )
+
+    kb = get_vip_payment_keyboard(
+        plan_key,
+        callback.from_user.id,
+        tezcheck_url=tezcheck_url,
+        bill_id=bill_id
+    )
     await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("check_tz_"))
+async def handle_check_tezcheck_payment(callback: CallbackQuery, bot: Bot):
+    bill_id = callback.data.replace("check_tz_", "")
+    await callback.answer("🔄 To'lov holati tekshirilmoqda...", show_alert=False)
+
+    from bot.tezcheck import tezcheck_client
+    payment = await db.get_tezcheck_payment(bill_id)
+    if not payment:
+        await callback.answer("⚠️ Ushbu to'lov hisobi topilmadi.", show_alert=True)
+        return
+
+    if payment.get("status") == "paid":
+        await callback.answer("✅ Ushbu to'lov allaqachon tasdiqlangan va VIP faol!", show_alert=True)
+        return
+
+    # TezCheck API orqali holatni tekshirish
+    status_res = await tezcheck_client.get_bill_status(bill_id)
+    if status_res.get("is_paid"):
+        user_id = payment["user_id"]
+        days = payment["days"]
+        await db.update_tezcheck_payment_status(bill_id, "paid")
+        await db.give_vip(user_id, days)
+
+        text = (
+            "🎉 <b>TO'LOV MUVAFFAQIYATLI QABUL QILINDI!</b>\n\n"
+            f"👑 Sizga <b>{payment.get('plan_key', 'VIP')}</b> tarifi uchun {days} kunlik VIP maqomi faollashtirildi!\n"
+            "✨ Endi siz animelarni reklamasiz va yuqori tezlikda tomosha qilishingiz mumkin.\n\n"
+            "🍿 <b>Maroqli tomosha tilaymiz!</b>"
+        )
+        try:
+            await callback.message.edit_text(text, reply_markup=get_back_home_keyboard(), parse_mode="HTML")
+        except Exception:
+            await callback.message.answer(text, reply_markup=get_back_home_keyboard(), parse_mode="HTML")
+    else:
+        current_status = status_res.get("status", "kutilmoqda")
+        await callback.answer(
+            f"⏳ To'lov holati: {current_status}.\nAgar to'lovni bajargan bo'lsangiz, bir necha soniyadan so'ng qayta tekshiring.",
+            show_alert=True
+        )
 
 
 @router.callback_query(F.data.startswith("send_receipt_"))

@@ -573,9 +573,25 @@ def get_vip_plans_keyboard() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def get_vip_payment_keyboard(plan_id: str, user_id: int) -> InlineKeyboardMarkup:
+def get_vip_payment_keyboard(
+    plan_id: str,
+    user_id: int,
+    tezcheck_url: Optional[str] = None,
+    bill_id: Optional[str] = None
+) -> InlineKeyboardMarkup:
     """To'lov qilish va chek yuborish tugmalari"""
     builder = InlineKeyboardBuilder()
+
+    # Agar TezCheck integratsiyasi yoqilgan va havola mavjud bo'lsa
+    if tezcheck_url:
+        builder.row(
+            InlineKeyboardButton(text="💳 Click / Payme / Uzum orqali to'lash", url=tezcheck_url)
+        )
+        if bill_id:
+            builder.row(
+                InlineKeyboardButton(text="🔄 To'lovni tekshirish", callback_data=f"check_tz_{bill_id}")
+            )
+
     builder.row(
         InlineKeyboardButton(text="📤 𝗖𝗵𝗲𝗸 (𝘀𝗸𝗿𝗶𝗻𝘀𝗵𝗼𝘁) 𝘆𝘂𝗯𝗼𝗿𝗶𝘀𝗵", callback_data=f"send_receipt_{plan_id}", style="success")
     )
@@ -587,6 +603,24 @@ def get_vip_payment_keyboard(plan_id: str, user_id: int) -> InlineKeyboardMarkup
     )
     builder.row(
         InlineKeyboardButton(text="⬅️ 𝗕𝗼𝘀𝗵𝗾𝗮 𝘁𝗮𝗿𝗶𝗳 𝘁𝗮𝗻𝗹𝗮𝘀𝗵", callback_data="btn_vip")
+    )
+    return builder.as_markup()
+
+
+def get_tezcheck_bill_keyboard(payment_url: str, bill_id: str, plan_id: str) -> InlineKeyboardMarkup:
+    """TezCheck onlayn hisob-faktura uchun maxsus klaviatura"""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="💳 Click / Payme / Uzum orqali to'lash", url=payment_url)
+    )
+    builder.row(
+        InlineKeyboardButton(text="🔄 To'lovni tekshirish", callback_data=f"check_tz_{bill_id}")
+    )
+    builder.row(
+        InlineKeyboardButton(text="📤 Qo'lda chek yuborish", callback_data=f"send_receipt_{plan_id}")
+    )
+    builder.row(
+        InlineKeyboardButton(text="⬅️ Bekor qilish", callback_data="btn_vip")
     )
     return builder.as_markup()
 

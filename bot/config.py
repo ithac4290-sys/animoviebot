@@ -19,6 +19,10 @@ class Config:
     manga_webapp_url: str
     shorts_webapp_url: str
     manga_channel_id: str
+    tezcheck_enabled: bool = False
+    tezcheck_api_key: str = ""
+    tezcheck_cash_desk_code: str = ""
+    tezcheck_secret_key: str = ""
 
 
 def load_config() -> Config:
@@ -36,6 +40,11 @@ def load_config() -> Config:
     manga_webapp_url = os.getenv("MANGA_WEBAPP_URL", "https://ithac4290-sys.github.io/animoviebot/manga/?v=15").strip()
     shorts_webapp_url = os.getenv("SHORTS_WEBAPP_URL", "https://ithac4290-sys.github.io/animoviebot/shorts/?v=15").strip()
     manga_channel_id = os.getenv("MANGA_CHANNEL_ID", "@AniMovie_manga").strip()
+
+    tezcheck_enabled = os.getenv("TEZCHECK_ENABLED", "false").strip().lower() in ("true", "1", "yes")
+    tezcheck_api_key = os.getenv("TEZCHECK_API_KEY", "").strip()
+    tezcheck_cash_desk_code = os.getenv("TEZCHECK_CASH_DESK_CODE", "").strip()
+    tezcheck_secret_key = os.getenv("TEZCHECK_SECRET_KEY", "").strip()
 
     admins_raw = os.getenv("ADMINS", "7285523919,8166740229")
     admins: List[int] = []
@@ -56,6 +65,10 @@ def load_config() -> Config:
         manga_webapp_url=manga_webapp_url,
         shorts_webapp_url=shorts_webapp_url,
         manga_channel_id=manga_channel_id,
+        tezcheck_enabled=tezcheck_enabled,
+        tezcheck_api_key=tezcheck_api_key,
+        tezcheck_cash_desk_code=tezcheck_cash_desk_code,
+        tezcheck_secret_key=tezcheck_secret_key,
     )
 
 
