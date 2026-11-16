@@ -1,11 +1,9 @@
 import html
-from aiogram import Router, F, Bot
+from aiogram import Router, Bot
 from aiogram.types import (
     InlineQuery,
     InlineQueryResultArticle,
-    InputTextMessageContent,
-    InlineQueryResultPhoto,
-    InlineQueryResultCachedPhoto
+    InputTextMessageContent
 )
 from bot.database import db
 from bot.config import config
@@ -21,10 +19,10 @@ async def handle_inline_search(inline_query: InlineQuery, bot: Bot):
     bot_username = bot_info.username or config.bot_username
 
     if not query:
-        # Eng ommabop top animelarni ko'rsatish
-        results = await db.get_top_animes(limit=15)
+        # Eng ommabop animelarni ko'rsatish
+        results = await db.get_top_animes(limit=20)
     else:
-        results = await db.search_animes(query, limit=15)
+        results = await db.search_animes(query, limit=20)
 
     inline_results = []
 
@@ -32,57 +30,57 @@ async def handle_inline_search(inline_query: InlineQuery, bot: Bot):
         anime_id = anime["id"]
         title = anime["title"]
         status = anime.get("status", "Davom etmoqda")
-        episodes_count = anime.get("episodes_count", "12")
+        genres = anime.get("genres", "Anime, Fantastika")
         channel = anime.get("channel", f"@{bot_username}")
-        poster = anime.get("poster")
+        views = anime.get("views", 0)
+        episodes_count = anime.get("episodes_count", "12")
 
+        db_data = anime.get("data") or {}
+        alt_titles = db_data.get("alt_titles") or []
+        alt_title = alt_titles[0] if (alt_titles and isinstance(alt_titles, list)) else ""
+
+        # Pop-up ro'yxatida ko'rinadigan sarlavha va tavsif
+        display_title = f"🎬 {title}"
+        if alt_title:
+            display_title += f" • {alt_title}"
+
+        description = f"⭐ {episodes_count} | {genres} | {status}"
+        thumbnail_url = f"https://ithac4290-sys.github.io/animoviebot/posters/{anime_id}.jpg"
+
+        # Xabar yuborilgandagi dizayn (rasmli va batafsil)
         caption = (
-            f"{html.escape(title)}\n\n"
-            f"<blockquote>• Holati: {html.escape(status)}\n"
-            f"• Sifat - 720p, 1080p\n"
-            f"• {html.escape(channel)}</blockquote>\n\n"
-            f"🏷 Botimiz: @{bot_username}\n"
-            f"📮 Anime ID: {anime_id}\n"
-            f"📎 Link: https://t.me/{bot_username}?start={anime_id}"
+            f"<a href='{thumbnail_url}'>&#8203;</a>"
+            f"🎬 <b>{html.escape(title)}</b>\n"
+            + (f"<i>({html.escape(alt_title)})</i>\n" if alt_title else "") +
+            f"\n<blockquote>"
+            f"🎭 <b>Janr:</b> {html.escape(genres)}\n"
+            f"📌 <b>Holati:</b> {html.escape(status)}\n"
+            f"⚡️ <b>Sifat:</b> 720p / 1080p FULL HD\n"
+            f"👁 <b>Ko'rishlar:</b> {views} marta\n"
+            f"📢 <b>Kanal:</b> {html.escape(channel)}"
+            f"</blockquote>\n\n"
+            f"📮 <b>Anime ID:</b> <code>{anime_id}</code>\n"
+            f"🍿 <b>Tomosha qilish:</b> @{bot_username}"
         )
 
         episodes = await db.get_anime_episodes(anime_id)
         uploaded_ep_nums = [ep["episode_num"] for ep in episodes]
         reply_markup = get_anime_keyboard(anime_id, uploaded_ep_nums)
 
-        # Agar poster mavjud bo'lsa InlineQueryResultCachedPhoto yoki Photo, aks holda Article
-        if poster and not poster.startswith("http"):
-            # Telegram file_id photo
-            item = InlineQueryResultCachedPhoto(
-                id=str(anime_id),
-                photo_file_id=poster,
-                caption=caption,
-                reply_markup=reply_markup,
+        # Telegram vertikal zamonaviy ro'yxat dizayni (Article mode with thumbnail)
+        item = InlineQueryResultArticle(
+            id=str(anime_id),
+            title=display_title,
+            description=description,
+            thumbnail_url=thumbnail_url,
+            thumbnail_width=100,
+            thumbnail_height=140,
+            input_message_content=InputTextMessageContent(
+                message_text=caption,
                 parse_mode="HTML"
-            )
-        elif poster and poster.startswith("http"):
-            item = InlineQueryResultPhoto(
-                id=str(anime_id),
-                photo_url=poster,
-                thumbnail_url=poster,
-                title=title,
-                caption=caption,
-                description=f"ID: {anime_id} | {episodes_count} | {status}",
-                reply_markup=reply_markup,
-                parse_mode="HTML"
-            )
-        else:
-            item = InlineQueryResultArticle(
-                id=str(anime_id),
-                title=title,
-                description=f"ID: {anime_id} | {episodes_count} | {status}",
-                input_message_content=InputTextMessageContent(
-                    message_text=caption,
-                    parse_mode="HTML"
-                ),
-                reply_markup=reply_markup
-            )
-
+            ),
+            reply_markup=reply_markup
+        )
         inline_results.append(item)
 
     await inline_query.answer(

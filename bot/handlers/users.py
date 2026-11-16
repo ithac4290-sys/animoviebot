@@ -49,20 +49,31 @@ def get_welcome_text(full_name: str) -> str:
 
 
 def format_anime_caption(anime: dict, bot_username: str) -> str:
-    """Anime card caption formati"""
+    """Anime card zamonaviy caption dizayni"""
     title = html.escape(anime.get("title", ""))
     status = html.escape(anime.get("status", "Davom etmoqda"))
+    genres = html.escape(anime.get("genres", "Anime, Fantastika"))
     channel = html.escape(anime.get("channel", f"@{bot_username}"))
     anime_id = anime.get("id")
+    views = anime.get("views", 0)
+
+    db_data = anime.get("data") or {}
+    alt_titles = db_data.get("alt_titles") or []
+    alt_title = alt_titles[0] if (alt_titles and isinstance(alt_titles, list)) else ""
+    alt_line = f"<i>({html.escape(alt_title)})</i>\n" if alt_title else ""
 
     return (
-        f"🎬 <b>{title}</b>\n\n"
-        f"<blockquote>• 📌 Holati: {status}\n"
-        f"• ⚡️ Sifat: 720p, 1080p\n"
-        f"• 📢 {channel}</blockquote>\n\n"
-        f"🏷 <b>Botimiz:</b> @{bot_username}\n"
+        f"🎬 <b>{title}</b>\n"
+        f"{alt_line}\n"
+        f"<blockquote>"
+        f"🎭 <b>Janr:</b> {genres}\n"
+        f"📌 <b>Holati:</b> {status}\n"
+        f"⚡️ <b>Sifat:</b> 720p / 1080p FULL HD\n"
+        f"👁 <b>Ko'rishlar:</b> {views} marta\n"
+        f"📢 <b>Kanal:</b> {channel}"
+        f"</blockquote>\n\n"
         f"📮 <b>Anime ID:</b> <code>{anime_id}</code>\n"
-        f"📎 <b>Link:</b> https://t.me/{bot_username}?start={anime_id}"
+        f"🍿 <b>Tomosha qilish:</b> @{bot_username}"
     )
 
 
