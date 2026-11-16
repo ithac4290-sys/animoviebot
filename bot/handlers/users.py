@@ -1,4 +1,5 @@
 import html
+import json
 import logging
 from aiogram import Router, F, Bot
 from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, WebAppInfo
@@ -63,6 +64,14 @@ def format_anime_caption(anime: dict, bot_username: str) -> str:
     views = anime.get("views", 0)
 
     db_data = anime.get("data") or {}
+    if isinstance(db_data, str):
+        try:
+            db_data = json.loads(db_data)
+        except Exception:
+            db_data = {}
+    elif not isinstance(db_data, dict):
+        db_data = {}
+
     alt_titles = db_data.get("alt_titles") or []
     alt_title = alt_titles[0] if (alt_titles and isinstance(alt_titles, list)) else ""
     alt_line = f"<i>({html.escape(alt_title)})</i>\n" if alt_title else ""
@@ -511,6 +520,14 @@ async def process_search_by_image(message: Message, state: FSMContext, bot: Bot)
             user_unique_id = photo.file_unique_id
             for a in db_animes:
                 a_data = a.get("data") or {}
+                if isinstance(a_data, str):
+                    try:
+                        a_data = json.loads(a_data)
+                    except Exception:
+                        a_data = {}
+                elif not isinstance(a_data, dict):
+                    a_data = {}
+
                 saved_unique_id = a_data.get("poster_unique_id")
                 saved_hash = a_data.get("poster_hash")
 
@@ -556,7 +573,16 @@ async def process_search_by_image(message: Message, state: FSMContext, bot: Bot)
             top_cand = candidates[0]
             poster = top_cand["anime"].get("poster")
             db_anime_title = top_cand["anime"].get("title", "")
-            db_alts = (top_cand["anime"].get("data") or {}).get("alt_titles") or []
+            cand_data = top_cand["anime"].get("data") or {}
+            if isinstance(cand_data, str):
+                try:
+                    cand_data = json.loads(cand_data)
+                except Exception:
+                    cand_data = {}
+            elif not isinstance(cand_data, dict):
+                cand_data = {}
+
+            db_alts = cand_data.get("alt_titles") or []
             if isinstance(db_alts, str):
                 db_alts = [db_alts]
 

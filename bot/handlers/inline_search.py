@@ -1,4 +1,5 @@
 import html
+import json
 from aiogram import Router, Bot
 from aiogram.types import (
     InlineQuery,
@@ -36,6 +37,14 @@ async def handle_inline_search(inline_query: InlineQuery, bot: Bot):
         episodes_count = anime.get("episodes_count", "12")
 
         db_data = anime.get("data") or {}
+        if isinstance(db_data, str):
+            try:
+                db_data = json.loads(db_data)
+            except Exception:
+                db_data = {}
+        elif not isinstance(db_data, dict):
+            db_data = {}
+
         alt_titles = db_data.get("alt_titles") or []
         alt_title = alt_titles[0] if (alt_titles and isinstance(alt_titles, list)) else ""
 

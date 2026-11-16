@@ -388,19 +388,28 @@ class Database:
                 await db.commit()
                 return cursor.lastrowid
 
+    @staticmethod
+    def _parse_anime_dict(d: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        if not d:
+            return d
+        res = dict(d)
+        data = res.get("data")
+        if isinstance(data, str):
+            try:
+                res["data"] = json.loads(data)
+            except Exception:
+                res["data"] = {}
+        elif not isinstance(data, dict):
+            res["data"] = {}
+        return res
+
     async def get_anime(self, anime_id: int) -> Optional[Dict[str, Any]]:
         """Anime ma'lumotlarini ID orqali olish (barcha JSON videolari bilan birga)"""
         if self.is_postgres and self.pool:
             async with self.pool.acquire() as conn:
                 row = await conn.fetchrow("SELECT * FROM animes WHERE id = $1", anime_id)
                 if row:
-                    res = dict(row)
-                    if isinstance(res.get("data"), str):
-                        try:
-                            res["data"] = json.loads(res["data"])
-                        except Exception:
-                            pass
-                    return res
+                    return self._parse_anime_dict(dict(row))
                 return None
         else:
             async with aiosqlite.connect(self.sqlite_path) as db:
@@ -408,13 +417,7 @@ class Database:
                 cursor = await db.execute("SELECT * FROM animes WHERE id = ?", (anime_id,))
                 row = await cursor.fetchone()
                 if row:
-                    res = dict(row)
-                    if isinstance(res.get("data"), str):
-                        try:
-                            res["data"] = json.loads(res["data"])
-                        except Exception:
-                            pass
-                    return res
+                    return self._parse_anime_dict(dict(row))
                 return None
 
     get_anime_by_id = get_anime
@@ -443,7 +446,7 @@ class Database:
                         ORDER BY views DESC, id DESC
                         LIMIT $2
                     """, search_term, limit)
-                return [dict(r) for r in rows]
+                return [self._parse_anime_dict(dict(r)) for r in rows]
         else:
             async with aiosqlite.connect(self.sqlite_path) as db:
                 db.row_factory = aiosqlite.Row
@@ -456,42 +459,20 @@ class Database:
                         (search_term, search_term, limit)
                     )
                 rows = await cursor.fetchall()
-                return [dict(r) for r in rows]
+                return [self._parse_anime_dict(dict(r)) for r in rows]
 
     async def get_all_anime_posters(self) -> List[Dict[str, Any]]:
         """Barcha animelarning rasm posterlari va hashlarini olish"""
         if self.is_postgres and self.pool:
             async with self.pool.acquire() as conn:
                 rows = await conn.fetch("SELECT id, title, poster, data FROM animes")
-                results = []
-                for r in rows:
-                    d = dict(r)
-                    if isinstance(d.get("data"), str):
-                        try:
-                            d["data"] = json.loads(d["data"])
-                        except Exception:
-                            d["data"] = {}
-                    elif not d.get("data"):
-                        d["data"] = {}
-                    results.append(d)
-                return results
+                return [self._parse_anime_dict(dict(r)) for r in rows]
         else:
             async with aiosqlite.connect(self.sqlite_path) as db:
                 db.row_factory = aiosqlite.Row
                 cursor = await db.execute("SELECT id, title, poster, data FROM animes")
                 rows = await cursor.fetchall()
-                results = []
-                for r in rows:
-                    d = dict(r)
-                    if isinstance(d.get("data"), str):
-                        try:
-                            d["data"] = json.loads(d["data"])
-                        except Exception:
-                            d["data"] = {}
-                    elif not d.get("data"):
-                        d["data"] = {}
-                    results.append(d)
-                return results
+                return [self._parse_anime_dict(dict(r)) for r in rows]
 
     async def update_anime_poster_hash(self, anime_id: int, poster_hash: str,
                                        poster_unique_id: Optional[str] = None,
@@ -544,7 +525,7 @@ class Database:
                     ORDER BY views DESC, id DESC
                     LIMIT $1
                 """, limit)
-                return [dict(r) for r in rows]
+                return [self._parse_anime_dict(dict(r)) for r in rows]
         else:
             async with aiosqlite.connect(self.sqlite_path) as db:
                 db.row_factory = aiosqlite.Row
@@ -553,7 +534,7 @@ class Database:
                     (limit,)
                 )
                 rows = await cursor.fetchall()
-                return [dict(r) for r in rows]
+                return [self._parse_anime_dict(dict(r)) for r in rows]
 
     async def get_latest_animes(self, limit: int = 10) -> List[Dict[str, Any]]:
         """So'ngi yuklangan animelar"""
@@ -564,7 +545,7 @@ class Database:
                     ORDER BY id DESC
                     LIMIT $1
                 """, limit)
-                return [dict(r) for r in rows]
+                return [self._parse_anime_dict(dict(r)) for r in rows]
         else:
             async with aiosqlite.connect(self.sqlite_path) as db:
                 db.row_factory = aiosqlite.Row
@@ -573,7 +554,7 @@ class Database:
                     (limit,)
                 )
                 rows = await cursor.fetchall()
-                return [dict(r) for r in rows]
+                return [self._parse_anime_dict(dict(r)) for r in rows]
 
     async def search_animes_by_genre(self, genre: str, limit: int = 20) -> List[Dict[str, Any]]:
         """Janr bo'yicha qidirish"""
@@ -586,7 +567,7 @@ class Database:
                     ORDER BY views DESC, id DESC
                     LIMIT $2
                 """, search_term, limit)
-                return [dict(r) for r in rows]
+                return [self._parse_anime_dict(dict(r)) for r in rows]
         else:
             async with aiosqlite.connect(self.sqlite_path) as db:
                 db.row_factory = aiosqlite.Row
@@ -595,7 +576,7 @@ class Database:
                     (search_term, limit)
                 )
                 rows = await cursor.fetchall()
-                return [dict(r) for r in rows]
+                return [self._parse_anime_dict(dict(r)) for r in rows]
 
     async def get_animes_count(self) -> int:
         """Jami animelar soni"""
@@ -632,7 +613,7 @@ class Database:
                     ORDER BY a.id DESC
                     LIMIT $1 OFFSET $2
                 """, limit, offset)
-                return [dict(r) for r in rows]
+                return [self._parse_anime_dict(dict(r)) for r in rows]
         else:
             async with aiosqlite.connect(self.sqlite_path) as db:
                 db.row_factory = aiosqlite.Row
@@ -644,7 +625,7 @@ class Database:
                     LIMIT ? OFFSET ?
                 """, (limit, offset))
                 rows = await cursor.fetchall()
-                return [dict(r) for r in rows]
+                return [self._parse_anime_dict(dict(r)) for r in rows]
 
     async def delete_anime(self, anime_id: int) -> bool:
         """Animeni o'chirish"""

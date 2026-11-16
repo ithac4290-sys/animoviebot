@@ -331,6 +331,14 @@ def match_anime_in_database(detected_data: Dict[str, Any], db_animes: List[Dict[
     for a in db_animes:
         db_title = a.get("title") or ""
         a_data = a.get("data") or {}
+        if isinstance(a_data, str):
+            try:
+                a_data = json.loads(a_data)
+            except Exception:
+                a_data = {}
+        elif not isinstance(a_data, dict):
+            a_data = {}
+
         db_alts = a_data.get("alt_titles") or []
         if isinstance(db_alts, str):
             db_alts = [db_alts]
