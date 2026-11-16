@@ -2,6 +2,7 @@ import base64
 import json
 import logging
 import re
+import urllib.parse
 from difflib import SequenceMatcher
 from typing import List, Dict, Any, Optional
 import aiohttp
@@ -9,6 +10,85 @@ import aiohttp
 logger = logging.getLogger("GeminiSearch")
 
 GEMINI_MODELS = ["gemini-2.0-flash", "gemini-1.5-flash"]
+
+
+def has_cyrillic(text: str) -> bool:
+    """Matnda kirill harflari (ruscha) mavjudligini aniqlash"""
+    return bool(re.search(r"[\u0400-\u04FF]", text or ""))
+
+
+async def translate_text(text: str, target_lang: str) -> str:
+    """Matnni ko'rsatilgan tilga (uz, ru) tarjima qilish"""
+    if not text:
+        return ""
+    try:
+        url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl={target_lang}&dt=t&q=" + urllib.parse.quote(text)
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5)) as session:
+            async with session.get(url, headers={"User-Agent": "Mozilla/5.0"}) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    res = "".join([p[0] for p in data[0] if p and p[0]])
+                    if res and res.strip():
+                        return res.strip()
+    except Exception as e:
+        logger.warning(f"Tarjima xatoligi ({target_lang}): {e}")
+    return text
+
+
+async def get_shikimori_russian(query: str) -> str:
+    """Shikimori anime bazasidan rasmiy ruscha nomni olish"""
+    if not query:
+        return ""
+    try:
+        url = "https://shikimori.one/api/animes?search=" + urllib.parse.quote(query) + "&limit=1"
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5)) as session:
+            async with session.get(url, headers={"User-Agent": "AniMovieBot/1.0"}) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    if data and isinstance(data, list):
+                        ru_name = data[0].get("russian")
+                        if ru_name and has_cyrillic(ru_name):
+                            return ru_name.strip()
+    except Exception as e:
+        logger.warning(f"Shikimori ruscha nom olishda xatolik: {e}")
+    return ""
+
+
+async def ensure_multilingual_titles(title_en: str, title_uz: str, title_ru: str,
+                                     matched_db_title: str = "") -> tuple[str, str, str]:
+    """
+    3 ta tildagi nomlarning to'g'ri va bir-birini aynan takrorlamasligini ta'minlash:
+    - EN: Inglizcha yoki Romaji nomi
+    - RU: Haqiqiy ruscha (kirill) nomi (Shikimori yoki Google Translate)
+    - UZ: O'zbekcha tarjima yoki bazadagi mahalliylashtirilgan o'zbekcha nomi
+    """
+    en = (title_en or "").strip() or "Noma'lum anime"
+    uz = (title_uz or "").strip()
+    ru = (title_ru or "").strip()
+
+    # 1. Ruscha nomni to'g'rilash (kirill bo'lishi shart)
+    if not ru or not has_cyrillic(ru) or ru.lower() == en.lower():
+        shiki_ru = await get_shikimori_russian(en)
+        if shiki_ru:
+            ru = shiki_ru
+        else:
+            translated_ru = await translate_text(en, "ru")
+            if has_cyrillic(translated_ru):
+                ru = translated_ru
+            else:
+                ru = en
+
+    # 2. O'zbekcha nomni to'g'rilash (inglizcha bilan bir xil bo'lib qolmasligi kerak)
+    if matched_db_title and not has_cyrillic(matched_db_title):
+        uz = matched_db_title
+    elif not uz or uz.lower() == en.lower():
+        translated_uz = await translate_text(en, "uz")
+        if translated_uz and translated_uz.lower() != en.lower():
+            uz = translated_uz
+        else:
+            uz = en
+
+    return en, uz, ru
 
 
 def normalize_title(s: str) -> str:
@@ -198,14 +278,32 @@ async def identify_anime(image_bytes: bytes, gemini_key: str = "", trace_key: st
     Rasm orqali animeni aniqlash:
     1. Avval Gemini API orqali (eng kuchli va ko'p tilli qidiruv)
     2. Agar Gemini kaliti bo'lmasa yoki xato bersa, Trace.moe orqali
+    3. Aniqlangan nomlarni 3 ta tilga (EN, UZ, RU) to'liq o'girish
     """
+    result = None
     if gemini_key:
         result = await identify_anime_with_gemini(image_bytes, gemini_key)
-        if result and result.get("found"):
-            return result
 
-    # Zaxira sifatida Trace.moe
-    return await identify_anime_with_trace_moe(image_bytes, trace_key)
+    if not result or not result.get("found"):
+        result = await identify_anime_with_trace_moe(image_bytes, trace_key)
+
+    if result and result.get("found"):
+        raw_en = result.get("title_en") or result.get("title_ja") or ""
+        raw_uz = result.get("title_uz") or ""
+        raw_ru = result.get("title_ru") or ""
+
+        en, uz, ru = await ensure_multilingual_titles(raw_en, raw_uz, raw_ru)
+        result["title_en"] = en
+        result["title_uz"] = uz
+        result["title_ru"] = ru
+
+        alts = result.get("alt_titles") or []
+        for cand in [en, uz, ru, raw_en, result.get("title_ja")]:
+            if cand and cand not in alts:
+                alts.append(cand)
+        result["alt_titles"] = alts
+
+    return result
 
 
 def match_anime_in_database(detected_data: Dict[str, Any], db_animes: List[Dict[str, Any]],

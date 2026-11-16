@@ -24,7 +24,7 @@ from bot.keyboards import (
     get_ai_image_confirmation_keyboard,
     get_ai_image_retry_keyboard
 )
-from bot.gemini_search import identify_anime, match_anime_in_database
+from bot.gemini_search import identify_anime, match_anime_in_database, ensure_multilingual_titles
 from bot.states import VipPaymentState, UserSearchState
 from bot.utils import check_user_subscriptions
 
@@ -527,13 +527,17 @@ async def process_search_by_image(message: Message, state: FSMContext, bot: Bot)
             # 80% dan yuqori top 3 ta natija mavjud
             top_cand = candidates[0]
             poster = top_cand["anime"].get("poster")
+            db_anime_title = top_cand["anime"].get("title", "")
 
-            title_en = (detected_info or {}).get("title_en") or top_cand["anime"].get("title", "")
-            title_uz = (detected_info or {}).get("title_uz") or top_cand["anime"].get("title", "")
-            title_ru = (detected_info or {}).get("title_ru") or title_en
+            raw_en = (detected_info or {}).get("title_en") or db_anime_title
+            raw_uz = (detected_info or {}).get("title_uz") or db_anime_title
+            raw_ru = (detected_info or {}).get("title_ru") or ""
+
+            title_en, title_uz, title_ru = await ensure_multilingual_titles(
+                raw_en, raw_uz, raw_ru, matched_db_title=db_anime_title
+            )
 
             if len(candidates) == 1:
-                db_anime_title = top_cand["anime"].get("title", "")
                 sim_val = top_cand["similarity"]
 
                 text = (
@@ -574,9 +578,13 @@ async def process_search_by_image(message: Message, state: FSMContext, bot: Bot)
             return
 
         elif detected_info and detected_info.get("found"):
-            title_en = detected_info.get("title_en") or "Noma'lum"
-            title_uz = detected_info.get("title_uz") or title_en
-            title_ru = detected_info.get("title_ru") or title_en
+            raw_en = detected_info.get("title_en") or "Noma'lum anime"
+            raw_uz = detected_info.get("title_uz") or ""
+            raw_ru = detected_info.get("title_ru") or ""
+
+            title_en, title_uz, title_ru = await ensure_multilingual_titles(
+                raw_en, raw_uz, raw_ru
+            )
 
             text = (
                 "💡 <b>Rasmdan aniqlangan anime:</b>\n\n"
