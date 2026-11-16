@@ -417,6 +417,8 @@ class Database:
                     return res
                 return None
 
+    get_anime_by_id = get_anime
+
     async def increment_anime_views(self, anime_id: int):
         """Ko'rishlar sonini oshirish"""
         if self.is_postgres and self.pool:

@@ -525,12 +525,14 @@ async def process_search_by_image(message: Message, state: FSMContext, bot: Bot)
         # 4-BOSQICH: NATIJALARNI KO'RSATISH VA FOYDALANUVCHIDAN TASDIQLASH SO'ROVI
         if candidates:
             # 80% dan yuqori top 3 ta natija mavjud
-            title_en = (detected_info or {}).get("title_en") or candidates[0]["anime"].get("title", "")
-            title_uz = (detected_info or {}).get("title_uz") or candidates[0]["anime"].get("title", "")
+            top_cand = candidates[0]
+            poster = top_cand["anime"].get("poster")
+
+            title_en = (detected_info or {}).get("title_en") or top_cand["anime"].get("title", "")
+            title_uz = (detected_info or {}).get("title_uz") or top_cand["anime"].get("title", "")
             title_ru = (detected_info or {}).get("title_ru") or title_en
 
             if len(candidates) == 1:
-                top_cand = candidates[0]
                 db_anime_title = top_cand["anime"].get("title", "")
                 sim_val = top_cand["similarity"]
 
@@ -560,7 +562,15 @@ async def process_search_by_image(message: Message, state: FSMContext, bot: Bot)
                 )
 
             kb = get_ai_image_confirmation_keyboard(candidates)
-            await status_msg.edit_text(text, reply_markup=kb, parse_mode="HTML")
+            try:
+                await status_msg.delete()
+            except Exception:
+                pass
+
+            if poster:
+                await message.answer_photo(photo=poster, caption=text, reply_markup=kb, parse_mode="HTML")
+            else:
+                await message.answer(text, reply_markup=kb, parse_mode="HTML")
             return
 
         elif detected_info and detected_info.get("found"):
@@ -575,20 +585,31 @@ async def process_search_by_image(message: Message, state: FSMContext, bot: Bot)
                 f"🇷🇺 <b>RU:</b> {html.escape(title_ru)}\n\n"
                 "ℹ️ <i>Ushbu anime hozircha bizning bot bazamizda topilmadi (o'xshashlik 80% dan past).\n"
                 "Adminlar tez orada uni kanalimizga yuklashadi!</i>\n\n"
-                "Boshqa anime qidirish uchun rasm yuborishingiz mumkin:"
+                "Boshqa anime qidirish uchun yangi rasm yuborishingiz mumkin:"
             )
-            await status_msg.edit_text(text, reply_markup=get_ai_image_retry_keyboard(), parse_mode="HTML")
+            try:
+                await status_msg.edit_text(text, reply_markup=get_ai_image_retry_keyboard(), parse_mode="HTML")
+            except Exception:
+                await message.answer(text, reply_markup=get_ai_image_retry_keyboard(), parse_mode="HTML")
             return
 
     except Exception as e:
         logger.error(f"Image search error: {e}")
 
-    await status_msg.edit_text(
-        "⚠️ <b>Kechirasiz, ushbu rasm orqali animeni aniqlab bo'lmadi.</b>\n\n"
-        "<i>Iltimos, animening aniqroq kadrini (skrinshot) yuboring yoki '🏷 Anime nomi orqali' qidiruvdan foydalaning.</i>",
-        reply_markup=get_ai_image_retry_keyboard(),
-        parse_mode="HTML"
-    )
+    try:
+        await status_msg.edit_text(
+            "⚠️ <b>Kechirasiz, ushbu rasm orqali animeni aniqlab bo'lmadi.</b>\n\n"
+            "<i>Iltimos, animening aniqroq kadrini (skrinshot) yuboring yoki '🏷 Anime nomi orqali' qidiruvdan foydalaning.</i>",
+            reply_markup=get_ai_image_retry_keyboard(),
+            parse_mode="HTML"
+        )
+    except Exception:
+        await message.answer(
+            "⚠️ <b>Kechirasiz, ushbu rasm orqali animeni aniqlab bo'lmadi.</b>\n\n"
+            "<i>Iltimos, animening aniqroq kadrini (skrinshot) yuboring yoki '🏷 Anime nomi orqali' qidiruvdan foydalaning.</i>",
+            reply_markup=get_ai_image_retry_keyboard(),
+            parse_mode="HTML"
+        )
 
 
 # 6.1. ✅ AI Rasm qidiruvini tasdiqlash
@@ -597,9 +618,13 @@ async def handle_ai_confirm(callback: CallbackQuery, state: FSMContext, bot: Bot
     await callback.answer()
     anime_id = int(callback.data.replace("ai_confirm_", ""))
 
-    anime = await db.get_anime_by_id(anime_id)
+    anime = await db.get_anime(anime_id)
     if not anime:
-        await callback.message.edit_text(
+        try:
+            await callback.message.delete()
+        except Exception:
+            pass
+        await callback.message.answer(
             "⚠️ Kechirasiz, anime topilmadi yoki o'chirilgan.",
             reply_markup=get_search_cancel_keyboard(),
             parse_mode="HTML"
@@ -609,16 +634,6 @@ async def handle_ai_confirm(callback: CallbackQuery, state: FSMContext, bot: Bot
     await state.clear()
     await db.increment_anime_views(anime_id)
 
-    # Foydalanuvchiga maroqli tomosha tilash
-    try:
-        await callback.message.edit_text(
-            "🎉 <b>Ajoyib! Qidiruv muvaffaqiyatli yakunlandi!</b>\n\n"
-            "🍿 <b>Maroqli tomosha tilaymiz!</b> ✨",
-            parse_mode="HTML"
-        )
-    except Exception:
-        pass
-
     bot_info = await bot.get_me()
     bot_username = bot_info.username or config.bot_username
     caption = format_anime_caption(anime, bot_username)
@@ -627,17 +642,28 @@ async def handle_ai_confirm(callback: CallbackQuery, state: FSMContext, bot: Bot
     uploaded_ep_nums = [ep["episode_num"] for ep in episodes]
     kb = get_anime_keyboard(anime_id, uploaded_ep_nums)
 
+    congrats_header = (
+        "🎉 <b>Ajoyib! Qidiruv muvaffaqiyatli yakunlandi!</b>\n"
+        "🍿 <b>Maroqli tomosha tilaymiz!</b> ✨\n\n"
+    )
+    full_caption = congrats_header + caption
+
     poster = anime.get("poster")
+    try:
+        await callback.message.delete()
+    except Exception:
+        pass
+
     if poster:
         await callback.message.answer_photo(
             photo=poster,
-            caption=caption,
+            caption=full_caption,
             reply_markup=kb,
             parse_mode="HTML"
         )
     else:
         await callback.message.answer(
-            caption,
+            text=full_caption,
             reply_markup=kb,
             parse_mode="HTML"
         )
@@ -653,7 +679,11 @@ async def handle_ai_reject(callback: CallbackQuery, state: FSMContext):
         "Iltimos, animening boshqa aniqroq kadrini yoki posterini yuboring:\n"
         "<i>(Surat yuborishingiz bilan AI qaytadan tahlil qiladi)</i>"
     )
-    await callback.message.edit_text(text, reply_markup=get_search_cancel_keyboard(), parse_mode="HTML")
+    try:
+        await callback.message.delete()
+    except Exception:
+        pass
+    await callback.message.answer(text, reply_markup=get_search_cancel_keyboard(), parse_mode="HTML")
 
 
 # 7. 📚 Barcha animelar (sahifalash bilan)
