@@ -48,24 +48,46 @@ async def handle_inline_search(inline_query: InlineQuery, bot: Bot):
         alt_titles = db_data.get("alt_titles") or []
         alt_title = alt_titles[0] if (alt_titles and isinstance(alt_titles, list)) else ""
 
-        # Pop-up ro'yxatida ko'rinadigan sarlavha va tavsif
+        # Pop-up ro'yxatida ko'rinadigan ixcham va chiroyli sarlavha
         display_title = f"🎬 {title}"
+
+        # Qismlar sonini toza formatlash
+        ep_num = str(episodes_count).replace("qism", "").strip()
+        ep_display = f"{ep_num} qism" if ep_num.isdigit() else str(episodes_count)
+
+        # Holat (Status) indikatori
+        st_clean = status.strip()
+        if "tugallan" in st_clean.lower():
+            status_badge = "🟢 Tugallangan"
+        else:
+            status_badge = "🔵 Davom etmoqda"
+
+        # Janrlarni bosh harflar bilan chiroyli formatlash
+        genres_clean = ", ".join(w.strip().capitalize() for w in genres.replace("/", ",").split(",") if w.strip())
+        if not genres_clean:
+            genres_clean = "Anime, Fantastika"
+
+        # 2 qatorli zamonaviy tavsif (Subtitle + Metadata)
         if alt_title:
-            display_title += f" • {alt_title}"
+            description = f"✨ {alt_title}\n📺 {ep_display}  •  🎭 {genres_clean}  •  {status_badge}"
+        else:
+            description = f"📺 {ep_display}  •  🎭 {genres_clean}  •  {status_badge}"
 
-        description = f"⭐ {episodes_count} | {genres} | {status}"
-        thumbnail_url = f"https://ithac4290-sys.github.io/animoviebot/docs/posters/{anime_id}.jpg"
+        # Ro'yxat uchun toza kvadrat thumbnail va to'liq poster
+        thumbnail_url = f"https://ithac4290-sys.github.io/animoviebot/docs/posters/{anime_id}_thumb.jpg"
+        full_poster_url = f"https://ithac4290-sys.github.io/animoviebot/docs/posters/{anime_id}.jpg"
 
-        # Xabar yuborilgandagi dizayn (rasmli va batafsil)
+        # Xabar yuborilgandagi zamonaviy dizayn (rasmli va batafsil)
         caption = (
-            f"<a href='{thumbnail_url}'>&#8203;</a>"
+            f"<a href='{full_poster_url}'>&#8203;</a>"
             f"🎬 <b>{html.escape(title)}</b>\n"
             + (f"<i>({html.escape(alt_title)})</i>\n" if alt_title else "") +
             f"\n<blockquote>"
-            f"🎭 <b>Janr:</b> {html.escape(genres)}\n"
-            f"📌 <b>Holati:</b> {html.escape(status)}\n"
+            f"🎭 <b>Janr:</b> {html.escape(genres_clean)}\n"
+            f"📌 <b>Holati:</b> {status_badge}\n"
+            f"📺 <b>Qismlar:</b> {ep_display}\n"
             f"⚡️ <b>Sifat:</b> 720p / 1080p FULL HD\n"
-            f"👁 <b>Ko'rishlar:</b> {views} marta\n"
+            f"👁 <b>Ko'rishlar:</b> {views:,} marta\n"
             f"📢 <b>Kanal:</b> {html.escape(channel)}"
             f"</blockquote>\n\n"
             f"📮 <b>Anime ID:</b> <code>{anime_id}</code>\n"
@@ -76,14 +98,14 @@ async def handle_inline_search(inline_query: InlineQuery, bot: Bot):
         uploaded_ep_nums = [ep["episode_num"] for ep in episodes]
         reply_markup = get_anime_keyboard(anime_id, uploaded_ep_nums)
 
-        # Telegram vertikal zamonaviy ro'yxat dizayni (Article mode with thumbnail)
+        # Telegram vertikal zamonaviy ro'yxat dizayni (Article mode with square thumbnail)
         item = InlineQueryResultArticle(
             id=str(anime_id),
             title=display_title,
             description=description,
             thumbnail_url=thumbnail_url,
             thumbnail_width=100,
-            thumbnail_height=140,
+            thumbnail_height=100,
             input_message_content=InputTextMessageContent(
                 message_text=caption,
                 parse_mode="HTML"
