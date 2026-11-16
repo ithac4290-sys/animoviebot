@@ -18,7 +18,8 @@ from bot.states import (
     DeleteAnimeState,
     AddMangaState,
     AddShortsState,
-    AddChapterState
+    AddChapterState,
+    DeleteMangaState
 )
 from bot.keyboards import (
     get_admin_main_keyboard,
@@ -33,7 +34,9 @@ from bot.keyboards import (
     get_anime_manage_keyboard,
     get_admin_recent_mangas_keyboard,
     get_admin_finish_chapter_keyboard,
-    get_admin_after_chapter_keyboard
+    get_admin_after_chapter_keyboard,
+    get_admin_delete_manga_keyboard,
+    get_confirm_delete_manga_keyboard
 )
 
 router = Router()
@@ -1180,6 +1183,106 @@ async def handle_confirm_delete_anime(callback: CallbackQuery):
         text = f"✅ <b>{html.escape(title)}</b> animesi va barcha qismlari muvaffaqiyatli o'chirildi!"
     else:
         text = f"❌ Animeni o'chirishda xatolik yuz berdi yoki allaqachon o'chirilgan."
+
+    try:
+        await callback.message.edit_text(text, reply_markup=get_admin_main_keyboard(), parse_mode="HTML")
+    except Exception:
+        await callback.message.answer(text, reply_markup=get_admin_main_keyboard(), parse_mode="HTML")
+
+
+@router.callback_query(F.data == "admin_delete_manga")
+async def start_delete_manga(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    mangas = await db.get_all_mangas(limit=30)
+    if not mangas:
+        await callback.message.edit_text(
+            "⚠️ Hozirda bazada hech qanday manga mavjud emas.",
+            reply_markup=get_admin_main_keyboard()
+        )
+        return
+
+    await state.set_state(DeleteMangaState.manga_id)
+    text = (
+        "🗑 <b>Mangani o'chirish bo'limi</b>\n\n"
+        "Quyidagi ro'yxatdan o'chirmoqchi bo'lgan mangani tanlang yoki uning <b>ID raqamini</b> yozib yuboring:\n\n"
+    )
+    for m in mangas[:10]:
+        ch_count = m.get("chapters_count", 0)
+        text += f"• ID: <code>{m['id']}</code> — <b>{html.escape(m['title'])}</b> ({ch_count} bob)\n"
+
+    await callback.message.edit_text(text, reply_markup=get_admin_delete_manga_keyboard(mangas[:10]), parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("del_manga_select_"))
+async def handle_del_manga_select(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    manga_id = int(callback.data.replace("del_manga_select_", ""))
+    manga = await db.get_manga(manga_id)
+    if not manga:
+        await callback.message.edit_text("❌ Manga topilmadi!", reply_markup=get_admin_main_keyboard())
+        return
+
+    await state.clear()
+    ch_count = manga.get("chapters_count", 0)
+    text = (
+        f"⚠️ <b>Haqiqatdan ham ushbu mangani butunlay o'chirmoqchimisiz?</b>\n\n"
+        f"🆔 <b>ID:</b> <code>{manga['id']}</code>\n"
+        f"📖 <b>Nomi:</b> {html.escape(manga['title'])}\n"
+        f"📑 <b>Mavjud boblar:</b> {ch_count} ta\n"
+        f"🎭 <b>Janri:</b> {html.escape(manga.get('genre', ''))}\n\n"
+        f"<i>Eslatma: Manga o'chirilsa, uning barcha boblari va Mini App ma'lumotlar bazasidan butunlay yo'qoladi!</i>"
+    )
+    await callback.message.edit_text(text, reply_markup=get_confirm_delete_manga_keyboard(manga_id), parse_mode="HTML")
+
+
+@router.message(DeleteMangaState.manga_id)
+async def process_delete_manga_id(message: Message, state: FSMContext):
+    query = message.text.strip()
+    if not query.isdigit():
+        await message.answer(
+            "❌ Iltimos, faqat manga ID raqamini kiriting (masalan: 2):",
+            reply_markup=get_admin_cancel_keyboard()
+        )
+        return
+
+    manga_id = int(query)
+    manga = await db.get_manga(manga_id)
+    if not manga:
+        await message.answer(
+            f"❌ <b>{manga_id}</b> ID raqamli manga bazadan topilmadi. Qaytadan kiriting:",
+            reply_markup=get_admin_cancel_keyboard(),
+            parse_mode="HTML"
+        )
+        return
+
+    await state.clear()
+    ch_count = manga.get("chapters_count", 0)
+    text = (
+        f"⚠️ <b>Haqiqatdan ham ushbu mangani butunlay o'chirmoqchimisiz?</b>\n\n"
+        f"🆔 <b>ID:</b> <code>{manga['id']}</code>\n"
+        f"📖 <b>Nomi:</b> {html.escape(manga['title'])}\n"
+        f"📑 <b>Mavjud boblar:</b> {ch_count} ta\n"
+        f"🎭 <b>Janri:</b> {html.escape(manga.get('genre', ''))}\n\n"
+        f"<i>Eslatma: Manga o'chirilsa, uning barcha boblari va Mini App ma'lumotlar bazasidan butunlay yo'qoladi!</i>"
+    )
+    await message.answer(text, reply_markup=get_confirm_delete_manga_keyboard(manga_id), parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("confirm_del_manga_"))
+async def handle_confirm_delete_manga(callback: CallbackQuery):
+    manga_id = int(callback.data.replace("confirm_del_manga_", ""))
+    manga = await db.get_manga(manga_id)
+    title = manga["title"] if manga else f"ID: {manga_id}"
+
+    success = await db.delete_manga(manga_id)
+    await callback.answer()
+
+    if success:
+        await sync_mangas_json()
+        asyncio.create_task(push_to_github())
+        text = f"✅ <b>{html.escape(title)}</b> mangasi va barcha ma'lumotlari muvaffaqiyatli o'chirildi hamda Mini App sinxronlashtirildi!"
+    else:
+        text = "❌ Mangani o'chirishda xatolik yuz berdi yoki allaqachon o'chirilgan."
 
     try:
         await callback.message.edit_text(text, reply_markup=get_admin_main_keyboard(), parse_mode="HTML")

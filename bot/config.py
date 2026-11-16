@@ -37,7 +37,7 @@ def load_config() -> Config:
 
     trace_moe_api_key = os.getenv("TRACE_MOE_API_KEY", "").strip()
     gemini_api_key = os.getenv("GEMINI_API_KEY", "").strip()
-    manga_webapp_url = os.getenv("MANGA_WEBAPP_URL", "https://ithac4290-sys.github.io/animoviebot/manga/?v=15").strip()
+    manga_webapp_url = os.getenv("MANGA_WEBAPP_URL", "https://ithac4290-sys.github.io/animoviebot/manga/?v=17").strip()
     shorts_webapp_url = os.getenv("SHORTS_WEBAPP_URL", "https://ithac4290-sys.github.io/animoviebot/shorts/?v=15").strip()
     manga_channel_id = os.getenv("MANGA_CHANNEL_ID", "@AniMovie_manga").strip()
 

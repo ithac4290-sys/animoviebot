@@ -27,7 +27,7 @@ def get_main_menu_keyboard(bot_username: str, is_vip: bool = False, user_id: int
     manga_base = config.manga_webapp_url
     shorts_base = config.shorts_webapp_url
     sep = "&" if "?" in manga_base else "?"
-    manga_url = f"{manga_base}{sep}vip=1&user_id={user_id}&v=15"
+    manga_url = f"{manga_base}{sep}vip=1&user_id={user_id}&v=17"
     sep_s = "&" if "?" in shorts_base else "?"
     shorts_url = f"{shorts_base}{sep_s}vip=1&user_id={user_id}&v=15"
 
@@ -348,14 +348,43 @@ def get_admin_main_keyboard() -> InlineKeyboardMarkup:
     )
     builder.row(
         InlineKeyboardButton(text="🗑 Animeni o'chirish", callback_data="admin_delete_anime", style="danger"),
-        InlineKeyboardButton(text="📢 Sponsor kanallar", callback_data="admin_channels", style="primary")
+        InlineKeyboardButton(text="🗑 Mangani o'chirish", callback_data="admin_delete_manga", style="danger")
     )
     builder.row(
-        InlineKeyboardButton(text="💎 VIP berish", callback_data="admin_give_vip", style="success"),
+        InlineKeyboardButton(text="📢 Sponsor kanallar", callback_data="admin_channels", style="primary"),
         InlineKeyboardButton(text="📊 Statistika", callback_data="admin_stats", style="primary")
     )
     builder.row(
+        InlineKeyboardButton(text="💎 VIP berish", callback_data="admin_give_vip", style="success"),
         InlineKeyboardButton(text="✉️ Xabar tarqatish", callback_data="admin_broadcast", style="primary")
+    )
+    return builder.as_markup()
+
+
+def get_admin_delete_manga_keyboard(mangas: List[Dict[str, Any]]) -> InlineKeyboardMarkup:
+    """Mangani o'chirish uchun tanlash tugmalari"""
+    builder = InlineKeyboardBuilder()
+    for m in mangas:
+        ch_count = m.get("chapters_count", 0)
+        builder.row(
+            InlineKeyboardButton(
+                text=f"🗑 {m['id']}. {m['title'][:24]} ({ch_count} bob)",
+                callback_data=f"del_manga_select_{m['id']}",
+                style="danger"
+            )
+        )
+    builder.row(
+        InlineKeyboardButton(text="⬅️ Admin panel", callback_data="admin_home", style="primary")
+    )
+    return builder.as_markup()
+
+
+def get_confirm_delete_manga_keyboard(manga_id: int) -> InlineKeyboardMarkup:
+    """Manga o'chirishni tasdiqlash tugmalari"""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="🗑 Ha, butunlay o'chirilsin!", callback_data=f"confirm_del_manga_{manga_id}", style="danger"),
+        InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel", style="primary")
     )
     return builder.as_markup()
 

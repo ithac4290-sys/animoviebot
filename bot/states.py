@@ -72,3 +72,7 @@ class AddChapterState(StatesGroup):
     chapter_num = State()     # Bob raqami
     pages = State()           # Bob sahifalari (rasmlar)
 
+
+class DeleteMangaState(StatesGroup):
+    manga_id = State()        # O'chiriladigan manga ID
+

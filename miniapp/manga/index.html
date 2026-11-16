@@ -696,15 +696,71 @@
       display: flex;
       flex-direction: column;
       background: #000;
-      min-height: 80vh;
-      padding-bottom: 90px;
+      width: 100%;
+      min-height: 100vh;
+      padding-bottom: 110px;
+    }
+
+    .manga-page-slot {
+      position: relative;
+      width: 100%;
+      min-height: 520px;
+      background: #07090e;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      overflow: hidden;
+    }
+
+    .page-skeleton {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: radial-gradient(circle at center, #121824 0%, #07090e 100%);
+      z-index: 1;
+      transition: opacity 0.3s ease;
+    }
+
+    .page-spinner {
+      width: 38px;
+      height: 38px;
+      border: 3.5px solid rgba(255, 46, 99, 0.2);
+      border-top-color: #ff2e63;
+      border-radius: 50%;
+      animation: pageSpin 0.75s linear infinite;
+    }
+
+    @keyframes pageSpin {
+      to { transform: rotate(360deg); }
+    }
+
+    .page-num-tag {
+      font-size: 13px;
+      color: #94a3b8;
+      font-weight: 700;
+      letter-spacing: 0.5px;
     }
 
     .reader-panel-img {
       width: 100%;
+      height: auto;
       display: block;
       margin: 0 auto;
       border: none;
+      position: relative;
+      z-index: 2;
+      opacity: 0;
+      transition: opacity 0.35s ease-in-out;
+    }
+
+    .reader-panel-img.loaded {
+      opacity: 1;
     }
 
     /* Reader Bottom Floating Controls */
@@ -1482,6 +1538,10 @@
       const container = document.getElementById('readerPages');
       container.innerHTML = '';
 
+      const readerView = document.getElementById('readerView');
+      readerView.scrollTop = 0;
+      readerView.classList.add('active');
+
       let chData = null;
       if (currentManga.data && Array.isArray(currentManga.data.chapters)) {
         chData = currentManga.data.chapters.find(c => c.chapter_num === chNum);
@@ -1491,27 +1551,54 @@
 
       if (pages.length > 0) {
         pages.forEach((pUrl, idx) => {
+          const slot = document.createElement('div');
+          slot.className = 'manga-page-slot';
+          slot.id = `slot-${idx}`;
+
+          const skeleton = document.createElement('div');
+          skeleton.className = 'page-skeleton';
+          skeleton.innerHTML = `
+            <div class="page-spinner"></div>
+            <div class="page-num-tag">${idx + 1}-sahifa yuklanmoqda...</div>
+          `;
+          slot.appendChild(skeleton);
+
           const img = document.createElement('img');
           img.className = 'reader-panel-img';
-          img.loading = 'lazy';
-          img.src = pUrl;
           img.alt = `${currentManga.title} ${chNum}-bob ${idx + 1}-sahifa`;
-          img.onerror = function() {
-            this.style.display = 'none';
-            if (!container.querySelector('.img-error-notice')) {
-              const errDiv = document.createElement('div');
-              errDiv.className = 'img-error-notice';
-              errDiv.style.cssText = 'padding: 50px 20px; text-align: center; color: var(--text-muted); background: #07090e;';
-              errDiv.innerHTML = `
-                <div style="font-size: 38px; margin-bottom: 10px;">⏳</div>
-                <div style="color: #ffffff; font-weight: 800; font-size: 15px; margin-bottom: 6px;">Bob sahifalari tayyorlanmoqda</div>
-                <p style="font-size: 12.5px; color: #94a3b8; max-width: 280px; margin: 0 auto; line-height: 1.45;">Ushbu bob sahifalari bot orqali qayta yuklanganda avtomatik ravishda ochiladi.</p>
-              `;
-              container.appendChild(errDiv);
-            }
+
+          img.onload = function() {
+            img.classList.add('loaded');
+            skeleton.style.opacity = '0';
+            setTimeout(() => { skeleton.style.display = 'none'; }, 300);
           };
-          container.appendChild(img);
+
+          img.onerror = function() {
+            // Agar to'liq URL bilan yuklanmasa, nisbiy manzilni sinab ko'rish
+            if (pUrl.startsWith('http') && pUrl.includes('/manga/pages/')) {
+              const rel = pUrl.split('/manga/')[1];
+              img.onerror = function() {
+                skeleton.innerHTML = `
+                  <div style="font-size: 28px; margin-bottom: 8px;">⚠️</div>
+                  <div style="color: #fff; font-size: 13px; font-weight: 700;">${idx + 1}-sahifani yuklab bo'lmadi</div>
+                  <button onclick="retryPage(${idx}, '${pUrl}')" style="margin-top: 8px; padding: 6px 16px; background: #ff2e63; color: white; border: none; border-radius: 99px; font-size: 12px; font-weight: 700; cursor: pointer;">🔄 Qayta yuklash</button>
+                `;
+              };
+              img.src = rel;
+              return;
+            }
+            skeleton.innerHTML = `
+              <div style="font-size: 28px; margin-bottom: 8px;">⚠️</div>
+              <div style="color: #fff; font-size: 13px; font-weight: 700;">${idx + 1}-sahifani yuklab bo'lmadi</div>
+              <button onclick="retryPage(${idx}, '${pUrl}')" style="margin-top: 8px; padding: 6px 16px; background: #ff2e63; color: white; border: none; border-radius: 99px; font-size: 12px; font-weight: 700; cursor: pointer;">🔄 Qayta yuklash</button>
+            `;
+          };
+
+          img.src = pUrl;
+          slot.appendChild(img);
+          container.appendChild(slot);
         });
+
         const finishDiv = document.createElement('div');
         finishDiv.style.cssText = 'padding: 30px 16px; text-align: center; color: #4ade80; font-size: 13.5px; font-weight: 800; background: #07090e; margin-top: 10px;';
         finishDiv.innerText = `✅ ${chNum}-bob muvaffaqiyatli yakunlandi (${pages.length} ta sahifa)`;
@@ -1522,11 +1609,28 @@
             <div style="font-size: 42px; margin-bottom: 12px;">📑</div>
             <h3 style="color: white; margin-bottom: 8px; font-size: 18px; font-weight: 800;">${currentChapter}-bob sahifalari tez orada yuklanadi</h3>
             <p style="font-size: 13px; max-width: 300px; margin: 0 auto 24px; line-height: 1.5; color: #94a3b8;">Admin tomonidan ushbu bob sahifalari yuklanishi kutilmoqda.</p>
-            <img class="reader-panel-img" src="${currentManga.cover}" style="max-width: 190px; border-radius: 16px; margin: 0 auto 16px; display: block; box-shadow: 0 10px 30px rgba(0,0,0,0.7);" />
+            <img class="reader-panel-img loaded" src="${currentManga.cover}" style="max-width: 190px; border-radius: 16px; margin: 0 auto 16px; display: block; box-shadow: 0 10px 30px rgba(0,0,0,0.7);" />
           </div>
         `;
       }
-      document.getElementById('readerView').classList.add('active');
+    }
+
+    function retryPage(idx, url) {
+      const slot = document.getElementById(`slot-${idx}`);
+      if (!slot) return;
+      const img = slot.querySelector('img');
+      const skel = slot.querySelector('.page-skeleton');
+      if (skel) {
+        skel.style.display = 'flex';
+        skel.style.opacity = '1';
+        skel.innerHTML = `
+          <div class="page-spinner"></div>
+          <div class="page-num-tag">${idx + 1}-sahifa qayta yuklanmoqda...</div>
+        `;
+      }
+      if (img) {
+        img.src = url + (url.includes('?') ? '&' : '?') + 't=' + Date.now();
+      }
     }
 
     function closeReader() {

@@ -1169,6 +1169,63 @@ class Database:
         m_data = manga.get("data") or {}
         return m_data.get("chapters", [])
 
+    async def delete_manga(self, manga_id: int) -> bool:
+        """Mangani butunlay o'chirish"""
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                res = await conn.execute("DELETE FROM mangas WHERE id = $1", manga_id)
+                return "DELETE 1" in res
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                cursor = await db.execute("DELETE FROM mangas WHERE id = ?", (manga_id,))
+                await db.commit()
+                return cursor.rowcount > 0
+
+    async def delete_manga_chapter(self, manga_id: int, chapter_num: int) -> bool:
+        """Manganing ma'lum bir bobini o'chirish"""
+        manga = await self.get_manga(manga_id)
+        if not manga:
+            return False
+
+        m_data = manga.get("data") or {}
+        if isinstance(m_data, str):
+            try:
+                m_data = json.loads(m_data)
+            except Exception:
+                m_data = {}
+
+        chapters = m_data.get("chapters", [])
+        if not isinstance(chapters, list):
+            return False
+
+        new_chapters = [ch for ch in chapters if isinstance(ch, dict) and ch.get("chapter_num") != chapter_num]
+        if len(new_chapters) == len(chapters):
+            return False
+
+        m_data["chapters"] = new_chapters
+        max_ch = max([ch.get("chapter_num", 0) for ch in new_chapters], default=0)
+        m_data["chapters_count"] = max_ch
+
+        data_json = json.dumps(m_data)
+
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                await conn.execute("""
+                    UPDATE mangas
+                    SET chapters_count = $1, data = $2::jsonb
+                    WHERE id = $3;
+                """, max_ch, data_json, manga_id)
+                return True
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                await db.execute("""
+                    UPDATE mangas
+                    SET chapters_count = ?, data = ?
+                    WHERE id = ?;
+                """, (max_ch, data_json, manga_id))
+                await db.commit()
+                return True
+
 
     # ================= Shorts bilan ishlash =================
 
