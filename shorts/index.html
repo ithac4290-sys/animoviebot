@@ -1158,8 +1158,8 @@
       closeSheet('authSheet');
     }
 
-    // Global Audio Mute Controller
-    let isMuted = false;
+    // Global Audio Mute Controller (Must be true for reliable mobile autoplay)
+    let isMuted = true;
 
     function toggleMute() {
       haptic('light');
@@ -1213,7 +1213,10 @@
       if (!url) return '';
       if (url.startsWith('http://') || url.startsWith('https://')) return url;
       const cleanPath = url.replace(/^[./]+/, '');
-      return `https://ithac4290-sys.github.io/animoviebot/${cleanPath}`;
+      if (cleanPath.startsWith('shorts/')) {
+        return `https://ithac4290-sys.github.io/animoviebot/${cleanPath}`;
+      }
+      return `https://ithac4290-sys.github.io/animoviebot/shorts/${cleanPath}`;
     }
 
     function formatCount(num) {
@@ -1279,7 +1282,7 @@
             </button>
           </div>
 
-          <video muted playsinline webkit-playsinline preload="metadata" poster="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='700'><rect width='100%' height='100%' fill='%2307090e'/><text x='50%' y='50%' fill='%23ff2a5f' font-size='22' font-weight='bold' text-anchor='middle'>⚡️ AniMovie Shorts</text></svg>">
+          <video muted autoplay loop playsinline webkit-playsinline preload="auto" poster="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='700'><rect width='100%' height='100%' fill='%2307090e'/><text x='50%' y='50%' fill='%23ff2a5f' font-size='22' font-weight='bold' text-anchor='middle'>⚡️ AniMovie Shorts</text></svg>">
             <source src="${resolvedVideo}" type="video/mp4">
           </video>
 

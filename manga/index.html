@@ -1496,6 +1496,20 @@
           img.loading = 'lazy';
           img.src = pUrl;
           img.alt = `${currentManga.title} ${chNum}-bob ${idx + 1}-sahifa`;
+          img.onerror = function() {
+            this.style.display = 'none';
+            if (!container.querySelector('.img-error-notice')) {
+              const errDiv = document.createElement('div');
+              errDiv.className = 'img-error-notice';
+              errDiv.style.cssText = 'padding: 50px 20px; text-align: center; color: var(--text-muted); background: #07090e;';
+              errDiv.innerHTML = `
+                <div style="font-size: 38px; margin-bottom: 10px;">⏳</div>
+                <div style="color: #ffffff; font-weight: 800; font-size: 15px; margin-bottom: 6px;">Bob sahifalari tayyorlanmoqda</div>
+                <p style="font-size: 12.5px; color: #94a3b8; max-width: 280px; margin: 0 auto; line-height: 1.45;">Ushbu bob sahifalari bot orqali qayta yuklanganda avtomatik ravishda ochiladi.</p>
+              `;
+              container.appendChild(errDiv);
+            }
+          };
           container.appendChild(img);
         });
         const finishDiv = document.createElement('div');
