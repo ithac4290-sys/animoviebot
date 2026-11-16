@@ -54,7 +54,7 @@ async def handle_inline_search(inline_query: InlineQuery, bot: Bot):
             display_title += f" • {alt_title}"
 
         description = f"⭐ {episodes_count} | {genres} | {status}"
-        thumbnail_url = f"https://ithac4290-sys.github.io/animoviebot/posters/{anime_id}.jpg"
+        thumbnail_url = f"https://ithac4290-sys.github.io/animoviebot/docs/posters/{anime_id}.jpg"
 
         # Xabar yuborilgandagi dizayn (rasmli va batafsil)
         caption = (
