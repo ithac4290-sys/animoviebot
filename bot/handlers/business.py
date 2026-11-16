@@ -70,21 +70,33 @@ async def handle_business_connection(connection: BusinessConnection, bot: Bot):
 
 # ================= 2. TELEGRAM BUSINESS MESSAGE (USER-TO-USER CHAT) =================
 
-@router.business_message(F.text)
-async def handle_business_message(message: Message, bot: Bot):
+@router.business_message()
+async def handle_business_activity(message: Message, bot: Bot):
     """
-    Shaxsiy 1-ga-1 chatda (Telegram Business orqali) foydalanuvchi anime so'raganda
-    bot avtomatik ravishda Ultra Glass Neon kartani o'sha chatga chiqarib beradi.
+    Shaxsiy 1-ga-1 chatda (Telegram Business orqali) faollik yuz berganda
+    oxirgi faol chatni eslab qolish va anime so'ralganda Ultra Glass Neon kartani chiqarish.
     """
-    # Bot o'zi yuborgan xabarlarga javob qaytarmaydi (loop bo'lmasligi uchun)
-    if message.sender_business_bot:
-        return
-
-    text = message.text.strip()
     business_conn_id = message.business_connection_id
     if not business_conn_id:
         return
 
+    # Faol 1-ga-1 business chatini eslab qolish (Inline va qismlar to'g'ridan-to'g'ri shu yerga yuborilishi uchun)
+    try:
+        conn = await db.get_business_connection(business_conn_id)
+        if conn:
+            owner_id = conn["user_id"]
+            await db.record_business_chat(owner_id, business_conn_id, message.chat.id)
+        if message.from_user:
+            await db.record_business_chat(message.from_user.id, business_conn_id, message.chat.id)
+        await db.record_business_chat(message.chat.id, business_conn_id, message.chat.id)
+    except Exception as e:
+        logger.warning(f"Error recording business chat: {e}")
+
+    # Agar bot o'zi yuborgan xabar bo'lsa yoki matn bo'lmasa, to'xtatamiz
+    if message.sender_business_bot or not message.text:
+        return
+
+    text = message.text.strip()
     bot_info = await bot.get_me()
     bot_username = bot_info.username or config.bot_username
 

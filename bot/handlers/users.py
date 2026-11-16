@@ -317,6 +317,45 @@ async def handle_play_episode(callback: CallbackQuery, bot: Bot):
         f"📮 Anime ID: {anime_id}"
     )
 
+    # 1. Telegram Business 1-ga-1 chat tekshiruvi:
+    # Agar xabar business connection orqali kelgan bo'lsa yoki foydalanuvchi faol business chatda bo'lsa:
+    biz_conn_id = None
+    biz_chat_id = None
+
+    if callback.message and getattr(callback.message, "business_connection_id", None):
+        biz_conn_id = callback.message.business_connection_id
+        biz_chat_id = callback.message.chat.id
+    elif is_inline:
+        active_chat = await db.get_active_business_chat(user_id)
+        if active_chat:
+            biz_conn_id = active_chat.get("connection_id")
+            biz_chat_id = active_chat.get("chat_id")
+
+    # Agar 1-ga-1 Telegram Business chatda bo'lsa, to'g'ridan-to'g'ri o'sha chatga video yuboramiz!
+    if biz_conn_id and biz_chat_id:
+        try:
+            if file_type == "document":
+                await bot.send_document(
+                    business_connection_id=biz_conn_id,
+                    chat_id=biz_chat_id,
+                    document=file_id,
+                    caption=video_caption,
+                    parse_mode="HTML"
+                )
+            else:
+                await bot.send_video(
+                    business_connection_id=biz_conn_id,
+                    chat_id=biz_chat_id,
+                    video=file_id,
+                    caption=video_caption,
+                    parse_mode="HTML"
+                )
+            await callback.answer(f"✅ {ep_num}-qism to'g'ridan-to'g'ri ushbu chatga yuborildi!", show_alert=False)
+            return
+        except Exception as e:
+            logger.warning(f"Could not send video via business connection {biz_conn_id} to chat {biz_chat_id}: {e}")
+
+    # 2. Agar business chat bo'lmasa yoki jo'natib bo'lmasa, odatdagi shaxsiy bot chatiga yuborish:
     try:
         if file_type == "document":
             await bot.send_document(

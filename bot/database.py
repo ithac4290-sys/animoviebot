@@ -160,6 +160,15 @@ class Database:
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
+            # 9. Faol 1-ga-1 Business chatlar jadvali
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS business_chats (
+                    user_id BIGINT PRIMARY KEY,
+                    connection_id TEXT NOT NULL,
+                    chat_id BIGINT NOT NULL,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
             logger.info("PostgreSQL jadvallari tekshirildi va tayyor!")
 
     async def _init_sqlite_tables(self):
@@ -268,6 +277,14 @@ class Database:
                     is_enabled INTEGER DEFAULT 1,
                     data TEXT DEFAULT '{}',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS business_chats (
+                    user_id INTEGER PRIMARY KEY,
+                    connection_id TEXT NOT NULL,
+                    chat_id INTEGER NOT NULL,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
@@ -1292,6 +1309,53 @@ class Database:
                             pass
                     return d
                 return None
+
+    async def record_business_chat(self, user_id: int, connection_id: str, chat_id: int):
+        """Oxirgi faol 1-ga-1 business chatini eslab qolish"""
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                await conn.execute("""
+                    INSERT INTO business_chats (user_id, connection_id, chat_id, updated_at)
+                    VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+                    ON CONFLICT(user_id) DO UPDATE SET
+                        connection_id = EXCLUDED.connection_id,
+                        chat_id = EXCLUDED.chat_id,
+                        updated_at = CURRENT_TIMESTAMP;
+                """, user_id, connection_id, chat_id)
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                await db.execute("""
+                    INSERT INTO business_chats (user_id, connection_id, chat_id, updated_at)
+                    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                    ON CONFLICT(user_id) DO UPDATE SET
+                        connection_id = excluded.connection_id,
+                        chat_id = excluded.chat_id,
+                        updated_at = CURRENT_TIMESTAMP;
+                """, (user_id, connection_id, chat_id))
+                await db.commit()
+
+    async def get_active_business_chat(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """Foydalanuvchining faol 1-ga-1 business chatini olish"""
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                row = await conn.fetchrow("""
+                    SELECT bc.connection_id, bc.chat_id
+                    FROM business_chats bc
+                    WHERE bc.user_id = $1
+                    ORDER BY bc.updated_at DESC LIMIT 1
+                """, user_id)
+                return dict(row) if row else None
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                db.row_factory = aiosqlite.Row
+                cursor = await db.execute("""
+                    SELECT bc.connection_id, bc.chat_id
+                    FROM business_chats bc
+                    WHERE bc.user_id = ?
+                    ORDER BY bc.updated_at DESC LIMIT 1
+                """, (user_id,))
+                row = await cursor.fetchone()
+                return dict(row) if row else None
 
 
 db = Database()
