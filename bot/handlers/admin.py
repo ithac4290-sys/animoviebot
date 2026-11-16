@@ -1626,7 +1626,26 @@ async def handle_quick_add_ch_cb(callback: CallbackQuery, state: FSMContext):
 
 
 @router.message(AddChapterState.chapter_num)
-async def process_chapter_num(message: Message, state: FSMContext):
+async def process_chapter_num(message: Message, state: FSMContext, bot: Bot):
+    # Agar admin bob raqamini yozmasdan to'g'ridan-to'g'ri PDF, ZIP yoki rasm yuborsa
+    if message.document:
+        doc = message.document
+        filename = doc.file_name or "chapter.pdf"
+        match = re.search(r'(?:bob|ch|chapter)[\s_-]*(\d+)', filename, re.IGNORECASE) or re.search(r'(\d+)[\s_-]*(?:bob|ch|chapter)', filename, re.IGNORECASE) or re.search(r'(\d+)', filename)
+        ch_num = int(match.group(1)) if match else 1
+        await state.update_data(chapter_num=ch_num, pages=[])
+        await state.set_state(AddChapterState.pages)
+        return await process_chapter_document(message, state, bot)
+
+    if message.photo:
+        await state.update_data(chapter_num=1, pages=[])
+        await state.set_state(AddChapterState.pages)
+        return await process_chapter_photo(message, state)
+
+    if not message.text:
+        await message.answer("⚠️ Iltimos, bob raqamini son shaklida kiriting yoki to'g'ridan-to'g'ri PDF/ZIP fayl yuboring:", parse_mode="HTML")
+        return
+
     raw = message.text.strip()
     if not raw.isdigit():
         await message.answer("⚠️ Iltimos, bob raqamini faqat son shaklida kiriting (Masalan: <code>1</code>):", parse_mode="HTML")

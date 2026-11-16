@@ -9,7 +9,7 @@ import aiohttp
 
 logger = logging.getLogger("GeminiSearch")
 
-GEMINI_MODELS = ["gemini-flash-lite-latest", "gemini-2.5-flash-lite", "gemini-3.1-flash-lite-preview"]
+GEMINI_MODELS = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite", "gemini-flash-lite-latest", "gemini-3-flash-preview"]
 
 
 def has_cyrillic(text: str) -> bool:
