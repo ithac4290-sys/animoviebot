@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>AniMovie Shorts — Telegram Mini App</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -120,7 +123,7 @@
       transition: width 0.1s linear;
     }
 
-    /* Ultra-Modern Top Bar */
+    /* Top Bar */
     .top-bar {
       position: absolute;
       top: max(14px, env(safe-area-inset-top));
@@ -291,7 +294,7 @@
       letter-spacing: -0.1px;
     }
 
-    /* Rotating vinyl disc with authentic anime theme */
+    /* Rotating vinyl disc */
     .disc-container {
       width: 46px;
       height: 46px;
@@ -429,7 +432,6 @@
       text-overflow: ellipsis;
     }
 
-    /* Sound wave animation in music chip */
     .sound-bars {
       display: flex;
       align-items: flex-end;
@@ -452,7 +454,6 @@
       100% { height: 10px; }
     }
 
-    /* Center indicator for tap */
     .center-indicator {
       position: absolute;
       top: 50%;
@@ -478,7 +479,6 @@
       transform: translate(-50%, -50%) scale(1);
     }
 
-    /* Floating Heart on Double Tap */
     .floating-heart {
       position: absolute;
       width: 95px;
@@ -496,7 +496,7 @@
       100% { opacity: 0; transform: translate(-50%, -85%) scale(1.4); }
     }
 
-    /* Ultra-Refined Bottom Sheet Modal */
+    /* Bottom Sheet Modal */
     .bottom-sheet {
       position: fixed;
       inset: 0;
@@ -639,14 +639,6 @@
       box-shadow: 0 4px 10px rgba(0,0,0,0.3);
     }
 
-    .comment-item:nth-child(2) .comment-avatar {
-      background: linear-gradient(135deg, #ec4899, #f43f5e);
-    }
-
-    .comment-item:nth-child(3) .comment-avatar {
-      background: linear-gradient(135deg, #10b981, #06b6d4);
-    }
-
     .comment-content {
       flex: 1;
     }
@@ -770,10 +762,6 @@
       box-shadow: inset 0 1px 1px rgba(255,255,255,0.15);
     }
 
-    .profile-avatar-large-wrap {
-      position: relative;
-    }
-
     .profile-avatar-large {
       width: 60px;
       height: 60px;
@@ -824,7 +812,6 @@
       box-shadow: 0 0 6px #10b981;
     }
 
-    /* Stats Grid */
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -862,7 +849,6 @@
       font-weight: 600;
     }
 
-    /* Action Buttons in Sheet */
     .sheet-action-btn {
       width: 100%;
       padding: 14px;
@@ -913,46 +899,13 @@
       <div class="sheet-header">
         <div class="sheet-title-row">
           <div class="sheet-title" id="commentsSheetTitle">Izohlar</div>
-          <span class="sheet-badge" id="commentsCountBadge">3 ta</span>
+          <span class="sheet-badge" id="commentsCountBadge">0 ta</span>
         </div>
         <button class="sheet-close" onclick="closeSheet('commentsSheet')">✕</button>
       </div>
 
       <div class="sheet-body">
-        <div class="comments-list" id="commentsList">
-          <div class="comment-item">
-            <div class="comment-avatar">A</div>
-            <div class="comment-content">
-              <div class="comment-header-row">
-                <span class="comment-author">Azizbek</span>
-                <span class="comment-time">2 daqiqa oldin</span>
-              </div>
-              <div class="comment-text">Bu sahna haqiqatdan ham anime tarixidagi eng zo'r lahza! 🔥🔥🔥</div>
-            </div>
-          </div>
-
-          <div class="comment-item">
-            <div class="comment-avatar">M</div>
-            <div class="comment-content">
-              <div class="comment-header-row">
-                <span class="comment-author">Madina</span>
-                <span class="comment-time">15 daqiqa oldin</span>
-              </div>
-              <div class="comment-text">Ovoz va montaj juda zo'r chiqibdi, davomini kutamiz! 👏</div>
-            </div>
-          </div>
-
-          <div class="comment-item">
-            <div class="comment-avatar">J</div>
-            <div class="comment-content">
-              <div class="comment-header-row">
-                <span class="comment-author">Javohir</span>
-                <span class="comment-time">1 soat oldin</span>
-              </div>
-              <div class="comment-text">AniMovie eng zo'r anime boti, sifatiga gap yo'q! 🚀</div>
-            </div>
-          </div>
-        </div>
+        <div class="comments-list" id="commentsList"></div>
       </div>
 
       <!-- Quick Emoji Bar -->
@@ -1020,11 +973,11 @@
 
           <div class="stats-grid">
             <div class="stat-tile">
-              <div class="stat-tile-val" id="userLikesCount">18</div>
+              <div class="stat-tile-val" id="userLikesCount">0</div>
               <div class="stat-tile-label">Yoqqanlar</div>
             </div>
             <div class="stat-tile">
-              <div class="stat-tile-val" id="userCommentsCount">5</div>
+              <div class="stat-tile-val" id="userCommentsCount">0</div>
               <div class="stat-tile-label">Izohlar</div>
             </div>
             <div class="stat-tile">
@@ -1109,6 +1062,7 @@
       }
 
       updateAuthUI();
+      updateProfileStats();
     }
 
     function updateAuthUI() {
@@ -1127,6 +1081,30 @@
       });
     }
 
+    function updateProfileStats() {
+      let totalLikes = 0;
+      let totalComments = 0;
+
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('short_liked_') && localStorage.getItem(key) === 'true') {
+          totalLikes++;
+        }
+        if (key && key.startsWith('short_comments_')) {
+          try {
+            const arr = JSON.parse(localStorage.getItem(key) || '[]');
+            totalComments += arr.length;
+          } catch(e) {}
+        }
+      }
+
+      const lEl = document.getElementById('userLikesCount');
+      if (lEl) lEl.innerText = String(totalLikes);
+
+      const cEl = document.getElementById('userCommentsCount');
+      if (cEl) cEl.innerText = String(totalComments);
+    }
+
     function openAuthModal() {
       haptic('medium');
       const unauth = document.getElementById('unauthView');
@@ -1138,6 +1116,7 @@
         document.getElementById('userAvatarBig').innerText = currentUser.avatar;
         document.getElementById('userNameBig').innerHTML = `${currentUser.name} <span class="verified-badge">✓</span>`;
         document.getElementById('userHandleBig').innerText = currentUser.username;
+        updateProfileStats();
       } else {
         unauth.style.display = 'block';
         profile.style.display = 'none';
@@ -1238,12 +1217,15 @@
     }
 
     function formatCount(num) {
-      if (!num || isNaN(num)) return '0';
+      if (!num || isNaN(num) || num <= 0) return '0';
       if (num < 1000) return String(num);
       return (num / 1000).toFixed(1) + 'k';
     }
 
+    let loadedShortsList = [];
+
     function renderShorts(list) {
+      loadedShortsList = list || [];
       const container = document.getElementById('shortsContainer');
       container.innerHTML = '';
 
@@ -1261,12 +1243,24 @@
       list.forEach((s, idx) => {
         const item = document.createElement('div');
         item.className = 'short-item';
+        const sId = s.id || (idx + 1);
+        item.setAttribute('data-id', sId);
         item.setAttribute('data-index', idx);
-        item.setAttribute('data-likes', s.likes || 0);
-        item.setAttribute('data-comments', s.comments || 0);
-        const resolvedVideo = formatVideoUrl(s.video_url);
 
-        // Highlight tags in caption
+        // PERSISTENT LIKES: Defaults to 0
+        const storedLikes = localStorage.getItem(`short_likes_${sId}`);
+        const currentLikes = storedLikes !== null ? parseInt(storedLikes, 10) : (s.likes || 0);
+        const isLiked = localStorage.getItem(`short_liked_${sId}`) === 'true';
+
+        // PERSISTENT COMMENTS: Defaults to 0
+        let storedComments = [];
+        try {
+          const raw = localStorage.getItem(`short_comments_${sId}`);
+          if (raw) storedComments = JSON.parse(raw);
+        } catch(e) {}
+        const currentCommentsCount = storedComments.length || (s.comments || 0);
+
+        const resolvedVideo = formatVideoUrl(s.video_url);
         const rawCaption = s.caption || s.title || '';
         const formattedCaption = rawCaption.replace(/(#[\w_]+)/g, '<span class="hashtag">$1</span>');
 
@@ -1298,22 +1292,22 @@
           </div>
 
           <div class="actions-sidebar">
-            <div class="action-btn" onclick="toggleLike(this, ${s.likes || 0})">
-              <div class="icon-bubble">
+            <div class="action-btn like-action-btn" onclick="toggleLike(this, ${sId})">
+              <div class="icon-bubble ${isLiked ? 'liked' : ''}">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
                 </svg>
               </div>
-              <span class="action-label">${formatCount(s.likes || 0)}</span>
+              <span class="action-label like-label">${formatCount(currentLikes)}</span>
             </div>
 
-            <div class="action-btn" onclick="openComments('${(s.title || '').replace(/'/g, "\\'")}')">
+            <div class="action-btn comment-action-btn" onclick="openComments(${sId}, '${(s.title || '').replace(/'/g, "\\'")}')">
               <div class="icon-bubble">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
                 </svg>
               </div>
-              <span class="action-label">${formatCount(s.comments || 0)}</span>
+              <span class="action-label comment-label">${formatCount(currentCommentsCount)}</span>
             </div>
 
             <div class="action-btn" onclick="shareShort('${(s.title || '').replace(/'/g, "\\'")}')">
@@ -1372,6 +1366,7 @@
 
       setupShortEvents();
       updateAuthUI();
+      updateProfileStats();
     }
 
     let currentPlayingIndex = -1;
@@ -1399,14 +1394,12 @@
         });
 
         if (bestIndex !== currentPlayingIndex) {
-          // Pause previous video
           if (currentPlayingIndex >= 0 && items[currentPlayingIndex]) {
             const prevVideo = items[currentPlayingIndex].querySelector('video');
             if (prevVideo) {
               prevVideo.pause();
             }
           }
-          // Play current video
           currentPlayingIndex = bestIndex;
           const currentItem = items[bestIndex];
           if (currentItem) {
@@ -1425,10 +1418,8 @@
         }
       }
 
-      // Initial active video
       setTimeout(updateActiveVideo, 150);
 
-      // Scroll listener with throttle via requestAnimationFrame
       let ticking = false;
       container.addEventListener('scroll', () => {
         if (!ticking) {
@@ -1467,11 +1458,12 @@
           const tapLength = currentTime - lastTap;
           if (tapLength < 300 && tapLength > 0) {
             createFloatingHeart(e.clientX, e.clientY, item);
-            const likeBtn = item.querySelector('.action-btn');
-            if (likeBtn) {
+            const likeBtn = item.querySelector('.like-action-btn');
+            const sId = item.getAttribute('data-id');
+            if (likeBtn && sId) {
               const bubble = likeBtn.querySelector('.icon-bubble');
               if (!bubble.classList.contains('liked')) {
-                toggleLike(likeBtn, Number(item.getAttribute('data-likes')) || 0);
+                toggleLike(likeBtn, sId);
               }
             }
             lastTap = 0;
@@ -1498,7 +1490,6 @@
       });
     }
 
-    // Faqat dataga yuklangan shortslarni yuklash
     async function loadShorts() {
       const candidates = [
         'shorts.json?t=' + Date.now(),
@@ -1522,22 +1513,81 @@
     }
     loadShorts();
 
-    // Like Button Toggle
-    function toggleLike(btn, baseCount) {
+    // 3. PERSISTENT LIKE TOGGLE (Strictly from 0, increments by 1, saves to localStorage)
+    function toggleLike(btn, shortId) {
       haptic('medium');
       const bubble = btn.querySelector('.icon-bubble');
-      const label = btn.querySelector('.action-label');
-      const isLiked = bubble.classList.toggle('liked');
-      const count = Number(baseCount) || 0;
-      const newCount = isLiked ? count + 1 : count;
-      label.innerText = formatCount(newCount);
+      const label = btn.querySelector('.like-label');
+
+      let currentLikes = parseInt(localStorage.getItem(`short_likes_${shortId}`) || '0', 10);
+      const wasLiked = localStorage.getItem(`short_liked_${shortId}`) === 'true';
+
+      if (!wasLiked) {
+        currentLikes += 1;
+        bubble.classList.add('liked');
+        localStorage.setItem(`short_liked_${shortId}`, 'true');
+      } else {
+        currentLikes = Math.max(0, currentLikes - 1);
+        bubble.classList.remove('liked');
+        localStorage.removeItem(`short_liked_${shortId}`);
+      }
+
+      localStorage.setItem(`short_likes_${shortId}`, currentLikes);
+      if (label) label.innerText = formatCount(currentLikes);
+
+      updateProfileStats();
     }
 
-    // Comments Sheet
-    function openComments(title) {
+    // 4. PERSISTENT COMMENTS MODAL (Strictly from 0, increments by 1, saves to localStorage)
+    let activeShortId = null;
+
+    function openComments(shortId, title) {
       haptic('light');
+      activeShortId = shortId;
       document.getElementById('commentsSheetTitle').innerText = title ? `${title} — Izohlar` : 'Izohlar';
+      renderCommentsList(shortId);
       document.getElementById('commentsSheet').classList.add('active');
+    }
+
+    function renderCommentsList(shortId) {
+      const listEl = document.getElementById('commentsList');
+      const badgeEl = document.getElementById('commentsCountBadge');
+      listEl.innerHTML = '';
+
+      let comments = [];
+      try {
+        const raw = localStorage.getItem(`short_comments_${shortId}`);
+        if (raw) comments = JSON.parse(raw);
+      } catch(e) {}
+
+      if (badgeEl) badgeEl.innerText = `${comments.length} ta`;
+
+      if (comments.length === 0) {
+        listEl.innerHTML = `
+          <div style="text-align: center; padding: 42px 16px; color: var(--text-muted);">
+            <div style="font-size: 34px; margin-bottom: 8px;">💬</div>
+            <div style="color: #ffffff; font-weight: 800; font-size: 14.5px; margin-bottom: 4px;">Hozircha izohlar yo'q</div>
+            <p style="font-size: 12.5px; color: #94a3b8; max-width: 250px; margin: 0 auto; line-height: 1.4;">Birinchi bo'lib ushbu video haqida o'z fikringizni qoldiring!</p>
+          </div>
+        `;
+        return;
+      }
+
+      comments.forEach(c => {
+        const item = document.createElement('div');
+        item.className = 'comment-item';
+        item.innerHTML = `
+          <div class="comment-avatar">${c.initial || 'F'}</div>
+          <div class="comment-content">
+            <div class="comment-header-row">
+              <span class="comment-author">${c.name || 'Foydalanuvchi'}</span>
+              <span class="comment-time">${c.time || 'Yangi'}</span>
+            </div>
+            <div class="comment-text">${c.text}</div>
+          </div>
+        `;
+        listEl.appendChild(item);
+      });
     }
 
     function insertEmoji(emoji) {
@@ -1550,34 +1600,43 @@
     function sendComment() {
       const input = document.getElementById('newCommentInput');
       const text = input.value.trim();
-      if (!text) return;
+      if (!text || !activeShortId) return;
 
       haptic('medium');
       const name = currentUser ? currentUser.name : "Foydalanuvchi";
       const initial = currentUser ? currentUser.avatar : "F";
 
-      const list = document.getElementById('commentsList');
-      const item = document.createElement('div');
-      item.className = 'comment-item';
-      item.innerHTML = `
-        <div class="comment-avatar">${initial}</div>
-        <div class="comment-content">
-          <div class="comment-header-row">
-            <span class="comment-author">${name}</span>
-            <span class="comment-time">Hozirgina</span>
-          </div>
-          <div class="comment-text">${text}</div>
-        </div>
-      `;
-      list.prepend(item);
+      let comments = [];
+      try {
+        const raw = localStorage.getItem(`short_comments_${activeShortId}`);
+        if (raw) comments = JSON.parse(raw);
+      } catch(e) {}
+
+      const newC = {
+        id: Date.now(),
+        name: name,
+        initial: initial,
+        text: text,
+        time: "Hozirgina"
+      };
+
+      comments.unshift(newC);
+      localStorage.setItem(`short_comments_${activeShortId}`, JSON.stringify(comments));
+
+      // Clear input
       input.value = '';
 
-      // Update badge count
-      const badge = document.getElementById('commentsCountBadge');
-      if (badge) {
-        const count = list.children.length;
-        badge.innerText = `${count} ta`;
+      // Re-render modal list
+      renderCommentsList(activeShortId);
+
+      // Update button count on video player
+      const activeItem = document.querySelector(`.short-item[data-id="${activeShortId}"]`);
+      if (activeItem) {
+        const cLabel = activeItem.querySelector('.comment-label');
+        if (cLabel) cLabel.innerText = formatCount(comments.length);
       }
+
+      updateProfileStats();
     }
 
     // Share Short
