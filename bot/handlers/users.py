@@ -1,4 +1,5 @@
 import html
+import logging
 from aiogram import Router, F, Bot
 from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, WebAppInfo
 from aiogram.filters import CommandStart, Command, CommandObject, StateFilter
@@ -19,12 +20,16 @@ from bot.keyboards import (
     get_search_type_keyboard,
     get_genres_keyboard,
     get_animes_pagination_keyboard,
-    get_search_cancel_keyboard
+    get_search_cancel_keyboard,
+    get_ai_image_confirmation_keyboard,
+    get_ai_image_retry_keyboard
 )
+from bot.gemini_search import identify_anime, match_anime_in_database
 from bot.states import VipPaymentState, UserSearchState
 from bot.utils import check_user_subscriptions
 
 router = Router()
+logger = logging.getLogger(__name__)
 
 
 def get_welcome_text(full_name: str) -> str:
@@ -454,174 +459,201 @@ async def handle_search_by_image_start(callback: CallbackQuery, state: FSMContex
 @router.message(StateFilter(UserSearchState.by_image, None), F.photo)
 async def process_search_by_image(message: Message, state: FSMContext, bot: Bot):
     await state.clear()
-    status_msg = await message.answer("🔍 <b>Rasm tahlil qilinmoqda, iltimos kuting...</b>", parse_mode="HTML")
+    status_msg = await message.answer(
+        "🔍 <b>AI rasm tahlili boshlandi...</b>\n"
+        "<i>Surat tahlil qilinib, web qidiruv va bazamiz bilan solishtirilmoqda, iltimos kuting.</i>",
+        parse_mode="HTML"
+    )
 
     photo = message.photo[-1]
 
     try:
         from io import BytesIO
-        import aiohttp
         from bot.image_search import compute_image_hash, hash_similarity
 
         photo_bytes_io = BytesIO()
         await bot.download(photo, destination=photo_bytes_io)
         image_data = photo_bytes_io.getvalue()
 
-        # 1-BOSQICH: BAZAMIZDAGI ANIMELARNING POSTERLARI BILAN SOLISHTIRISH (Perceptual Hash qidiruv)
-        user_hash = compute_image_hash(image_data)
-        user_unique_id = photo.file_unique_id
+        # 1-BOSQICH: GEMINI MULTIMODAL VA WEB QIDIRUV ORQALI ANIMENI ANIQLASH (3 TILDA)
+        detected_info = await identify_anime(
+            image_bytes=image_data,
+            gemini_key=config.gemini_api_key,
+            trace_key=config.trace_moe_api_key
+        )
 
-        local_animes = await db.get_all_anime_posters()
-        best_match = None
-        best_sim = 0.0
+        db_animes = await db.get_all_anime_posters()
 
-        for a in local_animes:
-            a_data = a.get("data") or {}
-            saved_unique_id = a_data.get("poster_unique_id")
-            saved_hash = a_data.get("poster_hash")
+        candidates = []
+        if detected_info and detected_info.get("found"):
+            # 2-BOSQICH: ANIQLANGAN ANIMENI BAZAMIZDAGI ANIMELAR BILAN 3 TILDA TAQQOSLASH (>= 80%)
+            candidates = match_anime_in_database(detected_info, db_animes, threshold=0.80)
 
-            # Agar anime poster hashi hali hisoblanmagan bo'lsa, avtomatik hisoblab bazaga saqlash
-            if not saved_hash and a.get("poster"):
-                try:
-                    p_file = await bot.get_file(a["poster"])
-                    p_bio = BytesIO()
-                    await bot.download_file(p_file.file_path, destination=p_bio)
-                    saved_hash = compute_image_hash(p_bio.getvalue())
-                    saved_unique_id = p_file.file_unique_id
-                    await db.update_anime_poster_hash(a["id"], saved_hash, saved_unique_id)
-                except Exception:
-                    pass
+        # 3-BOSQICH: AGAR NOMZOD TOPILMASA, POSTER D-HASH BILAN TEKSHIRISH
+        if not candidates:
+            user_hash = compute_image_hash(image_data)
+            user_unique_id = photo.file_unique_id
+            for a in db_animes:
+                a_data = a.get("data") or {}
+                saved_unique_id = a_data.get("poster_unique_id")
+                saved_hash = a_data.get("poster_hash")
 
-            if saved_unique_id and saved_unique_id == user_unique_id:
-                best_match = a
-                best_sim = 1.0
-                break
+                if saved_unique_id and saved_unique_id == user_unique_id:
+                    candidates.append({
+                        "anime": a,
+                        "similarity": 100.0,
+                        "raw_similarity": 1.0,
+                        "matched_db_title": a.get("title", ""),
+                        "matched_search_title": a.get("title", "")
+                    })
+                    break
 
-            if saved_hash and user_hash:
-                sim = hash_similarity(user_hash, saved_hash)
-                if sim > best_sim:
-                    best_sim = sim
-                    if sim >= 0.78:
-                        best_match = a
+                if saved_hash and user_hash:
+                    sim = hash_similarity(user_hash, saved_hash)
+                    if sim >= 0.80:
+                        candidates.append({
+                            "anime": a,
+                            "similarity": round(sim * 100, 1),
+                            "raw_similarity": sim,
+                            "matched_db_title": a.get("title", ""),
+                            "matched_search_title": a.get("title", "")
+                        })
 
-        # Agar bazamizdagi animelardan biri bilan o'xshashlik >= 78% bo'lsa
-        if best_match and best_sim >= 0.78:
-            anime_id = best_match["id"]
-            await db.increment_anime_views(anime_id)
-            bot_info = await bot.get_me()
-            bot_username = bot_info.username or config.bot_username
-            caption = format_anime_caption(best_match, bot_username)
-            episodes = await db.get_anime_episodes(anime_id)
-            uploaded_ep_nums = [ep["episode_num"] for ep in episodes]
-            kb = get_anime_keyboard(anime_id, uploaded_ep_nums)
+            candidates.sort(key=lambda x: x["raw_similarity"], reverse=True)
+            candidates = candidates[:3]
 
-            sim_percent = round(best_sim * 100, 1)
-            try:
-                await status_msg.delete()
-            except Exception:
-                pass
+        # 4-BOSQICH: NATIJALARNI KO'RSATISH VA FOYDALANUVCHIDAN TASDIQLASH SO'ROVI
+        if candidates:
+            # 80% dan yuqori top 3 ta natija mavjud
+            title_en = (detected_info or {}).get("title_en") or candidates[0]["anime"].get("title", "")
+            title_uz = (detected_info or {}).get("title_uz") or candidates[0]["anime"].get("title", "")
+            title_ru = (detected_info or {}).get("title_ru") or title_en
 
-            poster = best_match.get("poster")
-            if poster:
-                await message.answer_photo(
-                    photo=poster,
-                    caption=f"🎯 <b>Rasm orqali bazamizdan aniqlandi ({sim_percent}%):</b>\n\n{caption}",
-                    reply_markup=kb,
-                    parse_mode="HTML"
+            if len(candidates) == 1:
+                top_cand = candidates[0]
+                db_anime_title = top_cand["anime"].get("title", "")
+                sim_val = top_cand["similarity"]
+
+                text = (
+                    "🤖 <b>AI Rasm tahlili natijasi:</b>\n\n"
+                    "🎬 <b>Aniqlangan anime:</b>\n"
+                    f"🇬🇧 <b>EN:</b> {html.escape(title_en)}\n"
+                    f"🇺🇿 <b>UZ:</b> {html.escape(title_uz)}\n"
+                    f"🇷🇺 <b>RU:</b> {html.escape(title_ru)}\n\n"
+                    f"🎯 <b>Bazamizdagi moslik:</b> <b>{html.escape(db_anime_title)}</b> ({sim_val}%)\n\n"
+                    "❓ <b>Bu siz so'ragan animemi?</b>"
                 )
             else:
-                await message.answer(
-                    f"🎯 <b>Rasm orqali bazamizdan aniqlandi ({sim_percent}%):</b>\n\n{caption}",
-                    reply_markup=kb,
-                    parse_mode="HTML"
+                top_list_str = "\n".join(
+                    f"{i}️⃣ <b>{html.escape(c['anime'].get('title', ''))}</b> — {c['similarity']}%"
+                    for i, c in enumerate(candidates, 1)
                 )
+                text = (
+                    "🤖 <b>AI Rasm tahlili natijasi:</b>\n\n"
+                    "🎬 <b>Aniqlangan anime:</b>\n"
+                    f"🇬🇧 <b>EN:</b> {html.escape(title_en)}\n"
+                    f"🇺🇿 <b>UZ:</b> {html.escape(title_uz)}\n"
+                    f"🇷🇺 <b>RU:</b> {html.escape(title_ru)}\n\n"
+                    f"🎯 <b>Bazamizdan 80% dan yuqori mos kelgan eng yaqin animelar:</b>\n"
+                    f"{top_list_str}\n\n"
+                    "❓ <b>Bulardan qaysi biri siz so'ragan anime?</b>"
+                )
+
+            kb = get_ai_image_confirmation_keyboard(candidates)
+            await status_msg.edit_text(text, reply_markup=kb, parse_mode="HTML")
             return
 
-        # 2-BOSQICH: TRACE.MOE ORQALI GLOBAL QIDIRUV (Epizod kadrlarini aniqlash)
-        headers = {
-            "Content-Type": "image/jpeg"
-        }
-        if config.trace_moe_api_key:
-            headers["x-trace-secret"] = config.trace_moe_api_key
+        elif detected_info and detected_info.get("found"):
+            title_en = detected_info.get("title_en") or "Noma'lum"
+            title_uz = detected_info.get("title_uz") or title_en
+            title_ru = detected_info.get("title_ru") or title_en
 
-        async with aiohttp.ClientSession() as session:
-            trace_url = "https://api.trace.moe/search?cutBorders&anilistInfo"
-            async with session.post(trace_url, data=image_data, headers=headers, timeout=20) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    results = data.get("result", [])
-                    if results:
-                        best = results[0]
-                        similarity = best.get("similarity", 0)
-                        if similarity >= 0.68:
-                            anilist = best.get("anilist") or {}
-                            title_info = anilist.get("title") or {}
-                            romaji_title = title_info.get("romaji") or ""
-                            english_title = title_info.get("english") or ""
-                            native_title = title_info.get("native") or ""
+            text = (
+                "💡 <b>Rasmdan aniqlangan anime:</b>\n\n"
+                f"🇬🇧 <b>EN:</b> {html.escape(title_en)}\n"
+                f"🇺🇿 <b>UZ:</b> {html.escape(title_uz)}\n"
+                f"🇷🇺 <b>RU:</b> {html.escape(title_ru)}\n\n"
+                "ℹ️ <i>Ushbu anime hozircha bizning bot bazamizda topilmadi (o'xshashlik 80% dan past).\n"
+                "Adminlar tez orada uni kanalimizga yuklashadi!</i>\n\n"
+                "Boshqa anime qidirish uchun rasm yuborishingiz mumkin:"
+            )
+            await status_msg.edit_text(text, reply_markup=get_ai_image_retry_keyboard(), parse_mode="HTML")
+            return
 
-                            filename = best.get("filename", "")
-                            clean_filename = filename.split("]")[-1].split("[")[0].strip() if "]" in filename else filename
-                            clean_filename = clean_filename.split("-")[0].strip()
-
-                            episode_num = best.get("episode")
-                            similarity_percent = round(similarity * 100, 1)
-
-                            display_title = english_title or romaji_title or clean_filename
-
-                            candidate_queries = []
-                            for candidate in [romaji_title, english_title, clean_filename]:
-                                if candidate and candidate not in candidate_queries:
-                                    candidate_queries.append(candidate)
-                                    words = candidate.split()
-                                    if len(words) > 1 and words[0] not in candidate_queries:
-                                        candidate_queries.append(words[0])
-
-                            db_results = []
-                            for q in candidate_queries:
-                                found = await db.search_animes(q, limit=5)
-                                if found:
-                                    db_results = found
-                                    break
-
-                            ep_str = f"\n📌 <b>Taxminiy qism:</b> {episode_num}-qism" if episode_num else ""
-
-                            if db_results:
-                                await status_msg.edit_text(
-                                    f"✅ <b>Anime aniqlandi:</b> {html.escape(display_title)}\n"
-                                    f"🎯 <b>Aniqlik darajasi:</b> {similarity_percent}%{ep_str}\n\n"
-                                    f"🎬 <b>Bazamizdan topilgan natijalar:</b>",
-                                    reply_markup=get_animes_pagination_keyboard(db_results, 0, 1),
-                                    parse_mode="HTML"
-                                )
-                                return
-                            else:
-                                await status_msg.edit_text(
-                                    f"💡 <b>Rasmdan aniqlangan anime:</b>\n"
-                                    f"🎬 <b>Nomi:</b> <i>{html.escape(display_title)}</i>\n"
-                                    f"🎯 <b>Aniqlik darajasi:</b> {similarity_percent}%{ep_str}\n\n"
-                                    f"ℹ️ <i>Ushbu anime hozircha bizning bot bazamizga yuklanmagan.\n"
-                                    f"Adminlar tez orada uni kanalimizga joylashadi!</i>",
-                                    reply_markup=get_search_cancel_keyboard(),
-                                    parse_mode="HTML"
-                                )
-                                return
-                elif resp.status == 429:
-                    await status_msg.edit_text(
-                        "⚠️ <b>Juda ko'p so'rov yuborildi.</b> Iltimos, biroz kutib qaytadan urinib ko'ring.",
-                        reply_markup=get_search_cancel_keyboard(),
-                        parse_mode="HTML"
-                    )
-                    return
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f"Image search error: {e}")
 
     await status_msg.edit_text(
         "⚠️ <b>Kechirasiz, ushbu rasm orqali animeni aniqlab bo'lmadi.</b>\n\n"
         "<i>Iltimos, animening aniqroq kadrini (skrinshot) yuboring yoki '🏷 Anime nomi orqali' qidiruvdan foydalaning.</i>",
-        reply_markup=get_search_cancel_keyboard(),
+        reply_markup=get_ai_image_retry_keyboard(),
         parse_mode="HTML"
     )
+
+
+# 6.1. ✅ AI Rasm qidiruvini tasdiqlash
+@router.callback_query(F.data.startswith("ai_confirm_"))
+async def handle_ai_confirm(callback: CallbackQuery, state: FSMContext, bot: Bot):
+    await callback.answer()
+    anime_id = int(callback.data.replace("ai_confirm_", ""))
+
+    anime = await db.get_anime_by_id(anime_id)
+    if not anime:
+        await callback.message.edit_text(
+            "⚠️ Kechirasiz, anime topilmadi yoki o'chirilgan.",
+            reply_markup=get_search_cancel_keyboard(),
+            parse_mode="HTML"
+        )
+        return
+
+    await state.clear()
+    await db.increment_anime_views(anime_id)
+
+    # Foydalanuvchiga maroqli tomosha tilash
+    try:
+        await callback.message.edit_text(
+            "🎉 <b>Ajoyib! Qidiruv muvaffaqiyatli yakunlandi!</b>\n\n"
+            "🍿 <b>Maroqli tomosha tilaymiz!</b> ✨",
+            parse_mode="HTML"
+        )
+    except Exception:
+        pass
+
+    bot_info = await bot.get_me()
+    bot_username = bot_info.username or config.bot_username
+    caption = format_anime_caption(anime, bot_username)
+
+    episodes = await db.get_anime_episodes(anime_id)
+    uploaded_ep_nums = [ep["episode_num"] for ep in episodes]
+    kb = get_anime_keyboard(anime_id, uploaded_ep_nums)
+
+    poster = anime.get("poster")
+    if poster:
+        await callback.message.answer_photo(
+            photo=poster,
+            caption=caption,
+            reply_markup=kb,
+            parse_mode="HTML"
+        )
+    else:
+        await callback.message.answer(
+            caption,
+            reply_markup=kb,
+            parse_mode="HTML"
+        )
+
+
+# 6.2. ❌ AI Rasm qidiruvini rad etish (siklni qaytadan takrorlash)
+@router.callback_query(F.data == "ai_reject_search")
+async def handle_ai_reject(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await state.set_state(UserSearchState.by_image)
+    text = (
+        "🔄 <b>Tushundim, qaytadan urinib ko'ramiz!</b>\n\n"
+        "Iltimos, animening boshqa aniqroq kadrini yoki posterini yuboring:\n"
+        "<i>(Surat yuborishingiz bilan AI qaytadan tahlil qiladi)</i>"
+    )
+    await callback.message.edit_text(text, reply_markup=get_search_cancel_keyboard(), parse_mode="HTML")
 
 
 # 7. 📚 Barcha animelar (sahifalash bilan)

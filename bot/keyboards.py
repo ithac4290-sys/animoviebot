@@ -152,7 +152,50 @@ def get_search_cancel_keyboard() -> InlineKeyboardMarkup:
     """Qidiruvni bekor qilish tugmasi"""
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="❌ Bekor qilish", callback_data="btn_search_menu", style="danger")
+        InlineKeyboardButton(text="❌ Bekor qilish", callback_data="btn_search_menu")
+    )
+    return builder.as_markup()
+
+
+def get_ai_image_confirmation_keyboard(candidates: List[Dict[str, Any]]) -> InlineKeyboardMarkup:
+    """AI rasm qidiruvida topilgan animelarni tasdiqlash klaviaturasi"""
+    builder = InlineKeyboardBuilder()
+    if len(candidates) == 1:
+        c = candidates[0]
+        anime_id = c["anime"]["id"]
+        builder.row(
+            InlineKeyboardButton(text="✅ Ha, aynan shu!", callback_data=f"ai_confirm_{anime_id}")
+        )
+        builder.row(
+            InlineKeyboardButton(text="❌ Yo'q, boshqasi", callback_data="ai_reject_search")
+        )
+    else:
+        for idx, c in enumerate(candidates, 1):
+            anime_id = c["anime"]["id"]
+            sim = c["similarity"]
+            title = c["anime"].get("title", f"Anime #{anime_id}")
+            if len(title) > 28:
+                title = title[:25] + "..."
+            builder.row(
+                InlineKeyboardButton(
+                    text=f"{idx}️⃣ {title} ({sim}%)",
+                    callback_data=f"ai_confirm_{anime_id}"
+                )
+            )
+        builder.row(
+            InlineKeyboardButton(text="❌ Hech biri emas", callback_data="ai_reject_search")
+        )
+    return builder.as_markup()
+
+
+def get_ai_image_retry_keyboard() -> InlineKeyboardMarkup:
+    """AI rasm qidiruvida natija topilmaganda yoki takrorlash uchun klaviatura"""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="🔄 Boshqa rasm yuborish", callback_data="search_by_image")
+    )
+    builder.row(
+        InlineKeyboardButton(text="❌ Bekor qilish", callback_data="btn_search_menu")
     )
     return builder.as_markup()
 

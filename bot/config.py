@@ -15,6 +15,7 @@ class Config:
     db_name: str
     database_url: str
     trace_moe_api_key: str
+    gemini_api_key: str
     manga_webapp_url: str
     shorts_webapp_url: str
     manga_channel_id: str
@@ -31,6 +32,7 @@ def load_config() -> Config:
     ).strip()
 
     trace_moe_api_key = os.getenv("TRACE_MOE_API_KEY", "").strip()
+    gemini_api_key = os.getenv("GEMINI_API_KEY", "").strip()
     manga_webapp_url = os.getenv("MANGA_WEBAPP_URL", "https://ithac4290-sys.github.io/animoviebot/manga/?v=15").strip()
     shorts_webapp_url = os.getenv("SHORTS_WEBAPP_URL", "https://ithac4290-sys.github.io/animoviebot/shorts/?v=15").strip()
     manga_channel_id = os.getenv("MANGA_CHANNEL_ID", "@AniMovie_manga").strip()
@@ -50,6 +52,7 @@ def load_config() -> Config:
         db_name=db_name,
         database_url=database_url,
         trace_moe_api_key=trace_moe_api_key,
+        gemini_api_key=gemini_api_key,
         manga_webapp_url=manga_webapp_url,
         shorts_webapp_url=shorts_webapp_url,
         manga_channel_id=manga_channel_id,
