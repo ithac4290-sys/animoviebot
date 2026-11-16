@@ -24,7 +24,12 @@ from bot.keyboards import (
     get_ai_image_confirmation_keyboard,
     get_ai_image_retry_keyboard
 )
-from bot.gemini_search import identify_anime, match_anime_in_database, ensure_multilingual_titles
+from bot.gemini_search import (
+    identify_anime,
+    match_anime_in_database,
+    ensure_multilingual_titles,
+    has_cyrillic
+)
 from bot.states import VipPaymentState, UserSearchState
 from bot.utils import check_user_subscriptions
 
