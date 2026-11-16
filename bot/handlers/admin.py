@@ -1207,7 +1207,11 @@ async def push_to_github():
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
-        await proc.communicate()
+        stdout, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            logger.error(f"Error pushing to github: code={proc.returncode}, err={stderr.decode('utf-8', errors='ignore')}")
+        else:
+            logger.info("Successfully pushed manga & shorts data to GitHub (main & gh-pages)")
     except Exception as e:
         logger.error(f"Error pushing to github: {e}")
 
@@ -1667,6 +1671,16 @@ async def process_chapter_document(message: Message, state: FSMContext, bot: Bot
 
     # 1. PDF Fayl
     if file_ext == ".pdf":
+        if doc.file_size and doc.file_size > 20 * 1024 * 1024:
+            await message.answer(
+                "⚠️ <b>Fayl hajmi 20 MB dan katta!</b>\n\n"
+                "Telegram Bot API cheklovi tufayli bot 20 MB dan ortiq fayllarni to'g'ridan-to'g'ri yuklab ololmaydi.\n"
+                "Iltimos, PDF hajmini biroz ixchamlang (compress) yoki bobni rasmlar (ZIP arxiv yoki foto) shaklida yuboring.",
+                reply_markup=get_admin_finish_chapter_keyboard(len(pages)),
+                parse_mode="HTML"
+            )
+            return
+
         status_msg = await message.answer(
             f"⏳ <b>{html.escape(filename)}</b> qabul qilindi.\n"
             f"PDF sahifalari ajratib olinmoqda, iltimos kuting...",
@@ -1677,7 +1691,11 @@ async def process_chapter_document(message: Message, state: FSMContext, bot: Bot
             os.makedirs("data", exist_ok=True)
             await bot.download(doc, destination=temp_pdf)
 
-            import fitz  # PyMuPDF
+            try:
+                import pymupdf as fitz
+            except ImportError:
+                import fitz
+
             pdf_doc = fitz.open(temp_pdf)
             total_pages = len(pdf_doc)
 
@@ -1690,10 +1708,11 @@ async def process_chapter_document(message: Message, state: FSMContext, bot: Bot
             for d in target_dirs:
                 os.makedirs(d, exist_ok=True)
 
+            start_idx = len(pages)
             for idx in range(total_pages):
                 page = pdf_doc.load_page(idx)
                 pix = page.get_pixmap(dpi=150)
-                img_name = f"p_{idx + 1}.jpg"
+                img_name = f"p_{start_idx + idx + 1}.jpg"
                 primary_path = os.path.join(target_dirs[0], img_name)
                 pix.save(primary_path)
                 for d in target_dirs[1:]:
@@ -1715,7 +1734,8 @@ async def process_chapter_document(message: Message, state: FSMContext, bot: Bot
                 f"✅ <b>PDF muvaffaqiyatli qabul qilindi!</b>\n\n"
                 f"📖 <b>Manga:</b> {html.escape(manga_title)}\n"
                 f"📑 <b>Bob:</b> {ch_num}-bob\n"
-                f"📸 <b>Ajratib olingan sahifalar:</b> {total_pages} ta\n\n"
+                f"📸 <b>Ajratib olingan yangi sahifalar:</b> {total_pages} ta\n"
+                f"📊 <b>Jami sahifalar:</b> {len(pages)} ta\n\n"
                 f"Barcha sahifalar tayyor bo'lsa, quyidagi tugmani bosing:",
                 reply_markup=get_admin_finish_chapter_keyboard(len(pages)),
                 parse_mode="HTML"
