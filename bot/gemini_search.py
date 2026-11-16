@@ -9,7 +9,7 @@ import aiohttp
 
 logger = logging.getLogger("GeminiSearch")
 
-GEMINI_MODELS = ["gemini-flash-lite-latest", "gemini-3.1-flash-lite", "gemini-3.8-flash"]
+GEMINI_MODELS = ["gemini-flash-lite-latest", "gemini-2.5-flash-lite", "gemini-3.1-flash-lite-preview"]
 
 
 def has_cyrillic(text: str) -> bool:
@@ -198,7 +198,7 @@ async def identify_anime_with_gemini(image_bytes: bytes, api_key: str) -> Option
         }
     }
 
-    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=25)) as session:
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=12)) as session:
         for model in GEMINI_MODELS:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
             try:
@@ -213,14 +213,15 @@ async def identify_anime_with_gemini(image_bytes: bytes, api_key: str) -> Option
                                 # Markdown json teglarni tozalash
                                 clean_json = re.sub(r"^```json\s*|\s*```$", "", raw_text, flags=re.MULTILINE).strip()
                                 parsed = json.loads(clean_json)
-                                if parsed.get("found"):
+                                if parsed.get("found") is not False:
+                                    parsed["found"] = True
                                     parsed["source"] = "gemini"
                                     return parsed
                     else:
                         resp_text = await resp.text()
                         logger.warning(f"Gemini API {model} status {resp.status}: {resp_text[:200]}")
             except Exception as e:
-                logger.error(f"Gemini API {model} so'rovida xatolik: {e}")
+                logger.error(f"Gemini API {model} so'rovida xatolik: {type(e).__name__}: {e}")
 
     return None
 
