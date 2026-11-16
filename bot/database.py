@@ -147,6 +147,19 @@ class Database:
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
+            # 8. Telegram Business Chatbot ulanishlari jadvali
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS business_connections (
+                    connection_id TEXT PRIMARY KEY,
+                    user_id BIGINT NOT NULL,
+                    user_chat_id BIGINT NOT NULL,
+                    can_reply INTEGER DEFAULT 1,
+                    is_enabled INTEGER DEFAULT 1,
+                    data JSONB DEFAULT '{}'::jsonb,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
             logger.info("PostgreSQL jadvallari tekshirildi va tayyor!")
 
     async def _init_sqlite_tables(self):
@@ -241,6 +254,18 @@ class Database:
                     amount_uzs INTEGER NOT NULL,
                     status TEXT DEFAULT 'pending',
                     payment_url TEXT,
+                    data TEXT DEFAULT '{}',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS business_connections (
+                    connection_id TEXT PRIMARY KEY,
+                    user_id INTEGER NOT NULL,
+                    user_chat_id INTEGER NOT NULL,
+                    can_reply INTEGER DEFAULT 1,
+                    is_enabled INTEGER DEFAULT 1,
                     data TEXT DEFAULT '{}',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -1201,6 +1226,72 @@ class Database:
                             pass
                     res.append(d)
                 return res
+
+    # ================= Telegram Business Chatbot =================
+
+    async def save_business_connection(self, connection_id: str, user_id: int, user_chat_id: int,
+                                       can_reply: bool = True, is_enabled: bool = True,
+                                       data: Optional[Dict[str, Any]] = None):
+        """Telegram Business ulanishini saqlash yoki yangilash"""
+        data_json = json.dumps(data or {})
+        can_r = 1 if can_reply else 0
+        is_en = 1 if is_enabled else 0
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                await conn.execute("""
+                    INSERT INTO business_connections (connection_id, user_id, user_chat_id, can_reply, is_enabled, data, updated_at)
+                    VALUES ($1, $2, $3, $4, $5, $6::jsonb, CURRENT_TIMESTAMP)
+                    ON CONFLICT(connection_id) DO UPDATE SET
+                        user_id = EXCLUDED.user_id,
+                        user_chat_id = EXCLUDED.user_chat_id,
+                        can_reply = EXCLUDED.can_reply,
+                        is_enabled = EXCLUDED.is_enabled,
+                        data = EXCLUDED.data,
+                        updated_at = CURRENT_TIMESTAMP;
+                """, connection_id, user_id, user_chat_id, can_r, is_en, data_json)
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                await db.execute("""
+                    INSERT INTO business_connections (connection_id, user_id, user_chat_id, can_reply, is_enabled, data, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    ON CONFLICT(connection_id) DO UPDATE SET
+                        user_id = excluded.user_id,
+                        user_chat_id = excluded.user_chat_id,
+                        can_reply = excluded.can_reply,
+                        is_enabled = excluded.is_enabled,
+                        data = excluded.data,
+                        updated_at = CURRENT_TIMESTAMP;
+                """, (connection_id, user_id, user_chat_id, can_r, is_en, data_json))
+                await db.commit()
+
+    async def get_business_connection(self, connection_id: str) -> Optional[Dict[str, Any]]:
+        """Telegram Business ulanishini olish"""
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                row = await conn.fetchrow("SELECT * FROM business_connections WHERE connection_id = $1", connection_id)
+                if row:
+                    d = dict(row)
+                    if isinstance(d.get("data"), str):
+                        try:
+                            d["data"] = json.loads(d["data"])
+                        except Exception:
+                            pass
+                    return d
+                return None
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                db.row_factory = aiosqlite.Row
+                cursor = await db.execute("SELECT * FROM business_connections WHERE connection_id = ?", (connection_id,))
+                row = await cursor.fetchone()
+                if row:
+                    d = dict(row)
+                    if isinstance(d.get("data"), str):
+                        try:
+                            d["data"] = json.loads(d["data"])
+                        except Exception:
+                            pass
+                    return d
+                return None
 
 
 db = Database()

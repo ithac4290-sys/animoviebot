@@ -109,7 +109,9 @@ async def main():
             bot_info = await bot.get_me()
             logger.info(f"Bot muvaffaqiyatli ishga tushdi: @{bot_info.username} (ID: {bot_info.id})")
             await bot.delete_webhook(drop_pending_updates=True)
-            await dp.start_polling(bot)
+            allowed_updates = dp.resolve_used_update_types()
+            logger.info(f"Ruxsat berilgan update turlari: {allowed_updates}")
+            await dp.start_polling(bot, allowed_updates=allowed_updates)
             break
         except Exception as e:
             logger.error(

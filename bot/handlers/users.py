@@ -111,6 +111,15 @@ async def handle_start(message: Message, command: CommandObject, bot: Bot, state
                 await show_manga_by_id(message, int(m_id), bot, bot_username)
                 return
 
+        # "play_1_1" (Inline xabardan yoki havoladan qismni ko'rish)
+        if clean_arg.startswith("play_"):
+            parts = clean_arg.split("_")
+            if len(parts) >= 3 and parts[1].isdigit() and parts[2].isdigit():
+                a_id = int(parts[1])
+                e_num = int(parts[2])
+                await send_episode_direct(message, a_id, e_num, bot, bot_username)
+                return
+
         # "anime_961" yoki "961"
         if clean_arg.startswith("anime_"):
             clean_arg = clean_arg.replace("anime_", "")
@@ -188,22 +197,84 @@ async def handle_episodes_coming_soon(callback: CallbackQuery):
     await callback.answer("⏳ Ushbu animening qismlari tez kunda yuklanadi!", show_alert=True)
 
 
+async def send_episode_direct(message: Message, anime_id: int, ep_num: int, bot: Bot, bot_username: str):
+    """Deep-link yoki inline rejimdan to'g'ridan-to'g'ri qismni yuborish"""
+    user_id = message.from_user.id
+    is_subbed, unsubbed = await check_user_subscriptions(bot, user_id)
+    if not is_subbed:
+        text = (
+            "⚠️ <b>Anime ko'rish uchun homiy kanallarga obuna bo'lishingiz zarur:</b>\n\n"
+            "<i>Iltimos, quyidagi kanallarga obuna bo'lib, '✅ Obunani tekshirish' tugmasini bosing:</i>"
+        )
+        builder = InlineKeyboardBuilder()
+        for idx, ch in enumerate(unsubbed, 1):
+            title = ch.get("title", f"Kanal #{idx}")
+            link = ch.get("invite_link", "https://t.me")
+            builder.row(InlineKeyboardButton(text=f"📢 {title}", url=link))
+        builder.row(InlineKeyboardButton(text="✅ Obunani tekshirish", callback_data=f"check_sub_play_{anime_id}_{ep_num}"))
+        await message.answer(text=text, reply_markup=builder.as_markup(), parse_mode="HTML")
+        return
+
+    anime = await db.get_anime(anime_id)
+    episode = await db.get_episode(anime_id, ep_num)
+    if not episode:
+        await message.answer(f"⚠️ <b>{anime_id}-ID li animening {ep_num}-qismi hali yuklanmagan!</b>", parse_mode="HTML")
+        return
+
+    anime_title = anime.get("title", "Anime") if anime else "Anime"
+    file_id = episode.get("file_id")
+    file_type = episode.get("file_type", "video")
+
+    video_caption = (
+        f"🎬 <b>{html.escape(anime_title)}</b> - {ep_num}-qism\n\n"
+        f"🏷 Botimiz: @{bot_username}\n"
+        f"📮 Anime ID: {anime_id}"
+    )
+
+    episodes = await db.get_anime_episodes(anime_id)
+    uploaded_ep_nums = [ep["episode_num"] for ep in episodes]
+    kb = get_anime_keyboard(anime_id, uploaded_ep_nums, current_ep=ep_num)
+
+    try:
+        if file_type == "document":
+            await bot.send_document(
+                chat_id=user_id,
+                document=file_id,
+                caption=video_caption,
+                reply_markup=kb,
+                parse_mode="HTML"
+            )
+        else:
+            await bot.send_video(
+                chat_id=user_id,
+                video=file_id,
+                caption=video_caption,
+                reply_markup=kb,
+                parse_mode="HTML"
+            )
+    except Exception as e:
+        logger.error(f"Error sending episode direct: {e}")
+        await message.answer(f"❌ Videoni yuborishda xatolik yuz berdi: {str(e)}")
+
+
 # ================= QISM TUGMASI BOSILGANDA =================
 
 @router.callback_query(F.data.startswith("play_"))
 async def handle_play_episode(callback: CallbackQuery, bot: Bot):
     user_id = callback.from_user.id
+    is_inline = bool(callback.inline_message_id)
 
     # Majburiy obunani tekshirish
     is_subbed, unsubbed = await check_user_subscriptions(bot, user_id)
     if not is_subbed:
         await callback.answer("⚠️ Iltimos, oldin kanallarga a'zo bo'ling!", show_alert=True)
-        kb = get_subscription_keyboard(unsubbed)
-        await callback.message.answer(
-            "⚠️ <b>Anime ko'rish uchun homiy kanallarga obuna bo'lishingiz zarur:</b>",
-            reply_markup=kb,
-            parse_mode="HTML"
-        )
+        if not is_inline and callback.message:
+            kb = get_subscription_keyboard(unsubbed)
+            await callback.message.answer(
+                "⚠️ <b>Anime ko'rish uchun homiy kanallarga obuna bo'lishingiz zarur:</b>",
+                reply_markup=kb,
+                parse_mode="HTML"
+            )
         return
 
     parts = callback.data.split("_")
@@ -221,14 +292,18 @@ async def handle_play_episode(callback: CallbackQuery, bot: Bot):
         await callback.answer(f"⚠️ {ep_num}-qism tez orada yuklanadi!", show_alert=True)
         return
 
-    await callback.answer(f"⏳ {ep_num}-qism yuborilmoqda...")
-
     # Tanlangan qism belgisini klaviaturada yangilash ([ 📀 ] - {ep_num})
     try:
         episodes = await db.get_anime_episodes(anime_id)
         uploaded_ep_nums = [ep["episode_num"] for ep in episodes]
         updated_kb = get_anime_keyboard(anime_id, uploaded_ep_nums, page=page, current_ep=ep_num)
-        await callback.message.edit_reply_markup(reply_markup=updated_kb)
+        if is_inline:
+            await bot.edit_message_reply_markup(
+                inline_message_id=callback.inline_message_id,
+                reply_markup=updated_kb
+            )
+        elif callback.message:
+            await callback.message.edit_reply_markup(reply_markup=updated_kb)
     except Exception:
         pass
 
@@ -257,24 +332,40 @@ async def handle_play_episode(callback: CallbackQuery, bot: Bot):
                 caption=video_caption,
                 parse_mode="HTML"
             )
+        await callback.answer(f"✅ {ep_num}-qism shaxsiyingizga yuborildi!", show_alert=False)
     except Exception as e:
-        await callback.message.answer(f"❌ Videoni yuborishda xatolik yuz berdi: {str(e)}")
+        logger.warning(f"Could not send video directly to user {user_id}: {e}")
+        # Foydalanuvchi botni start qilmagan bo'lsa (yoki user-to-user inline bo'lsa)
+        await callback.answer(
+            url=f"https://t.me/{bot_username}?start=play_{anime_id}_{ep_num}"
+        )
 
 
 # ================= ❌ YOPISH TUGMASI =================
 
 @router.callback_query(F.data == "close_anime_view")
-async def handle_close_view(callback: CallbackQuery):
-    try:
-        await callback.message.delete()
-    except Exception:
-        await callback.answer("Xabar o'chirildi.")
+async def handle_close_view(callback: CallbackQuery, bot: Bot):
+    if callback.inline_message_id:
+        try:
+            await bot.edit_message_text(
+                inline_message_id=callback.inline_message_id,
+                text="❌ <i>Anime ko'rish oynasi yopildi.</i>",
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
+    elif callback.message:
+        try:
+            await callback.message.delete()
+        except Exception:
+            pass
+    await callback.answer("Yopildi.")
 
 
 # ================= ⏩ QISMLARNI SAHIFALASH (PAGINATION) =================
 
 @router.callback_query(F.data.startswith("ep_page_"))
-async def handle_episodes_page(callback: CallbackQuery):
+async def handle_episodes_page(callback: CallbackQuery, bot: Bot):
     """20 tadan oshganda qismlarni sahifalab ko'rsatish (Oldingi / Keyingi tugmalari)"""
     parts = callback.data.split("_")
     # Format: ep_page_{anime_id}_{page}_{current_ep}
@@ -287,7 +378,13 @@ async def handle_episodes_page(callback: CallbackQuery):
     kb = get_anime_keyboard(anime_id, uploaded_ep_nums, page=page, current_ep=current_ep)
 
     try:
-        await callback.message.edit_reply_markup(reply_markup=kb)
+        if callback.inline_message_id:
+            await bot.edit_message_reply_markup(
+                inline_message_id=callback.inline_message_id,
+                reply_markup=kb
+            )
+        elif callback.message:
+            await callback.message.edit_reply_markup(reply_markup=kb)
     except Exception:
         pass
     await callback.answer()
@@ -1202,12 +1299,17 @@ async def handle_check_subscription(callback: CallbackQuery, bot: Bot):
 
     target_anime_id = None
     target_manga_id = None
+    target_play = None
     if callback.data.startswith("check_sub_"):
         raw_id = callback.data.replace("check_sub_", "").strip()
         if raw_id.startswith("manga_"):
             m_str = raw_id.replace("manga_", "")
             if m_str.isdigit():
                 target_manga_id = int(m_str)
+        elif raw_id.startswith("play_"):
+            parts = raw_id.split("_")
+            if len(parts) >= 3 and parts[1].isdigit() and parts[2].isdigit():
+                target_play = (int(parts[1]), int(parts[2]))
         elif raw_id.isdigit():
             target_anime_id = int(raw_id)
 
@@ -1219,7 +1321,9 @@ async def handle_check_subscription(callback: CallbackQuery, bot: Bot):
             pass
 
         # Agar foydalanuvchi anime yoki manga ko'rish uchun tekshirgan bo'lsa, darhol ochish!
-        if target_manga_id:
+        if target_play:
+            await send_episode_direct(callback.message, target_play[0], target_play[1], bot, bot_username)
+        elif target_manga_id:
             await show_manga_by_id(callback, target_manga_id, bot, bot_username)
         elif target_anime_id:
             await show_anime_by_id(callback, target_anime_id, bot, bot_username)
