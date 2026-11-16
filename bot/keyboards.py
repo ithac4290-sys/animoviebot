@@ -27,7 +27,7 @@ def get_main_menu_keyboard(bot_username: str, is_vip: bool = False, user_id: int
     manga_base = config.manga_webapp_url
     shorts_base = config.shorts_webapp_url
     sep = "&" if "?" in manga_base else "?"
-    manga_url = f"{manga_base}{sep}vip=1&user_id={user_id}&v=17"
+    manga_url = f"{manga_base}{sep}vip=1&user_id={user_id}&v=18"
     sep_s = "&" if "?" in shorts_base else "?"
     shorts_url = f"{shorts_base}{sep_s}vip=1&user_id={user_id}&v=15"
 
