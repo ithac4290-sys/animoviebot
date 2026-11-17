@@ -582,7 +582,7 @@ def get_back_home_keyboard() -> InlineKeyboardMarkup:
 
 
 def get_vip_plans_keyboard() -> InlineKeyboardMarkup:
-    """VIP tariflarini tanlash tugmalari"""
+    """VIP tariflarini tanlash tugmalari (Rang-barang zamonaviy uslubda)"""
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text="💎 𝟭 𝗼𝘆𝗹𝗶𝗸 — 𝟭𝟱,𝟬𝟬𝟬 𝘀𝗼'𝗺", callback_data="buy_vip_1", style="primary")
@@ -594,10 +594,10 @@ def get_vip_plans_keyboard() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="👑 𝗗𝗼𝗶𝗺𝗶𝘆 (𝗰𝗵𝗲𝗸𝘀𝗶𝘇) — 𝟭𝟬𝟬,𝟬𝟬𝟬 𝘀𝗼'𝗺", callback_data="buy_vip_unlimited", style="success")
     )
     builder.row(
-        InlineKeyboardButton(text="👨🏻‍💻 𝗔𝗱𝗺𝗶𝗻 𝗯𝗶𝗹𝗮𝗻 𝗯𝗼𝗴'𝗹𝗮𝗻𝗶𝘀𝗵", url="https://t.me/Jahongir02_02")
+        InlineKeyboardButton(text="👨🏻‍💻 𝗔𝗱𝗺𝗶𝗻 𝗯𝗶𝗹𝗮𝗻 𝗯𝗼𝗴'𝗹𝗮𝗻𝗶𝘀𝗵", url="https://t.me/Jahongir02_02", style="primary")
     )
     builder.row(
-        InlineKeyboardButton(text="⬅️ 𝗕𝗼𝘀𝗵 𝗺𝗲𝗻𝘆𝘂", callback_data="btn_home")
+        InlineKeyboardButton(text="⬅️ 𝗕𝗼𝘀𝗵 𝗺𝗲𝗻𝘆𝘂", callback_data="btn_home", style="danger")
     )
     return builder.as_markup()
 
@@ -608,30 +608,40 @@ def get_vip_payment_keyboard(
     tezcheck_url: Optional[str] = None,
     bill_id: Optional[str] = None
 ) -> InlineKeyboardMarkup:
-    """To'lov qilish va chek yuborish tugmalari"""
+    """To'lov qilish va tekshirish tugmalari (TezCheck avtomatik to'lov)"""
     builder = InlineKeyboardBuilder()
 
-    # Agar TezCheck integratsiyasi yoqilgan va havola mavjud bo'lsa
+    # Avtomatik onlayn to'lov (Click, Payme, Uzum)
     if tezcheck_url:
         builder.row(
-            InlineKeyboardButton(text="💳 Click / Payme / Uzum orqali to'lash", url=tezcheck_url)
+            InlineKeyboardButton(
+                text="💳 Click / Payme / Uzum orqali to'lash",
+                url=tezcheck_url,
+                style="success"
+            )
         )
         if bill_id:
             builder.row(
-                InlineKeyboardButton(text="🔄 To'lovni tekshirish", callback_data=f"check_tz_{bill_id}")
+                InlineKeyboardButton(
+                    text="🔄 To'lovni tekshirish",
+                    callback_data=f"check_tz_{bill_id}",
+                    style="primary"
+                )
             )
 
     builder.row(
-        InlineKeyboardButton(text="📤 𝗖𝗵𝗲𝗸 (𝘀𝗸𝗿𝗶𝗻𝘀𝗵𝗼𝘁) 𝘆𝘂𝗯𝗼𝗿𝗶𝘀𝗵", callback_data=f"send_receipt_{plan_id}", style="success")
-    )
-    builder.row(
         InlineKeyboardButton(
-            text="👨🏻‍💻 𝗔𝗱𝗺𝗶𝗻𝗴𝗮 𝘆𝗼𝘇𝗶𝘀𝗵",
-            url=f"https://t.me/Jahongir02_02"
+            text="👨🏻‍💻 Qo'llab-quvvatlash (Admin)",
+            url="https://t.me/Jahongir02_02",
+            style="primary"
         )
     )
     builder.row(
-        InlineKeyboardButton(text="⬅️ 𝗕𝗼𝘀𝗵𝗾𝗮 𝘁𝗮𝗿𝗶𝗳 𝘁𝗮𝗻𝗹𝗮𝘀𝗵", callback_data="btn_vip")
+        InlineKeyboardButton(
+            text="⬅️ Boshqa tarif tanlash",
+            callback_data="btn_vip",
+            style="danger"
+        )
     )
     return builder.as_markup()
 
@@ -640,16 +650,32 @@ def get_tezcheck_bill_keyboard(payment_url: str, bill_id: str, plan_id: str) -> 
     """TezCheck onlayn hisob-faktura uchun maxsus klaviatura"""
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="💳 Click / Payme / Uzum orqali to'lash", url=payment_url)
+        InlineKeyboardButton(
+            text="💳 Click / Payme / Uzum orqali to'lash",
+            url=payment_url,
+            style="success"
+        )
     )
     builder.row(
-        InlineKeyboardButton(text="🔄 To'lovni tekshirish", callback_data=f"check_tz_{bill_id}")
+        InlineKeyboardButton(
+            text="🔄 To'lovni tekshirish",
+            callback_data=f"check_tz_{bill_id}",
+            style="primary"
+        )
     )
     builder.row(
-        InlineKeyboardButton(text="📤 Qo'lda chek yuborish", callback_data=f"send_receipt_{plan_id}")
+        InlineKeyboardButton(
+            text="👨🏻‍💻 Qo'llab-quvvatlash (Admin)",
+            url="https://t.me/Jahongir02_02",
+            style="primary"
+        )
     )
     builder.row(
-        InlineKeyboardButton(text="⬅️ Bekor qilish", callback_data="btn_vip")
+        InlineKeyboardButton(
+            text="⬅️ Boshqa tarif tanlash",
+            callback_data="btn_vip",
+            style="danger"
+        )
     )
     return builder.as_markup()
 

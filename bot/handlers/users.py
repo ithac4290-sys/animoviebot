@@ -1024,17 +1024,21 @@ async def handle_cabinet(event: Message | CallbackQuery):
 async def handle_vip_info(event: Message | CallbackQuery, state: FSMContext):
     await state.clear()
     text = (
-        "💎 <b>VIP OBUNA BO'LIMI</b>\n\n"
-        "VIP a'zolik sizga qanday afzalliklarni beradi?\n"
-        "• 🚫 Barcha majburiy obuna va homiy kanallarsiz tomosha qilish\n"
-        "• ⚡️ Animelarni yuqori tezlikda yuklab olish\n"
-        "• 🍿 Yangi qismlarni birinchilardan bo'lib ko'rish\n"
-        "• 🎖 Maxsus VIP nishoni va maqomi\n\n"
-        "💵 <b>VIP Obuna narxlari:</b>\n"
-        "• 1 oylik: 15,000 so'm\n"
-        "• 3 oylik: 50,000 so'm\n"
-        "• Doimiy (cheksiz): 100,000 so'm\n\n"
-        "<i>Sotib olish uchun quyidagi tariflardan birini tanlang:</i>"
+        "╭── ✦ <b>PREMIUM VIP OBUNA</b> ✦ ──╮\n"
+        "│\n"
+        "│  👑 <b>VIP afzalliklari:</b>\n"
+        "│  • 🚫 Majburiy homiy kanallarsiz tomosha\n"
+        "│  • ⚡️ 1080p Ultra HD premyeralar\n"
+        "│  • 📖 Manga & ⚡️ Shorts'ga to'liq kirish\n"
+        "│  • 🚀 Maksimal tezlikda yuklab olish\n"
+        "│  • 🎖 Maxsus profil nishoni va VIP status\n"
+        "│\n"
+        "├── ✦ <b>TARIFLAR VA NARXLAR</b> ✦ ──┤\n"
+        "│  💎 <b>1 oylik:</b> <code>15,000 so'm</code>\n"
+        "│  💎 <b>3 oylik:</b> <code>50,000 so'm</code>\n"
+        "│  👑 <b>Doimiy (cheksiz):</b> <code>100,000 so'm</code>\n"
+        "╰────────────────────────╯\n\n"
+        "<i>To'lov qilish uchun quyidagi tariflardan birini tanlang:</i>"
     )
     kb = get_vip_plans_keyboard()
     if isinstance(event, CallbackQuery):
@@ -1089,27 +1093,35 @@ async def handle_select_vip_plan(callback: CallbackQuery, state: FSMContext):
         except Exception as e:
             logging.getLogger("Users").error(f"TezCheck to'lov havolasi yaratishda xatolik: {e}")
 
-    text = (
-        f"💎 <b>Tanlangan tarif:</b> {selected['name']}\n"
-        f"💵 <b>To'lov summasi:</b> {selected['price']}\n\n"
-    )
-
     if tezcheck_url:
-        text += (
-            "💳 <b>To'lov usullari:</b>\n"
-            "1️⃣ <b>Avtomatik onlayn to'lov (TezCheck):</b>\n"
-            "Quyidagi <b>'💳 Click / Payme / Uzum orqali to'lash'</b> tugmasini bosing va to'lang.\n"
-            "To'lov yakunlangach, <b>'🔄 To'lovni tekshirish'</b> tugmasini bosing!\n\n"
-            "2️⃣ <b>Qo'lda to'lov (Admin orqali):</b>\n"
-            "👨🏻‍💻 <b>Admin:</b> @Jahongir02_02\n"
-            "<i>To'lov chekini botga yuborish uchun <b>'📤 Chek yuborish'</b> tugmasini bosing:</i>"
+        text = (
+            "╭── ✦ <b>VIP ONLAYN TO'LOV</b> ✦ ──╮\n"
+            "│\n"
+            f"│  💎 <b>Tarif:</b> {selected['name']}\n"
+            f"│  💵 <b>To'lov summasi:</b> <code>{selected['price']}</code>\n"
+            f"│  ⏱ <b>Davomiyligi:</b> {selected['days']} kun\n"
+            f"│  ⚡️ <b>Tezlik:</b> Cheklovlarsiz (Ultra HD)\n"
+            f"│  🛡 <b>To'lov turi:</b> Avtomatik va xavfsiz\n"
+            "│\n"
+            "├── ✦ <b>QO'LLAB-QUVVATLANADI</b> ✦ ──┤\n"
+            "│  💳 <b>Click</b> • <b>Payme</b> • <b>Uzum Bank</b>\n"
+            "│  🏦 <b>Humo</b> • <b>Uzcard</b> kartalari\n"
+            "╰────────────────────────╯\n\n"
+            "👇 <b>To'lovni amalga oshirish:</b>\n"
+            "1️⃣ <b>«💳 Click / Payme / Uzum orqali to'lash»</b> tugmasini bosing;\n"
+            "2️⃣ To'lovni o'zingizga qulay ilova orqali bajaring;\n"
+            "3️⃣ Botga qaytib, <b>«🔄 To'lovni tekshirish»</b> tugmasini bosing — VIP darhol faollashadi!"
         )
     else:
-        text += (
-            f"💳 <b>To'lov uchun karta / rekvizitlar:</b>\n"
-            f"Hozirda to'lovni adminimiz orqali amalga oshirishingiz mumkin:\n\n"
-            f"👨🏻‍💻 <b>Admin:</b> @Jahongir02_02\n\n"
-            f"<i>To'lov chekini (skrinshotini) to'g'ridan-to'g'ri botga yuborish uchun quyidagi <b>'📤 Chek yuborish'</b> tugmasini bosing:</i>"
+        text = (
+            "╭── ✦ <b>VIP ONLAYN TO'LOV</b> ✦ ──╮\n"
+            "│\n"
+            f"│  💎 <b>Tarif:</b> {selected['name']}\n"
+            f"│  💵 <b>To'lov summasi:</b> <code>{selected['price']}</code>\n"
+            f"│  ⏱ <b>Davomiyligi:</b> {selected['days']} kun\n"
+            "╰────────────────────────╯\n\n"
+            "👨🏻‍💻 <b>To'lov uchun admin:</b> @Jahongir02_02\n\n"
+            "<i>To'lov amalga oshirilgach, administratorga xabar bering.</i>"
         )
 
     kb = get_vip_payment_keyboard(
@@ -1145,10 +1157,15 @@ async def handle_check_tezcheck_payment(callback: CallbackQuery, bot: Bot):
         await db.give_vip(user_id, days)
 
         text = (
-            "🎉 <b>TO'LOV MUVAFFAQIYATLI QABUL QILINDI!</b>\n\n"
-            f"👑 Sizga <b>{payment.get('plan_key', 'VIP')}</b> tarifi uchun {days} kunlik VIP maqomi faollashtirildi!\n"
-            "✨ Endi siz animelarni reklamasiz va yuqori tezlikda tomosha qilishingiz mumkin.\n\n"
-            "🍿 <b>Maroqli tomosha tilaymiz!</b>"
+            "╭── ✦ <b>TO'LOV TASDIQLANDI!</b> ✦ ──╮\n"
+            "│\n"
+            "│  👑 <b>VIP Maqomi:</b> Muvaffaqiyatli yoqildi!\n"
+            f"│  💎 <b>Tarif:</b> {payment.get('plan_key', 'VIP')}\n"
+            f"│  ⏱ <b>Davomiyligi:</b> {days} kun\n"
+            "│  🚀 <b>Imtiyoz:</b> Barcha animelar va bo'limlar ochiq\n"
+            "╰────────────────────────╯\n\n"
+            "✨ <i>Barcha cheklovlar olib tashlandi, animelarni reklamasiz va yuqori sifatda tomosha qilishingiz mumkin!</i>\n\n"
+            "🍿 <b>Maroqli hordiq tilaymiz!</b>"
         )
         try:
             await callback.message.edit_text(text, reply_markup=get_back_home_keyboard(), parse_mode="HTML")
@@ -1157,7 +1174,7 @@ async def handle_check_tezcheck_payment(callback: CallbackQuery, bot: Bot):
     else:
         current_status = status_res.get("status", "kutilmoqda")
         await callback.answer(
-            f"⏳ To'lov holati: {current_status}.\nAgar to'lovni bajargan bo'lsangiz, bir necha soniyadan so'ng qayta tekshiring.",
+            f"⏳ To'lov holati: {current_status}.\n\nAgar to'lovni endigina amalga oshirgan bo'lsangiz, bir necha soniyadan so'ng qayta bosing.",
             show_alert=True
         )
 
