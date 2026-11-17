@@ -1308,8 +1308,15 @@ logger = logging.getLogger("AdminHandler")
 async def push_to_github():
     """VPS da ma'lumotlarni avtomatik GitHub Pages ga push qilish"""
     try:
+        cmd = (
+            "git add -A && "
+            "(git diff --cached --quiet || git commit -m 'sync: update shorts & manga data') && "
+            "(git pull --rebase --autostash origin main || git rebase --abort || true) && "
+            "git push origin main && "
+            "git push --force origin main:gh-pages"
+        )
         proc = await asyncio.create_subprocess_shell(
-            "git pull --rebase origin main && git add . && (git commit -m 'sync: update shorts & manga data' || true) && git push origin main && git push --force origin main:gh-pages",
+            cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )

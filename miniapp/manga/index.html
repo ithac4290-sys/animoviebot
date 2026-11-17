@@ -1103,7 +1103,10 @@
   <!-- Manga Details Modal -->
   <div class="modal-overlay" id="detailsModal">
     <div class="modal-header-sticky">
-      <div class="modal-title-text" id="modalTitle">Manga tafsilotlari</div>
+      <div style="display: flex; align-items: center; gap: 10px; max-width: 82%;">
+        <button class="modal-close-btn" onclick="closeModal()" title="Barcha mangalar" style="flex-shrink: 0; font-size: 15px;">←</button>
+        <div class="modal-title-text" id="modalTitle">Manga tafsilotlari</div>
+      </div>
       <button class="modal-close-btn" onclick="closeModal()">✕</button>
     </div>
 
@@ -1149,8 +1152,8 @@
     <div class="reader-pages-wrap" id="readerPages"></div>
 
     <div class="reader-bottom-bar">
-      <button class="reader-nav-btn" onclick="prevChapter()">◀️ Oldingi bob</button>
-      <button class="reader-nav-btn primary" onclick="nextChapter()">Keyingi bob ▶️</button>
+      <button class="reader-nav-btn" id="prevChapterBtn" onclick="prevChapter()">◀️ Oldingi bob</button>
+      <button class="reader-nav-btn primary" id="nextChapterBtn" onclick="nextChapter()">Keyingi bob ▶️</button>
     </div>
   </div>
 
@@ -1482,6 +1485,30 @@
       });
     });
 
+    function updateBackButton() {
+      if (!tg || !tg.BackButton) return;
+      const isReader = document.getElementById('readerView').classList.contains('active');
+      const isModal = document.getElementById('detailsModal').classList.contains('active');
+      if (isReader || isModal) {
+        tg.BackButton.show();
+      } else {
+        tg.BackButton.hide();
+      }
+    }
+
+    if (tg && tg.BackButton) {
+      tg.BackButton.onClick(() => {
+        haptic();
+        const readerView = document.getElementById('readerView');
+        const detailsModal = document.getElementById('detailsModal');
+        if (readerView.classList.contains('active')) {
+          closeReader();
+        } else if (detailsModal.classList.contains('active')) {
+          closeModal();
+        }
+      });
+    }
+
     function openDetails(manga) {
       haptic();
       currentManga = manga;
@@ -1496,7 +1523,9 @@
       chaptersList.innerHTML = '';
 
       const allChapters = (manga.data && Array.isArray(manga.data.chapters)) ? manga.data.chapters : [];
-      const validChapters = allChapters.filter(ch => (ch.pages && ch.pages.length > 0) || (ch.pages_count && ch.pages_count > 0));
+      const validChapters = allChapters
+        .filter(ch => (ch.pages && ch.pages.length > 0) || (ch.pages_count && ch.pages_count > 0))
+        .sort((a, b) => (a.chapter_num || 0) - (b.chapter_num || 0));
 
       if (validChapters.length > 0) {
         validChapters.forEach(ch => {
@@ -1529,10 +1558,44 @@
       }
 
       document.getElementById('detailsModal').classList.add('active');
+      updateBackButton();
     }
 
     function closeModal() {
+      haptic();
       document.getElementById('detailsModal').classList.remove('active');
+      updateBackButton();
+    }
+
+    function updateReaderNavButtons() {
+      const prevBtn = document.getElementById('prevChapterBtn');
+      const nextBtn = document.getElementById('nextChapterBtn');
+      if (!prevBtn || !nextBtn || !currentManga || !currentManga.data || !Array.isArray(currentManga.data.chapters)) return;
+      
+      const validChapters = currentManga.data.chapters
+        .filter(c => (c.pages && c.pages.length > 0) || (c.pages_count && c.pages_count > 0))
+        .sort((a, b) => (a.chapter_num || 0) - (b.chapter_num || 0));
+      const currIdx = validChapters.findIndex(c => c.chapter_num === currentChapter);
+      
+      if (currIdx > 0) {
+        prevBtn.style.opacity = '1';
+        prevBtn.style.pointerEvents = 'auto';
+        prevBtn.innerText = `◀️ ${validChapters[currIdx - 1].chapter_num}-bob`;
+      } else {
+        prevBtn.style.opacity = '0.35';
+        prevBtn.style.pointerEvents = 'none';
+        prevBtn.innerText = '◀️ Oldingi bob';
+      }
+      
+      if (currIdx >= 0 && currIdx < validChapters.length - 1) {
+        nextBtn.style.opacity = '1';
+        nextBtn.style.pointerEvents = 'auto';
+        nextBtn.innerText = `${validChapters[currIdx + 1].chapter_num}-bob ▶️`;
+      } else {
+        nextBtn.style.opacity = '0.35';
+        nextBtn.style.pointerEvents = 'none';
+        nextBtn.innerText = 'Keyingi bob ▶️';
+      }
     }
 
     function openReader(chNum) {
@@ -1545,6 +1608,8 @@
       const readerView = document.getElementById('readerView');
       readerView.scrollTop = 0;
       readerView.classList.add('active');
+      updateReaderNavButtons();
+      updateBackButton();
 
       let chData = null;
       if (currentManga.data && Array.isArray(currentManga.data.chapters)) {
@@ -1639,18 +1704,30 @@
     }
 
     function closeReader() {
+      haptic();
       document.getElementById('readerView').classList.remove('active');
+      updateBackButton();
     }
 
     function prevChapter() {
-      if (currentChapter > 1) {
-        openReader(currentChapter - 1);
+      if (!currentManga || !currentManga.data || !Array.isArray(currentManga.data.chapters)) return;
+      const sorted = [...currentManga.data.chapters]
+        .filter(c => (c.pages && c.pages.length > 0) || (c.pages_count && c.pages_count > 0))
+        .sort((a, b) => (a.chapter_num || 0) - (b.chapter_num || 0));
+      const currIdx = sorted.findIndex(c => c.chapter_num === currentChapter);
+      if (currIdx > 0) {
+        openReader(sorted[currIdx - 1].chapter_num);
       }
     }
 
     function nextChapter() {
-      if (currentManga && currentChapter < currentManga.chapters) {
-        openReader(currentChapter + 1);
+      if (!currentManga || !currentManga.data || !Array.isArray(currentManga.data.chapters)) return;
+      const sorted = [...currentManga.data.chapters]
+        .filter(c => (c.pages && c.pages.length > 0) || (c.pages_count && c.pages_count > 0))
+        .sort((a, b) => (a.chapter_num || 0) - (b.chapter_num || 0));
+      const currIdx = sorted.findIndex(c => c.chapter_num === currentChapter);
+      if (currIdx >= 0 && currIdx < sorted.length - 1) {
+        openReader(sorted[currIdx + 1].chapter_num);
       }
     }
   </script>
