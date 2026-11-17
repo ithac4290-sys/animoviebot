@@ -14,6 +14,7 @@ from bot.database import db
 from bot.keyboards import (
     get_main_menu_keyboard,
     get_anime_keyboard,
+    get_anime_seasons_keyboard,
     get_subscription_keyboard,
     get_cabinet_keyboard,
     get_back_home_keyboard,
@@ -137,11 +138,109 @@ async def handle_start(message: Message, command: CommandObject, bot: Bot, state
     await message.answer(text=text, reply_markup=kb, parse_mode="HTML")
 
 
-# ================= ANIME KO'RISH LOGIKASI =================
+# ================= ANIME FASLLARI VA KO'RISH LOGIKASI =================
 
-async def show_anime_by_id(message_or_query, anime_id: int, bot: Bot, bot_username: str):
-    """Animeni 2-rasm dizaynida ko'rsatish"""
+def extract_base_anime_title(title: str) -> str:
+    """Anime nomidan fasl qismini (masalan, 1-fasl, Season 2) ajratib olib, asosiy nomni qaytaradi"""
+    patterns = [
+        r'[\(\[\s\-_]+(\d+)[\s\-_]*(?:fasl|mavsum|sezon|season)[\)\]\s\-_]*',
+        r'[\(\[\s\-_]+(?:fasl|mavsum|sezon|season)[\s\-_]*(\d+)[\)\]\s\-_]*',
+        r'[\(\[\s\-_]+S(\d+)[\)\]\s\-_]*',
+    ]
+    clean_title = title
+    for p in patterns:
+        clean_title = re.sub(p, '', clean_title, flags=re.IGNORECASE)
+    clean_title = re.sub(r'[\(\[\{\-_:]+$', '', clean_title).strip()
+    return clean_title or title
+
+
+def extract_season_num(title: str) -> int:
+    """Anime sarlavhasidan fasl raqamini aniqlash (standart 1)"""
+    patterns = [
+        r'[\(\[\s\-_]+(\d+)[\s\-_]*(?:fasl|mavsum|sezon|season)[\)\]\s\-_]*',
+        r'[\(\[\s\-_]+(?:fasl|mavsum|sezon|season)[\s\-_]*(\d+)[\)\]\s\-_]*',
+        r'[\(\[\s\-_]+S(\d+)[\)\]\s\-_]*',
+    ]
+    for p in patterns:
+        m = re.search(p, title, re.IGNORECASE)
+        if m:
+            try:
+                return int(m.group(1))
+            except Exception:
+                pass
+    return 1
+
+
+async def get_anime_seasons_map(anime_id: int):
+    """Anime uchun mavjud barcha fasllarni bazadan aniqlash va xaritasini qaytarish"""
+    anime = await db.get_anime(anime_id)
+    if not anime:
+        return {1: anime_id, 2: None}, ""
+    title = anime.get("title", "")
+    base_title = extract_base_anime_title(title)
+
+    # Bazadan ushbu nomga mos barcha fasllarni qidirish
+    all_animes = await db.search_animes(base_title, limit=20)
+    seasons_map = {}
+    for a in all_animes:
+        a_title = a.get("title", "")
+        if extract_base_anime_title(a_title).lower() == base_title.lower():
+            s_num = extract_season_num(a_title)
+            seasons_map[s_num] = a["id"]
+
+    # Har doim 1-fasl mavjud bo'lishini ta'minlash
+    if 1 not in seasons_map:
+        seasons_map[1] = anime_id
+
+    # Har doim kamida 1-fasl va 2-fasl tanlovi bo'lishini ta'minlash
+    if 2 not in seasons_map:
+        seasons_map[2] = None
+
+    return seasons_map, base_title
+
+
+def format_anime_season_caption(anime: dict, bot_username: str, base_title: str) -> str:
+    """Fasl tanlash oynasi uchun Ultra Glass Neon dizaynidagi matn"""
+    title = html.escape(base_title or anime.get("title", ""))
+    status = html.escape(anime.get("status", "Davom etmoqda"))
+    genres = html.escape(anime.get("genres", "Anime, Fantastika"))
+    channel = html.escape(anime.get("channel", f"@{bot_username}"))
+    views = anime.get("views", 0)
+
+    db_data = anime.get("data") or {}
+    if isinstance(db_data, str):
+        try:
+            db_data = json.loads(db_data)
+        except Exception:
+            db_data = {}
+    elif not isinstance(db_data, dict):
+        db_data = {}
+
+    alt_titles = db_data.get("alt_titles") or []
+    alt_title = alt_titles[0] if (alt_titles and isinstance(alt_titles, list)) else ""
+    alt_line = f"│  ✨ <i>({html.escape(alt_title)})</i>\n" if alt_title else ""
+
+    return (
+        "╭── ✦ <b>FASLNI TANLANG</b> ✦ ──╮\n"
+        "│\n"
+        f"│  🎬 <b>Anime:</b> {title}\n"
+        f"{alt_line}"
+        f"│  🎭 <b>Janr:</b> {genres}\n"
+        f"│  📌 <b>Holati:</b> {status}\n"
+        f"│  ⚡️ <b>Sifat:</b> Full HD 1080p\n"
+        f"│  👁 <b>Ko'rishlar:</b> {views} marta\n"
+        f"│  📢 <b>Kanal:</b> {channel}\n"
+        "│\n"
+        "╰────────────────────────╯\n\n"
+        "🍿 <b>Qaysi faslni tomosha qilmoqchisiz?</b>\n"
+        "<i>Quyidagi fasllardan birini tanlang:</i>"
+    )
+
+
+async def show_anime_seasons_menu(message_or_query, anime_id: int, bot: Bot, bot_username: str):
+    """Foydalanuvchiga anime nomi va 1-fasl / 2-fasl tanlash menyusini chiqarish"""
     user_id = message_or_query.from_user.id
+    is_message = isinstance(message_or_query, Message)
 
     # 1. Majburiy obunani tekshirish
     is_subbed, unsubbed = await check_user_subscriptions(bot, user_id)
@@ -150,7 +249,65 @@ async def show_anime_by_id(message_or_query, anime_id: int, bot: Bot, bot_userna
             "⚠️ <b>Kechirasiz, anime tomosha qilish uchun quyidagi homiy kanallarimizga obuna bo'lishingiz kerak:</b>\n\n"
             "<i>Iltimos, kanallarga a'zo bo'lib, '✅ Obunani tekshirish' tugmasini bosing!</i>"
         )
-        # Obuna tekshirilgandan so'ng to'g'ridan-to'g'ri o'sha anime ochilishi uchun
+        builder = InlineKeyboardBuilder()
+        for idx, ch in enumerate(unsubbed, 1):
+            title = ch.get("title", f"Kanal #{idx}")
+            link = ch.get("invite_link", "https://t.me")
+            builder.row(InlineKeyboardButton(text=f"📢 {title}", url=link, style="primary"))
+        builder.row(InlineKeyboardButton(text="✅ Obunani tekshirish", callback_data=f"check_sub_{anime_id}", style="success"))
+        kb = builder.as_markup()
+        if is_message:
+            await message_or_query.answer(text=text, reply_markup=kb, parse_mode="HTML")
+        else:
+            await message_or_query.message.answer(text=text, reply_markup=kb, parse_mode="HTML")
+        return
+
+    # 2. Anime ma'lumotlarini olish
+    anime = await db.get_anime(anime_id)
+    if not anime:
+        not_found_text = f"❌ <b>Kechirasiz, {anime_id} ID raqamli anime topilmadi!</b>"
+        if is_message:
+            await message_or_query.answer(not_found_text, parse_mode="HTML")
+        else:
+            await message_or_query.answer(not_found_text, show_alert=True)
+        return
+
+    seasons_map, base_title = await get_anime_seasons_map(anime_id)
+    caption = format_anime_season_caption(anime, bot_username, base_title)
+    kb = get_anime_seasons_keyboard(anime_id, seasons_map)
+    poster = anime.get("poster")
+
+    if is_message:
+        if poster:
+            await message_or_query.answer_photo(photo=poster, caption=caption, reply_markup=kb, parse_mode="HTML")
+        else:
+            await message_or_query.answer(text=caption, reply_markup=kb, parse_mode="HTML")
+    else:
+        # CallbackQuery
+        try:
+            if message_or_query.message and message_or_query.message.photo:
+                await message_or_query.message.edit_caption(caption=caption, reply_markup=kb, parse_mode="HTML")
+            else:
+                await message_or_query.message.edit_text(text=caption, reply_markup=kb, parse_mode="HTML")
+        except Exception:
+            if poster:
+                await message_or_query.message.answer_photo(photo=poster, caption=caption, reply_markup=kb, parse_mode="HTML")
+            else:
+                await message_or_query.message.answer(text=caption, reply_markup=kb, parse_mode="HTML")
+
+
+async def show_anime_by_id(message_or_query, anime_id: int, bot: Bot, bot_username: str):
+    """Tanlangan fasl yoki animeni to'liq qismlar menyusi bilan ko'rsatish"""
+    user_id = message_or_query.from_user.id
+    is_message = isinstance(message_or_query, Message)
+
+    # 1. Majburiy obunani tekshirish
+    is_subbed, unsubbed = await check_user_subscriptions(bot, user_id)
+    if not is_subbed:
+        text = (
+            "⚠️ <b>Kechirasiz, anime tomosha qilish uchun quyidagi homiy kanallarimizga obuna bo'lishingiz kerak:</b>\n\n"
+            "<i>Iltimos, kanallarga a'zo bo'lib, '✅ Obunani tekshirish' tugmasini bosing!</i>"
+        )
         builder = InlineKeyboardBuilder()
         for idx, ch in enumerate(unsubbed, 1):
             title = ch.get("title", f"Kanal #{idx}")
@@ -159,7 +316,7 @@ async def show_anime_by_id(message_or_query, anime_id: int, bot: Bot, bot_userna
         builder.row(InlineKeyboardButton(text="✅ Obunani tekshirish", callback_data=f"check_sub_{anime_id}", style="success"))
         kb = builder.as_markup()
 
-        if isinstance(message_or_query, Message):
+        if is_message:
             await message_or_query.answer(text=text, reply_markup=kb, parse_mode="HTML")
         else:
             await message_or_query.message.answer(text=text, reply_markup=kb, parse_mode="HTML")
@@ -169,7 +326,7 @@ async def show_anime_by_id(message_or_query, anime_id: int, bot: Bot, bot_userna
     anime = await db.get_anime(anime_id)
     if not anime:
         not_found_text = f"❌ <b>Kechirasiz, {anime_id} ID raqamli anime topilmadi!</b>"
-        if isinstance(message_or_query, Message):
+        if is_message:
             await message_or_query.answer(not_found_text, parse_mode="HTML")
         else:
             await message_or_query.answer(not_found_text, show_alert=True)
@@ -186,10 +343,52 @@ async def show_anime_by_id(message_or_query, anime_id: int, bot: Bot, bot_userna
     kb = get_anime_keyboard(anime_id, uploaded_ep_nums)
 
     poster = anime.get("poster")
-    if isinstance(message_or_query, Message):
-        await message_or_query.answer_photo(photo=poster, caption=caption, reply_markup=kb, parse_mode="HTML")
+    if is_message:
+        if poster:
+            await message_or_query.answer_photo(photo=poster, caption=caption, reply_markup=kb, parse_mode="HTML")
+        else:
+            await message_or_query.answer(text=caption, reply_markup=kb, parse_mode="HTML")
     else:
-        await message_or_query.message.answer_photo(photo=poster, caption=caption, reply_markup=kb, parse_mode="HTML")
+        try:
+            if message_or_query.message and message_or_query.message.photo:
+                await message_or_query.message.edit_caption(caption=caption, reply_markup=kb, parse_mode="HTML")
+            else:
+                await message_or_query.message.edit_text(text=caption, reply_markup=kb, parse_mode="HTML")
+        except Exception:
+            if poster:
+                await message_or_query.message.answer_photo(photo=poster, caption=caption, reply_markup=kb, parse_mode="HTML")
+            else:
+                await message_or_query.message.answer(text=caption, reply_markup=kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("open_season_"))
+async def handle_open_season_callback(callback: CallbackQuery, bot: Bot):
+    parts = callback.data.split("_")
+    target_id = int(parts[2])
+    season_num = int(parts[3])
+    bot_info = await bot.get_me()
+    bot_username = bot_info.username or config.bot_username
+    await callback.answer(f"🍿 {season_num}-fasl ochilmoqda...", show_alert=False)
+    await show_anime_by_id(callback, target_id, bot, bot_username)
+
+
+@router.callback_query(F.data.startswith("season_unavailable_"))
+async def handle_season_unavailable_callback(callback: CallbackQuery):
+    parts = callback.data.split("_")
+    season_num = parts[3] if len(parts) > 3 else "2"
+    await callback.answer(
+        f"⏳ Ushbu animening {season_num}-fasli tez kunda kanalimiz va botimizga joylanadi!",
+        show_alert=True
+    )
+
+
+@router.callback_query(F.data.startswith("show_seasons_"))
+async def handle_show_seasons_callback(callback: CallbackQuery, bot: Bot):
+    anime_id = int(callback.data.replace("show_seasons_", ""))
+    bot_info = await bot.get_me()
+    bot_username = bot_info.username or config.bot_username
+    await callback.answer()
+    await show_anime_seasons_menu(callback, anime_id, bot, bot_username)
 
 
 @router.callback_query(F.data == "episodes_coming_soon")
@@ -493,7 +692,7 @@ async def process_search_by_name(message: Message, state: FSMContext, bot: Bot):
         return
 
     if len(results) == 1:
-        await show_anime_by_id(message, results[0]["id"], bot, bot_username)
+        await show_anime_seasons_menu(message, results[0]["id"], bot, bot_username)
         return
 
     text = f"🔎 <b>'{html.escape(query)}'</b> bo'yicha topilgan animelar:\n\n<i>Kerakli animeni tanlang:</i>"
@@ -848,41 +1047,16 @@ async def handle_ai_confirm(callback: CallbackQuery, state: FSMContext, bot: Bot
         return
 
     await state.clear()
-    await db.increment_anime_views(anime_id)
-
     bot_info = await bot.get_me()
     bot_username = bot_info.username or config.bot_username
-    caption = format_anime_caption(anime, bot_username)
 
-    episodes = await db.get_anime_episodes(anime_id)
-    uploaded_ep_nums = [ep["episode_num"] for ep in episodes]
-    kb = get_anime_keyboard(anime_id, uploaded_ep_nums)
-
-    congrats_header = (
-        "🎉 <b>Ajoyib! Qidiruv muvaffaqiyatli yakunlandi!</b>\n"
-        "🍿 <b>Maroqli tomosha tilaymiz!</b> ✨\n\n"
-    )
-    full_caption = congrats_header + caption
-
-    poster = anime.get("poster")
     try:
         await callback.message.delete()
     except Exception:
         pass
 
-    if poster:
-        await callback.message.answer_photo(
-            photo=poster,
-            caption=full_caption,
-            reply_markup=kb,
-            parse_mode="HTML"
-        )
-    else:
-        await callback.message.answer(
-            text=full_caption,
-            reply_markup=kb,
-            parse_mode="HTML"
-        )
+    # Foydalanuvchiga anime nomi va 1-fasl / 2-faslni tanlash oynasini chiqarish
+    await show_anime_seasons_menu(callback.message, anime_id, bot, bot_username)
 
 
 # 6.2. ❌ AI Rasm qidiruvini rad etish (siklni qaytadan takrorlash)
@@ -948,7 +1122,7 @@ async def handle_text_search(message: Message, bot: Bot):
 
     # Agar 1 dona anime aniq topilgan bo'lsa, to'g'ridan-to'g'ri ko'rsatish
     if len(results) == 1:
-        await show_anime_by_id(message, results[0]["id"], bot, bot_username)
+        await show_anime_seasons_menu(message, results[0]["id"], bot, bot_username)
         return
 
     # Bir nechta anime topilgan bo'lsa, ro'yxatini chiqarish
@@ -969,7 +1143,7 @@ async def handle_open_anime_callback(callback: CallbackQuery, bot: Bot):
     bot_info = await bot.get_me()
     bot_username = bot_info.username or config.bot_username
     await callback.answer()
-    await show_anime_by_id(callback, anime_id, bot, bot_username)
+    await show_anime_seasons_menu(callback, anime_id, bot, bot_username)
 
 
 @router.message(F.text.regexp(r"^/start_(\d+)$"))

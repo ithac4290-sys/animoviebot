@@ -251,6 +251,11 @@ def get_anime_keyboard(
         builder.add(*episode_buttons)
         builder.adjust(4)
 
+        # Fasllar menyusiga o'tish tugmasi
+        builder.row(
+            InlineKeyboardButton(text="🔄 Fasllarni ko'rish", callback_data=f"show_seasons_{anime_id}", style="primary")
+        )
+
         # Pastki navigatsiya qatori: ⬅️ Oldingi | ❌ Yopish | ➡️ Keyingi
         if total_pages > 1:
             prev_cb = f"ep_page_{anime_id}_{page - 1}_{current_ep}" if page > 1 else "ep_first_page_alert"
@@ -274,9 +279,43 @@ def get_anime_keyboard(
             )
         )
         builder.row(
+            InlineKeyboardButton(text="🔄 Fasllarni ko'rish", callback_data=f"show_seasons_{anime_id}", style="primary")
+        )
+        builder.row(
             InlineKeyboardButton(text="❌ Yopish", callback_data="close_anime_view", style="danger")
         )
 
+    return builder.as_markup()
+
+
+def get_anime_seasons_keyboard(base_anime_id: int, seasons_dict: Dict[int, Optional[int]]) -> InlineKeyboardMarkup:
+    """Animening fasllarini tanlash tugmalari (1-fasl, 2-fasl ...)"""
+    builder = InlineKeyboardBuilder()
+
+    season_buttons = []
+    for s_num in sorted(seasons_dict.keys()):
+        target_id = seasons_dict[s_num]
+        if target_id is not None:
+            btn_text = f"🍿 {s_num}-fasl"
+            cb_data = f"open_season_{target_id}_{s_num}"
+            s_style = "success" if s_num == 1 else "primary"
+        else:
+            btn_text = f"⏳ {s_num}-fasl"
+            cb_data = f"season_unavailable_{base_anime_id}_{s_num}"
+            s_style = "primary"
+
+        season_buttons.append(
+            InlineKeyboardButton(text=btn_text, callback_data=cb_data, style=s_style)
+        )
+
+    # 2 tadan ustun qilib joylashtirish
+    builder.add(*season_buttons)
+    builder.adjust(2)
+
+    builder.row(
+        InlineKeyboardButton(text="⬅️ Qidiruv menyusi", callback_data="btn_search_menu", style="danger"),
+        InlineKeyboardButton(text="🏠 Bosh sahifa", callback_data="btn_home", style="danger")
+    )
     return builder.as_markup()
 
 
