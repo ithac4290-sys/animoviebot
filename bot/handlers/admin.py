@@ -2057,64 +2057,12 @@ async def handle_finish_chapter_cb(callback: CallbackQuery, state: FSMContext):
     asyncio.create_task(push_to_github())
     await state.clear()
 
-    # Bob yangilanganda kanalga post yuborish
-    bot_info = await callback.bot.get_me()
-    bot_username = bot_info.username or config.bot_username
-    manga_channel = config.manga_channel_id
-
-    channel_posted = False
-    try:
-        manga = await db.get_manga(manga_id)
-        if manga:
-            m_data = manga.get("data") or {}
-            if isinstance(m_data, str):
-                try:
-                    m_data = json.loads(m_data)
-                except Exception:
-                    m_data = {}
-            m_type = m_data.get("type", "Manhwa")
-            m_genre = manga.get("genre", "Jangari").title()
-            ch_caption = (
-                f"• <b>{html.escape(manga_title)} — {ch_num}-bob</b>\n"
-                f"╭━━━━━━━━━━━━━━━━━━━━━\n"
-                f"▸ <b>Janr :</b> {html.escape(m_genre)}\n"
-                f"▸ <b>Turi :</b> {html.escape(m_type)}\n"
-                f"▸ <b>Til :</b> Uzbek\n"
-                f"▸ <b>Holati :</b> {html.escape(manga.get('status', 'Davom etmoqda'))}\n"
-                f"╰━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"<b>Asosiy kanal:</b> {manga_channel}"
-            )
-            ch_kb = InlineKeyboardMarkup(
-                inline_keyboard=[
-                    [
-                        InlineKeyboardButton(
-                            text="📚 Hoziroq O'qish 📚",
-                            url=f"https://t.me/{bot_username}?start=manga_{manga_id}",
-                            style="success"
-                        )
-                    ]
-                ]
-            )
-            await callback.bot.send_photo(
-                chat_id=manga_channel,
-                photo=manga["cover"],
-                caption=ch_caption,
-                reply_markup=ch_kb,
-                parse_mode="HTML"
-            )
-            channel_posted = True
-    except Exception:
-        pass
-
-    chan_note = f"\n📢 <b>{manga_channel}</b> kanaliga xabar yuborildi!" if channel_posted else ""
-
     text = (
         f"🎉 <b>Manga bobi muvaffaqiyatli saqlandi!</b>\n\n"
         f"📖 <b>Manga:</b> {html.escape(manga_title)}\n"
         f"📑 <b>Bob:</b> {ch_num}-bob\n"
         f"📄 <b>Sahifalar soni:</b> {len(pages)} ta\n"
-        f"✅ <i>Sahifalar PostgreSQL data bazasiga va Manga Mini App'ga joylandi!</i>"
-        f"{chan_note}"
+        f"✅ <i>Sahifalar PostgreSQL bazasiga va Manga Mini App'ga saqlandi!</i>"
     )
     await callback.message.edit_text(
         text,
