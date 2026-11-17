@@ -155,8 +155,8 @@ async def show_anime_by_id(message_or_query, anime_id: int, bot: Bot, bot_userna
         for idx, ch in enumerate(unsubbed, 1):
             title = ch.get("title", f"Kanal #{idx}")
             link = ch.get("invite_link", "https://t.me")
-            builder.row(InlineKeyboardButton(text=f"📢 {title}", url=link))
-        builder.row(InlineKeyboardButton(text="✅ Obunani tekshirish", callback_data=f"check_sub_{anime_id}"))
+            builder.row(InlineKeyboardButton(text=f"📢 {title}", url=link, style="primary"))
+        builder.row(InlineKeyboardButton(text="✅ Obunani tekshirish", callback_data=f"check_sub_{anime_id}", style="success"))
         kb = builder.as_markup()
 
         if isinstance(message_or_query, Message):
@@ -210,8 +210,8 @@ async def send_episode_direct(message: Message, anime_id: int, ep_num: int, bot:
         for idx, ch in enumerate(unsubbed, 1):
             title = ch.get("title", f"Kanal #{idx}")
             link = ch.get("invite_link", "https://t.me")
-            builder.row(InlineKeyboardButton(text=f"📢 {title}", url=link))
-        builder.row(InlineKeyboardButton(text="✅ Obunani tekshirish", callback_data=f"check_sub_play_{anime_id}_{ep_num}"))
+            builder.row(InlineKeyboardButton(text=f"📢 {title}", url=link, style="primary"))
+        builder.row(InlineKeyboardButton(text="✅ Obunani tekshirish", callback_data=f"check_sub_play_{anime_id}_{ep_num}", style="success"))
         await message.answer(text=text, reply_markup=builder.as_markup(), parse_mode="HTML")
         return
 
@@ -594,11 +594,11 @@ async def handle_search_top_views(callback: CallbackQuery):
         badge = medals[idx] if idx < len(medals) else "▫️"
         views = a.get("views", 0)
         text += f"{badge} <b>{html.escape(a['title'])}</b> — <i>{views} marta ko'rilgan</i>\n"
-        builder.row(InlineKeyboardButton(text=f"{badge} {a['title'][:25]}", callback_data=f"open_anime_{a['id']}"))
+        builder.row(InlineKeyboardButton(text=f"{badge} {a['title'][:25]}", callback_data=f"open_anime_{a['id']}", style="primary"))
 
     builder.row(
-        InlineKeyboardButton(text="⬅️ Qidiruv menyusi", callback_data="btn_search_menu"),
-        InlineKeyboardButton(text="🏠 Bosh sahifa", callback_data="btn_home")
+        InlineKeyboardButton(text="⬅️ Qidiruv menyusi", callback_data="btn_search_menu", style="danger"),
+        InlineKeyboardButton(text="🏠 Bosh sahifa", callback_data="btn_home", style="danger")
     )
     try:
         await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
@@ -957,7 +957,7 @@ async def handle_text_search(message: Message, bot: Bot):
     for anime in results:
         text += f"▪️ <b>{html.escape(anime['title'])}</b>\n"
         text += f"   Kod: <code>{anime['id']}</code> | Tomosha: /start_{anime['id']}\n\n"
-        builder.row(InlineKeyboardButton(text=f"🎬 {anime['title'][:28]}", callback_data=f"open_anime_{anime['id']}"))
+        builder.row(InlineKeyboardButton(text=f"🎬 {anime['title'][:28]}", callback_data=f"open_anime_{anime['id']}", style="primary"))
 
     text += "<i>Ko'rmoqchi bo'lgan animengiz ustiga bosing yoki kodini yozing.</i>"
     await message.answer(text, reply_markup=builder.as_markup(), parse_mode="HTML")
@@ -1191,7 +1191,7 @@ async def handle_start_send_receipt(callback: CallbackQuery, state: FSMContext):
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     from aiogram.types import InlineKeyboardButton
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="btn_vip"))
+    builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="btn_vip", style="danger"))
     await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
 
@@ -1258,7 +1258,7 @@ async def handle_top_animes(message: Message):
         anime_id = a.get("id")
         text += f"<b>{i}.</b> {title}\n"
         text += f"   👁 {views} ko'rish | Kod: <code>{anime_id}</code>\n\n"
-        builder.row(InlineKeyboardButton(text=f"{i}. 🎬 {a['title'][:25]}", callback_data=f"open_anime_{anime_id}"))
+        builder.row(InlineKeyboardButton(text=f"{i}. 🎬 {a['title'][:25]}", callback_data=f"open_anime_{anime_id}", style="primary"))
 
     text += "<i>Tomosha qilish uchun animeni tanlang:</i>"
     await message.answer(text, reply_markup=builder.as_markup(), parse_mode="HTML")
@@ -1340,8 +1340,8 @@ async def handle_vip_required_notice(callback: CallbackQuery):
         "<i>VIP obunani faollashtirish uchun quyidagi tugmani bosing:</i>"
     )
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text="💎 VIP Obuna xarid qilish", callback_data="btn_vip"))
-    builder.row(InlineKeyboardButton(text="⬅️ Bosh menyuga qaytish", callback_data="btn_home"))
+    builder.row(InlineKeyboardButton(text="💎 VIP Obuna xarid qilish", callback_data="btn_vip", style="success"))
+    builder.row(InlineKeyboardButton(text="⬅️ Bosh menyuga qaytish", callback_data="btn_home", style="danger"))
     await callback.message.edit_text(text=text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
 
@@ -1396,8 +1396,8 @@ async def handle_check_subscription(callback: CallbackQuery, bot: Bot):
             for idx, ch in enumerate(unsubbed, 1):
                 title = ch.get("title", f"Kanal #{idx}")
                 link = ch.get("invite_link", "https://t.me")
-                builder.row(InlineKeyboardButton(text=f"📢 {title}", url=link))
-            builder.row(InlineKeyboardButton(text="✅ Obunani tekshirish", callback_data=f"check_sub_{sub_param}"))
+                builder.row(InlineKeyboardButton(text=f"📢 {title}", url=link, style="primary"))
+            builder.row(InlineKeyboardButton(text="✅ Obunani tekshirish", callback_data=f"check_sub_{sub_param}", style="success"))
             await callback.message.edit_reply_markup(reply_markup=builder.as_markup())
         else:
             kb = get_subscription_keyboard(unsubbed)
@@ -1420,8 +1420,8 @@ async def show_manga_by_id(message_or_query, manga_id: int, bot: Bot, bot_userna
         for idx, ch in enumerate(unsubbed, 1):
             title = ch.get("title", f"Kanal #{idx}")
             link = ch.get("invite_link", "https://t.me")
-            builder.row(InlineKeyboardButton(text=f"📢 {title}", url=link))
-        builder.row(InlineKeyboardButton(text="✅ Obunani tekshirish", callback_data=f"check_sub_manga_{manga_id}"))
+            builder.row(InlineKeyboardButton(text=f"📢 {title}", url=link, style="primary"))
+        builder.row(InlineKeyboardButton(text="✅ Obunani tekshirish", callback_data=f"check_sub_manga_{manga_id}", style="success"))
         kb = builder.as_markup()
 
         if is_message:
@@ -1475,23 +1475,26 @@ async def show_manga_by_id(message_or_query, manga_id: int, bot: Bot, bot_userna
         builder.row(
             InlineKeyboardButton(
                 text="📚 Hoziroq O'qish (Mini App) 📚",
-                web_app=WebAppInfo(url=manga_url)
+                web_app=WebAppInfo(url=manga_url),
+                style="success"
             )
         )
     else:
         builder.row(
             InlineKeyboardButton(
                 text="📚 Hoziroq O'qish [VIP 🔒] 📚",
-                callback_data="vip_required_manga"
+                callback_data="vip_required_manga",
+                style="primary"
             )
         )
         builder.row(
             InlineKeyboardButton(
                 text="👑 VIP Obunani faollashtirish",
-                callback_data="btn_vip"
+                callback_data="btn_vip",
+                style="success"
             )
         )
-    builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="btn_home"))
+    builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="btn_home", style="danger"))
 
     cover = manga.get("cover")
     try:

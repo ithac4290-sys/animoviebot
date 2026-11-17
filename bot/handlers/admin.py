@@ -305,7 +305,7 @@ async def _finalize_anime_creation(target_channel: str, reply_event: Message, st
 
     if posted_to_channel:
         success_text += f"📢 <b>{post_channel_target} kanaliga post muvaffaqiyatli joylandi!</b>"
-        builder.row(InlineKeyboardButton(text="⬅️ Admin panel", callback_data="admin_home"))
+        builder.row(InlineKeyboardButton(text="⬅️ Admin panel", callback_data="admin_home", style="primary"))
     else:
         cause_tip = ""
         lowered = error_msg.lower()
@@ -321,8 +321,8 @@ async def _finalize_anime_creation(target_channel: str, reply_event: Message, st
             f"{cause_tip}\n\n"
             f"<i>Botni kanalga admin qilib qo'shgach, quyidagi tugma orqali qayta urinib ko'rishingiz mumkin:</i>"
         )
-        builder.row(InlineKeyboardButton(text="🔄 Qayta kanalga postlash", callback_data=f"repost_{anime_id}"))
-        builder.row(InlineKeyboardButton(text="⬅️ Admin panel", callback_data="admin_home"))
+        builder.row(InlineKeyboardButton(text="🔄 Qayta kanalga postlash", callback_data=f"repost_{anime_id}", style="primary"))
+        builder.row(InlineKeyboardButton(text="⬅️ Admin panel", callback_data="admin_home", style="danger"))
 
     await reply_event.answer(success_text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
@@ -460,10 +460,11 @@ async def _setup_episode_upload(anime_id: int, reply_target: Any, state: FSMCont
     builder.row(
         InlineKeyboardButton(
             text=f"▶️ Tavsiya etilgan: {next_ep}-qism",
-            callback_data=f"set_ep_num_{anime_id}_{next_ep}"
+            callback_data=f"set_ep_num_{anime_id}_{next_ep}",
+            style="success"
         )
     )
-    builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel"))
+    builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel", style="danger"))
 
     text = (
         f"🎬 Tanlangan anime: <b>{html.escape(anime['title'])}</b>\n\n"
@@ -661,10 +662,11 @@ async def process_episode_file(message: Message, state: FSMContext):
     builder.row(
         InlineKeyboardButton(
             text=f"✅ Yakunlash ({len(uploaded_in_session)} ta yuklandi)",
-            callback_data=f"finish_upload_episodes_{anime_id}"
+            callback_data=f"finish_upload_episodes_{anime_id}",
+            style="success"
         )
     )
-    builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel"))
+    builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel", style="danger"))
 
     await message.reply(
         f"✅ <b>{html.escape(anime_title)}</b>: <b>{ep_num}-qism</b> muvaffaqiyatli saqlandi!\n\n"
@@ -683,10 +685,10 @@ async def _finish_episodes_upload(target: Any, state: FSMContext, anime_id: int,
 
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="🎬 Animeni ko'rish", callback_data=f"admin_view_anime_{anime_id}"),
-        InlineKeyboardButton(text="➕ Yana qism yuklash", callback_data=f"admin_pick_anime_{anime_id}")
+        InlineKeyboardButton(text="🎬 Animeni ko'rish", callback_data=f"admin_view_anime_{anime_id}", style="primary"),
+        InlineKeyboardButton(text="➕ Yana qism yuklash", callback_data=f"admin_pick_anime_{anime_id}", style="success")
     )
-    builder.row(InlineKeyboardButton(text="🏠 Admin panel", callback_data="admin_panel"))
+    builder.row(InlineKeyboardButton(text="🏠 Admin panel", callback_data="admin_panel", style="primary"))
 
     msg_text = (
         f"🎉 <b>{html.escape(anime_title)}</b> animesiga "
@@ -762,17 +764,18 @@ async def handle_admin_channels_menu(callback: CallbackQuery):
     from aiogram.types import InlineKeyboardButton
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="➕ Kanal qo'shish", callback_data="admin_add_channel")
+        InlineKeyboardButton(text="➕ Kanal qo'shish", callback_data="admin_add_channel", style="success")
     )
     for ch in channels:
         builder.row(
             InlineKeyboardButton(
                 text=f"🗑 O'chirish: {ch['title'][:20]}",
-                callback_data=f"del_channel_{ch['channel_id']}"
+                callback_data=f"del_channel_{ch['channel_id']}",
+                style="danger"
             )
         )
     builder.row(
-        InlineKeyboardButton(text="⬅️ Admin panel", callback_data="admin_home")
+        InlineKeyboardButton(text="⬅️ Admin panel", callback_data="admin_home", style="primary")
     )
 
     await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
@@ -998,8 +1001,8 @@ async def handle_admin_stats(callback: CallbackQuery):
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     from aiogram.types import InlineKeyboardButton
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text="🔄 Yangilash", callback_data="admin_stats"))
-    builder.row(InlineKeyboardButton(text="⬅️ Admin panel", callback_data="admin_home"))
+    builder.row(InlineKeyboardButton(text="🔄 Yangilash", callback_data="admin_stats", style="primary"))
+    builder.row(InlineKeyboardButton(text="⬅️ Admin panel", callback_data="admin_home", style="danger"))
 
     try:
         await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
@@ -1469,17 +1472,17 @@ async def process_manga_cover(message: Message, state: FSMContext, bot: Bot):
 
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="⚔️ Jangari", callback_data="genre_action"),
-        InlineKeyboardButton(text="🔮 Fantastika", callback_data="genre_fantasy")
+        InlineKeyboardButton(text="⚔️ Jangari", callback_data="genre_action", style="primary"),
+        InlineKeyboardButton(text="🔮 Fantastika", callback_data="genre_fantasy", style="primary")
     )
     builder.row(
-        InlineKeyboardButton(text="🏃 Sarguzasht", callback_data="genre_adventure"),
-        InlineKeyboardButton(text="❤️ Romantika", callback_data="genre_romance")
+        InlineKeyboardButton(text="🏃 Sarguzasht", callback_data="genre_adventure", style="primary"),
+        InlineKeyboardButton(text="❤️ Romantika", callback_data="genre_romance", style="primary")
     )
     builder.row(
-        InlineKeyboardButton(text="😂 Komediya", callback_data="genre_comedy")
+        InlineKeyboardButton(text="😂 Komediya", callback_data="genre_comedy", style="primary")
     )
-    builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel"))
+    builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel", style="danger"))
 
     await message.answer("🎭 Manga janrini tanlang yoki matn ko'rinishida yozing:", reply_markup=builder.as_markup())
 
@@ -1499,11 +1502,11 @@ async def process_manga_genre_cb(callback: CallbackQuery, state: FSMContext):
 
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="🇰🇷 Manhwa", callback_data="mtype_Manhwa"),
-        InlineKeyboardButton(text="🇯🇵 Manga", callback_data="mtype_Manga"),
-        InlineKeyboardButton(text="🇨🇳 Manhua", callback_data="mtype_Manhua")
+        InlineKeyboardButton(text="🇰🇷 Manhwa", callback_data="mtype_Manhwa", style="primary"),
+        InlineKeyboardButton(text="🇯🇵 Manga", callback_data="mtype_Manga", style="primary"),
+        InlineKeyboardButton(text="🇨🇳 Manhua", callback_data="mtype_Manhua", style="primary")
     )
-    builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel"))
+    builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel", style="danger"))
     await callback.message.edit_text("📚 <b>Manga turini tanlang:</b>", reply_markup=builder.as_markup(), parse_mode="HTML")
 
 
@@ -1513,11 +1516,11 @@ async def process_manga_genre_text(message: Message, state: FSMContext):
     await state.set_state(AddMangaState.manga_type)
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="🇰🇷 Manhwa", callback_data="mtype_Manhwa"),
-        InlineKeyboardButton(text="🇯🇵 Manga", callback_data="mtype_Manga"),
-        InlineKeyboardButton(text="🇨🇳 Manhua", callback_data="mtype_Manhua")
+        InlineKeyboardButton(text="🇰🇷 Manhwa", callback_data="mtype_Manhwa", style="primary"),
+        InlineKeyboardButton(text="🇯🇵 Manga", callback_data="mtype_Manga", style="primary"),
+        InlineKeyboardButton(text="🇨🇳 Manhua", callback_data="mtype_Manhua", style="primary")
     )
-    builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel"))
+    builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel", style="danger"))
     await message.answer("📚 <b>Manga turini tanlang:</b>", reply_markup=builder.as_markup(), parse_mode="HTML")
 
 
@@ -1529,10 +1532,10 @@ async def process_manga_type_cb(callback: CallbackQuery, state: FSMContext):
 
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="🟢 Davom etmoqda", callback_data="mstatus_ongoing"),
-        InlineKeyboardButton(text="🔴 Tugallangan", callback_data="mstatus_completed")
+        InlineKeyboardButton(text="🟢 Davom etmoqda", callback_data="mstatus_ongoing", style="primary"),
+        InlineKeyboardButton(text="🔴 Tugallangan", callback_data="mstatus_completed", style="success")
     )
-    builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel"))
+    builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin_cancel", style="danger"))
     await callback.message.edit_text("📌 Manga holatini tanlang:", reply_markup=builder.as_markup())
 
 
@@ -1613,7 +1616,8 @@ async def process_manga_desc(message: Message, state: FSMContext):
                 [
                     InlineKeyboardButton(
                         text="📚 Hoziroq O'qish 📚",
-                        url=f"https://t.me/{bot_username}?start=manga_{m_id}"
+                        url=f"https://t.me/{bot_username}?start=manga_{m_id}",
+                        style="success"
                     )
                 ]
             ]
@@ -1657,8 +1661,8 @@ async def start_add_chapter(callback: CallbackQuery, state: FSMContext):
     mangas = await db.get_all_mangas(limit=30)
     if not mangas:
         builder = InlineKeyboardBuilder()
-        builder.row(InlineKeyboardButton(text="➕ Yangi manga yaratish", callback_data="admin_add_manga"))
-        builder.row(InlineKeyboardButton(text="⬅️ Admin panel", callback_data="admin_home"))
+        builder.row(InlineKeyboardButton(text="➕ Yangi manga yaratish", callback_data="admin_add_manga", style="success"))
+        builder.row(InlineKeyboardButton(text="⬅️ Admin panel", callback_data="admin_home", style="danger"))
         await callback.message.edit_text(
             "⚠️ <b>Hozircha birorta ham manga yaratilmagan!</b>\n\n"
             "Bob yuklashdan oldin yangi manga profilini yarating.",
@@ -2078,7 +2082,8 @@ async def handle_finish_chapter_cb(callback: CallbackQuery, state: FSMContext):
                     [
                         InlineKeyboardButton(
                             text="📚 Hoziroq O'qish 📚",
-                            url=f"https://t.me/{bot_username}?start=manga_{manga_id}"
+                            url=f"https://t.me/{bot_username}?start=manga_{manga_id}",
+                            style="success"
                         )
                     ]
                 ]

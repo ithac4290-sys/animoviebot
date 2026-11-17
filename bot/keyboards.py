@@ -19,7 +19,8 @@ def get_main_menu_keyboard(bot_username: str, is_vip: bool = False, user_id: int
     builder.row(
         InlineKeyboardButton(
             text="🔍 𝗔𝗻𝗶𝗺𝗲 𝗶𝘇𝗹𝗮𝘀𝗵",
-            callback_data="btn_search_menu"
+            callback_data="btn_search_menu",
+            style="primary"
         )
     )
 
@@ -32,18 +33,18 @@ def get_main_menu_keyboard(bot_username: str, is_vip: bool = False, user_id: int
     shorts_url = f"{shorts_base}{sep_s}vip=1&user_id={user_id}&v=15"
 
     if is_vip:
-        manga_btn = InlineKeyboardButton(text="📖 𝗠𝗮𝗻𝗴𝗮 𝗸𝗼'𝗿𝗶𝘀𝗵", web_app=WebAppInfo(url=manga_url))
-        shorts_btn = InlineKeyboardButton(text="⚡️ 𝗦𝗵𝗼𝗿𝘁𝘀 𝗸𝗼'𝗿𝗶𝘀𝗵", web_app=WebAppInfo(url=shorts_url))
+        manga_btn = InlineKeyboardButton(text="📖 𝗠𝗮𝗻𝗴𝗮 𝗸𝗼'𝗿𝗶𝘀𝗵", web_app=WebAppInfo(url=manga_url), style="success")
+        shorts_btn = InlineKeyboardButton(text="⚡️ 𝗦𝗵𝗼𝗿𝘁𝘀 𝗸𝗼'𝗿𝗶𝘀𝗵", web_app=WebAppInfo(url=shorts_url), style="primary")
     else:
-        manga_btn = InlineKeyboardButton(text="📖 𝗠𝗮𝗻𝗴𝗮 [VIP 🔒]", callback_data="vip_required_manga")
-        shorts_btn = InlineKeyboardButton(text="⚡️ 𝗦𝗵𝗼𝗿𝘁𝘀 [VIP 🔒]", callback_data="vip_required_shorts")
+        manga_btn = InlineKeyboardButton(text="📖 𝗠𝗮𝗻𝗴𝗮 [VIP 🔒]", callback_data="vip_required_manga", style="primary")
+        shorts_btn = InlineKeyboardButton(text="⚡️ 𝗦𝗵𝗼𝗿𝘁𝘀 [VIP 🔒]", callback_data="vip_required_shorts", style="primary")
 
     builder.row(manga_btn, shorts_btn)
 
     # 3-qator: 👤 Kabinet | 👑 VIP Obuna
     builder.row(
-        InlineKeyboardButton(text="👤 𝗞𝗮𝗯𝗶𝗻𝗲𝘁", callback_data="btn_cabinet"),
-        InlineKeyboardButton(text="👑 𝗩𝗜𝗣 𝗢𝗯𝘂𝗻𝗮", callback_data="btn_vip")
+        InlineKeyboardButton(text="👤 𝗞𝗮𝗯𝗶𝗻𝗲𝘁", callback_data="btn_cabinet", style="primary"),
+        InlineKeyboardButton(text="👑 𝗩𝗜𝗣 𝗢𝗯𝘂𝗻𝗮", callback_data="btn_vip", style="success")
     )
 
     return builder.as_markup()
@@ -85,7 +86,7 @@ def get_search_type_keyboard() -> InlineKeyboardMarkup:
     )
     # 6-qator
     builder.row(
-        InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="btn_home")
+        InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="btn_home", style="danger")
     )
 
     return builder.as_markup()
@@ -115,7 +116,7 @@ def get_genres_keyboard() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="🕵️ Detektiv", callback_data="genre_Detektiv", style="primary")
     )
     builder.row(
-        InlineKeyboardButton(text="⬅️ Qidiruv menyusiga qaytish", callback_data="btn_search_menu")
+        InlineKeyboardButton(text="⬅️ Qidiruv menyusiga qaytish", callback_data="btn_search_menu", style="danger")
     )
     return builder.as_markup()
 
@@ -134,16 +135,16 @@ def get_animes_pagination_keyboard(animes: List[Dict[str, Any]], page: int, tota
 
     nav = []
     if page > 0:
-        nav.append(InlineKeyboardButton(text="◀️ Oldingi", callback_data=f"{prefix}{page-1}"))
-    nav.append(InlineKeyboardButton(text=f"📄 {page+1}/{max(total_pages, 1)}", callback_data="ignore"))
+        nav.append(InlineKeyboardButton(text="◀️ Oldingi", callback_data=f"{prefix}{page-1}", style="primary"))
+    nav.append(InlineKeyboardButton(text=f"📄 {page+1}/{max(total_pages, 1)}", callback_data="ignore", style="primary"))
     if page < total_pages - 1:
-        nav.append(InlineKeyboardButton(text="Keyingi ▶️", callback_data=f"{prefix}{page+1}"))
+        nav.append(InlineKeyboardButton(text="Keyingi ▶️", callback_data=f"{prefix}{page+1}", style="primary"))
     if nav:
         builder.row(*nav)
 
     builder.row(
-        InlineKeyboardButton(text="⬅️ Qidiruv menyusi", callback_data="btn_search_menu"),
-        InlineKeyboardButton(text="🏠 Bosh sahifa", callback_data="btn_home")
+        InlineKeyboardButton(text="⬅️ Qidiruv menyusi", callback_data="btn_search_menu", style="danger"),
+        InlineKeyboardButton(text="🏠 Bosh sahifa", callback_data="btn_home", style="danger")
     )
     return builder.as_markup()
 
@@ -152,7 +153,7 @@ def get_search_cancel_keyboard() -> InlineKeyboardMarkup:
     """Qidiruvni bekor qilish tugmasi"""
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="❌ Bekor qilish", callback_data="btn_search_menu")
+        InlineKeyboardButton(text="❌ Bekor qilish", callback_data="btn_search_menu", style="danger")
     )
     return builder.as_markup()
 
@@ -164,10 +165,10 @@ def get_ai_image_confirmation_keyboard(candidates: List[Dict[str, Any]]) -> Inli
         c = candidates[0]
         anime_id = c["anime"]["id"]
         builder.row(
-            InlineKeyboardButton(text="✅ Ha, aynan shu!", callback_data=f"ai_confirm_{anime_id}")
+            InlineKeyboardButton(text="✅ Ha, aynan shu!", callback_data=f"ai_confirm_{anime_id}", style="success")
         )
         builder.row(
-            InlineKeyboardButton(text="❌ Yo'q, boshqasi", callback_data="ai_reject_search")
+            InlineKeyboardButton(text="❌ Yo'q, boshqasi", callback_data="ai_reject_search", style="danger")
         )
     else:
         for idx, c in enumerate(candidates, 1):
@@ -179,11 +180,12 @@ def get_ai_image_confirmation_keyboard(candidates: List[Dict[str, Any]]) -> Inli
             builder.row(
                 InlineKeyboardButton(
                     text=f"{idx}️⃣ {title} ({sim}%)",
-                    callback_data=f"ai_confirm_{anime_id}"
+                    callback_data=f"ai_confirm_{anime_id}",
+                    style="primary"
                 )
             )
         builder.row(
-            InlineKeyboardButton(text="❌ Hech biri emas", callback_data="ai_reject_search")
+            InlineKeyboardButton(text="❌ Hech biri emas", callback_data="ai_reject_search", style="danger")
         )
     return builder.as_markup()
 
@@ -192,10 +194,10 @@ def get_ai_image_retry_keyboard() -> InlineKeyboardMarkup:
     """AI rasm qidiruvida natija topilmaganda yoki takrorlash uchun klaviatura"""
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="🔄 Boshqa rasm yuborish", callback_data="search_by_image")
+        InlineKeyboardButton(text="🔄 Boshqa rasm yuborish", callback_data="search_by_image", style="primary")
     )
     builder.row(
-        InlineKeyboardButton(text="❌ Bekor qilish", callback_data="btn_search_menu")
+        InlineKeyboardButton(text="❌ Bekor qilish", callback_data="btn_search_menu", style="danger")
     )
     return builder.as_markup()
 
@@ -209,8 +211,8 @@ def get_anime_keyboard(
 ) -> InlineKeyboardMarkup:
     """
     ANIME MENYUSI VA QISMLAR RO'YXATI (20 tadan sahifalash):
-    - Tanlangan/joriy qism: [ 📀 ] - {ep}
-    - Boshqa qismlar: faqat raqam ({ep}) 4 ustunli gridda
+    - Tanlangan/joriy qism: [ 📀 ] - {ep} (success / yashil)
+    - Boshqa qismlar: faqat raqam ({ep}) (primary / ko'k)
     - Pastki qatorda 3 ta tugma bir qatorda: [ ⬅️ Oldingi ] [ ❌ Yopish ] [ ➡️ Keyingi ]
     """
     builder = InlineKeyboardBuilder()
@@ -232,13 +234,16 @@ def get_anime_keyboard(
         for ep in page_episodes:
             if ep == current_ep:
                 btn_text = f"[ 📀 ] - {ep}"
+                ep_style = "success"
             else:
                 btn_text = f"{ep}"
+                ep_style = "primary"
 
             episode_buttons.append(
                 InlineKeyboardButton(
                     text=btn_text,
-                    callback_data=f"play_{anime_id}_{ep}_{page}"
+                    callback_data=f"play_{anime_id}_{ep}_{page}",
+                    style=ep_style
                 )
             )
 
@@ -252,23 +257,24 @@ def get_anime_keyboard(
             next_cb = f"ep_page_{anime_id}_{page + 1}_{current_ep}" if page < total_pages else "ep_last_page_alert"
 
             builder.row(
-                InlineKeyboardButton(text="⬅️ Oldingi", callback_data=prev_cb),
-                InlineKeyboardButton(text="❌ Yopish", callback_data="close_anime_view"),
-                InlineKeyboardButton(text="➡️ Keyingi", callback_data=next_cb)
+                InlineKeyboardButton(text="⬅️ Oldingi", callback_data=prev_cb, style="primary"),
+                InlineKeyboardButton(text="❌ Yopish", callback_data="close_anime_view", style="danger"),
+                InlineKeyboardButton(text="➡️ Keyingi", callback_data=next_cb, style="primary")
             )
         else:
             builder.row(
-                InlineKeyboardButton(text="❌ Yopish", callback_data="close_anime_view")
+                InlineKeyboardButton(text="❌ Yopish", callback_data="close_anime_view", style="danger")
             )
     else:
         builder.row(
             InlineKeyboardButton(
                 text="⏳ Qismlar tez orada yuklanadi",
-                callback_data="episodes_coming_soon"
+                callback_data="episodes_coming_soon",
+                style="primary"
             )
         )
         builder.row(
-            InlineKeyboardButton(text="❌ Yopish", callback_data="close_anime_view")
+            InlineKeyboardButton(text="❌ Yopish", callback_data="close_anime_view", style="danger")
         )
 
     return builder.as_markup()
@@ -507,15 +513,15 @@ def get_animes_list_keyboard(animes: List[Dict[str, Any]], page: int, total_page
     # Navigatsiya
     nav_buttons = []
     if page > 0:
-        nav_buttons.append(InlineKeyboardButton(text="◀️ Oldingi", callback_data=f"admin_list_animes_{page-1}"))
-    nav_buttons.append(InlineKeyboardButton(text=f"📄 {page+1}/{max(total_pages, 1)}", callback_data="ignore"))
+        nav_buttons.append(InlineKeyboardButton(text="◀️ Oldingi", callback_data=f"admin_list_animes_{page-1}", style="primary"))
+    nav_buttons.append(InlineKeyboardButton(text=f"📄 {page+1}/{max(total_pages, 1)}", callback_data="ignore", style="primary"))
     if page < total_pages - 1:
-        nav_buttons.append(InlineKeyboardButton(text="Keyingi ▶️", callback_data=f"admin_list_animes_{page+1}"))
+        nav_buttons.append(InlineKeyboardButton(text="Keyingi ▶️", callback_data=f"admin_list_animes_{page+1}", style="primary"))
     builder.row(*nav_buttons)
 
     builder.row(
         InlineKeyboardButton(text="➕ Yangi anime qo'shish", callback_data="admin_add_anime", style="success"),
-        InlineKeyboardButton(text="⬅️ Admin panel", callback_data="admin_home")
+        InlineKeyboardButton(text="⬅️ Admin panel", callback_data="admin_home", style="danger")
     )
     return builder.as_markup()
 
@@ -535,7 +541,7 @@ def get_anime_manage_keyboard(anime_id: int, next_ep: int) -> InlineKeyboardMark
         InlineKeyboardButton(text="🗑 O'chirish", callback_data=f"confirm_del_anime_{anime_id}", style="danger")
     )
     builder.row(
-        InlineKeyboardButton(text="⬅️ Animelar ro'yxatiga qaytish", callback_data="admin_list_animes_0")
+        InlineKeyboardButton(text="⬅️ Animelar ro'yxatiga qaytish", callback_data="admin_list_animes_0", style="danger")
     )
     return builder.as_markup()
 
@@ -563,11 +569,11 @@ def get_cabinet_keyboard() -> InlineKeyboardMarkup:
     """Kabinet ichidagi tugmalar"""
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="👑 VIP sotib olish", callback_data="btn_vip"),
-        InlineKeyboardButton(text="🔄 Yangilash", callback_data="btn_cabinet")
+        InlineKeyboardButton(text="👑 VIP sotib olish", callback_data="btn_vip", style="success"),
+        InlineKeyboardButton(text="🔄 Yangilash", callback_data="btn_cabinet", style="primary")
     )
     builder.row(
-        InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="btn_home")
+        InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="btn_home", style="danger")
     )
     return builder.as_markup()
 
@@ -576,7 +582,7 @@ def get_back_home_keyboard() -> InlineKeyboardMarkup:
     """Faqat bosh menyuga qaytish tugmasi"""
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="btn_home", style="primary")
+        InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="btn_home", style="danger")
     )
     return builder.as_markup()
 
