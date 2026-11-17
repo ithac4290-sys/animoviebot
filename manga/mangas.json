@@ -5,7 +5,7 @@
     "cover": "https://ithac4290-sys.github.io/animoviebot/manga/covers/cover_AQADHx9rGyfu0Et-.jpg",
     "genre": "Jangari",
     "status": "Tugallangan",
-    "chapters": 186,
+    "chapters": 187,
     "rating": "4.9",
     "desc": "‣ Turi : Manga\n‣ Til : Uzbek",
     "data": {
@@ -47,11 +47,40 @@
           "created_at": "2026-11-16T16:24:11.724307",
           "chapter_num": 186,
           "pages_count": 21
+        },
+        {
+          "pages": [
+            "https://ithac4290-sys.github.io/animoviebot/manga/pages/manga_2_ch_187/p_1.jpg",
+            "https://ithac4290-sys.github.io/animoviebot/manga/pages/manga_2_ch_187/p_2.jpg",
+            "https://ithac4290-sys.github.io/animoviebot/manga/pages/manga_2_ch_187/p_3.jpg",
+            "https://ithac4290-sys.github.io/animoviebot/manga/pages/manga_2_ch_187/p_4.jpg",
+            "https://ithac4290-sys.github.io/animoviebot/manga/pages/manga_2_ch_187/p_5.jpg",
+            "https://ithac4290-sys.github.io/animoviebot/manga/pages/manga_2_ch_187/p_6.jpg",
+            "https://ithac4290-sys.github.io/animoviebot/manga/pages/manga_2_ch_187/p_7.jpg",
+            "https://ithac4290-sys.github.io/animoviebot/manga/pages/manga_2_ch_187/p_8.jpg",
+            "https://ithac4290-sys.github.io/animoviebot/manga/pages/manga_2_ch_187/p_9.jpg",
+            "https://ithac4290-sys.github.io/animoviebot/manga/pages/manga_2_ch_187/p_10.jpg",
+            "https://ithac4290-sys.github.io/animoviebot/manga/pages/manga_2_ch_187/p_11.jpg",
+            "https://ithac4290-sys.github.io/animoviebot/manga/pages/manga_2_ch_187/p_12.jpg",
+            "https://ithac4290-sys.github.io/animoviebot/manga/pages/manga_2_ch_187/p_13.jpg",
+            "https://ithac4290-sys.github.io/animoviebot/manga/pages/manga_2_ch_187/p_14.jpg",
+            "https://ithac4290-sys.github.io/animoviebot/manga/pages/manga_2_ch_187/p_15.jpg",
+            "https://ithac4290-sys.github.io/animoviebot/manga/pages/manga_2_ch_187/p_16.jpg",
+            "https://ithac4290-sys.github.io/animoviebot/manga/pages/manga_2_ch_187/p_17.jpg",
+            "https://ithac4290-sys.github.io/animoviebot/manga/pages/manga_2_ch_187/p_18.jpg",
+            "https://ithac4290-sys.github.io/animoviebot/manga/pages/manga_2_ch_187/p_19.jpg",
+            "https://ithac4290-sys.github.io/animoviebot/manga/pages/manga_2_ch_187/p_20.jpg",
+            "https://ithac4290-sys.github.io/animoviebot/manga/pages/manga_2_ch_187/p_21.jpg"
+          ],
+          "title": "187-bob",
+          "created_at": "2026-11-17T08:09:16.643304",
+          "chapter_num": 187,
+          "pages_count": 21
         }
       ],
       "created_at": "2026-11-15T22:34:30.453134",
       "description": "‣ Turi : Manga\n‣ Til : Uzbek",
-      "chapters_count": 186
+      "chapters_count": 187
     }
   }
 ]
