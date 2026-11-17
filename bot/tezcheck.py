@@ -122,7 +122,8 @@ class TezCheckClient:
                     resp_data = await resp.json()
                     if resp.status in (200, 201):
                         data = resp_data.get("data", resp_data)
-                        bill_id = data.get("id") or data.get("code") or str(external_reference)
+                        bill_data = data.get("bill", {}) if isinstance(data, dict) else {}
+                        bill_id = bill_data.get("id") or data.get("id") or data.get("code") or str(external_reference)
                         payment_url = data.get("payment_url")
                         return {
                             "ok": True,
@@ -147,7 +148,7 @@ class TezCheckClient:
 
     async def get_bill_status(self, bill_id: str) -> Dict[str, Any]:
         """
-        Mavjud to'lov hisobi holatini tekshirish (GET /bills/{bill_id}).
+        Mavjud to'lov hisobi holatini tekshirish (POST /bills/{bill_id}).
         """
         if not self.is_configured:
             return {"ok": False, "error": "TezCheck sozlanmagan"}
@@ -157,18 +158,22 @@ class TezCheckClient:
 
         try:
             async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
-                async with session.get(url, headers=headers) as resp:
+                # TezCheck hujjatiga ko'ra POST orqali tekshiriladi
+                async with session.post(url, headers=headers, json={}) as resp:
                     resp_data = await resp.json()
                     if resp.status == 200:
                         data = resp_data.get("data", resp_data)
-                        raw_status = data.get("status", "").lower()
-                        # TezCheck statuslari: 'paid', 'success', 'pending', 'expired', 'canceled'
-                        is_paid = raw_status in ("paid", "success", "completed")
+                        bill_data = data.get("bill", {}) if isinstance(data, dict) else {}
+                        is_paid = bool(bill_data.get("paid") or data.get("paid"))
+                        raw_status = str(bill_data.get("state") or data.get("state") or data.get("status") or "").lower()
+                        if raw_status in ("paid", "success", "completed", "succeeded"):
+                            is_paid = True
+
                         return {
                             "ok": True,
                             "status": raw_status,
                             "is_paid": is_paid,
-                            "amount_minor": data.get("amount_minor"),
+                            "amount_minor": bill_data.get("amount_minor") or data.get("amount_minor"),
                             "raw": data
                         }
                     else:
