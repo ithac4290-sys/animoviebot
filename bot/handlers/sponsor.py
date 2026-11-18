@@ -24,7 +24,7 @@ logger = logging.getLogger("SponsorHandler")
 router = Router()
 
 TOKEN_PATTERN = re.compile(r"^\d{8,12}:[A-Za-z0-9_-]{30,50}$")
-SPONSOR_BOT_PRICE = 50  # Homiy bot ulash narxi: 50 so'm
+SPONSOR_BOT_PRICE = 50000  # Homiy bot ulash narxi: 50,000 so'm
 
 
 @router.message(Command("sponsor", "homiy"))
@@ -55,7 +55,7 @@ async def show_sponsor_menu(message_or_callback: Message | CallbackQuery, user_i
         "• Qidiruv (nomi, kodi, janri va rasmi bo'yicha)\n"
         "• Manga va Shorts bo'limlari\n"
         "• Foydalanuvchilar to'g'ridan-to'g'ri sizning botingizda foydalanishadi\n\n"
-        f"💵 <b>Bot ulash narxi:</b> <code>{SPONSOR_BOT_PRICE} so'm</code> (bir martalik to'lov)\n"
+        f"💵 <b>Bot ulash narxi:</b> <code>{SPONSOR_BOT_PRICE:,} so'm</code> (bir martalik to'lov)\n"
     )
 
     if user_bots:
@@ -118,7 +118,7 @@ async def callback_sponsor_add_bot(callback: CallbackQuery, state: FSMContext):
     text = (
         "💎 <b>Homiy bot ulash to'lovi</b>\n\n"
         "Shaxsiy botingizni tizimga ulash uchun avval bir martalik to'lovni amalga oshiring:\n\n"
-        f"💵 <b>To'lov summasi:</b> <code>{SPONSOR_BOT_PRICE} so'm</code>\n"
+        f"💵 <b>To'lov summasi:</b> <code>{SPONSOR_BOT_PRICE:,} so'm</code>\n"
         "🤖 <b>Xizmat:</b> To'liq tayyor shaxsiy Anime bot (barcha animelar, qismlar, manga va shorts bilan)\n"
         "💳 <b>To'lov tizimlari:</b> Click • Payme • Uzum Bank (Humo / Uzcard)\n\n"
         "👇 <b>To'lov qilish tartibi:</b>\n"

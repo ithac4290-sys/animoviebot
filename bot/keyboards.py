@@ -749,7 +749,7 @@ def get_sponsor_menu_keyboard(has_bots: bool = False) -> InlineKeyboardMarkup:
     """Homiy bo'lish asosiy menyusi"""
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="➕ O'z botingizni ulash (50 so'm)", callback_data="sponsor_add_bot", style="success")
+        InlineKeyboardButton(text="➕ O'z botingizni ulash (50,000 so'm)", callback_data="sponsor_add_bot", style="success")
     )
     if has_bots:
         builder.row(
