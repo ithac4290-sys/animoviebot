@@ -80,11 +80,10 @@ async def show_sponsor_menu(message_or_callback: Message | CallbackQuery, user_i
 async def callback_sponsor_add_bot(callback: CallbackQuery, state: FSMContext):
     """Bot qo'shish jarayonini boshlash: to'lovni tekshirish yoki to'lov havolasini berish"""
     user_id = callback.from_user.id
-    is_admin = user_id in config.admins
     has_paid = await db.has_active_sponsor_payment(user_id)
 
-    # Agar admin bo'lsa yoki allaqachon to'lov qilgan bo'lsa, to'g'ridan-to'g'ri token so'rashga o'tish
-    if is_admin or has_paid:
+    # Faqat allaqachon to'lov qilgan va hali ishlatmagan bo'lsagina token so'rashga o'tish
+    if has_paid:
         await ask_for_bot_token(callback, state)
         return
 
@@ -118,14 +117,14 @@ async def callback_sponsor_add_bot(callback: CallbackQuery, state: FSMContext):
 
     text = (
         "💎 <b>Homiy bot ulash to'lovi</b>\n\n"
-        "Shaxsiy botingizni tizimga ulash uchun to'lovni amalga oshiring:\n\n"
+        "Shaxsiy botingizni tizimga ulash uchun avval bir martalik to'lovni amalga oshiring:\n\n"
         f"💵 <b>To'lov summasi:</b> <code>{SPONSOR_BOT_PRICE} so'm</code>\n"
-        "⚡️ <b>Xizmat:</b> To'liq avtomatlashtirilgan anime bot kloni\n"
-        "💳 <b>To'lov tizimlari:</b> Click, Payme, Uzum Bank\n\n"
-        "👇 <b>Qadamlar:</b>\n"
-        "1️⃣ Quyidagi <b>«💳 To'lash»</b> tugmasi orqali to'lovni bajaring;\n"
+        "🤖 <b>Xizmat:</b> To'liq tayyor shaxsiy Anime bot (barcha animelar, qismlar, manga va shorts bilan)\n"
+        "💳 <b>To'lov tizimlari:</b> Click • Payme • Uzum Bank (Humo / Uzcard)\n\n"
+        "👇 <b>To'lov qilish tartibi:</b>\n"
+        "1️⃣ Quyidagi <b>«💳 Click / Payme / Uzum orqali to'lash»</b> tugmasini bosib to'lovni bajaring;\n"
         "2️⃣ Botga qaytib, <b>«🔄 To'lovni tekshirish»</b> tugmasini bosing;\n"
-        "3️⃣ To'lov tasdiqlangach, @BotFather dan olgan tokenni kiritasiz."
+        "3️⃣ To'lovingiz tasdiqlangach, darhol <b>Bot ulash oynasi</b> ochiladi va @BotFather dan olgan tokenni kiritasiz!"
     )
 
     kb = get_sponsor_payment_keyboard(bill_id=bill_id, tezcheck_url=tezcheck_url)
