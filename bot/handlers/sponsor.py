@@ -1,5 +1,6 @@
 import re
 import html
+import time
 import logging
 from aiogram import Router, F, Bot
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
@@ -7,11 +8,14 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from bot.config import config
 from bot.database import db
 from bot.states import SponsorBotState
 from bot.multibot import MultiBotManager
+from bot.tezcheck import tezcheck_client
 from bot.keyboards import (
     get_sponsor_menu_keyboard,
+    get_sponsor_payment_keyboard,
     get_sponsor_cancel_keyboard,
     get_my_bots_keyboard
 )
@@ -20,6 +24,7 @@ logger = logging.getLogger("SponsorHandler")
 router = Router()
 
 TOKEN_PATTERN = re.compile(r"^\d{8,12}:[A-Za-z0-9_-]{30,50}$")
+SPONSOR_BOT_PRICE = 50  # Homiy bot ulash narxi: 50 so'm
 
 
 @router.message(Command("sponsor", "homiy"))
@@ -49,8 +54,8 @@ async def show_sponsor_menu(message_or_callback: Message | CallbackQuery, user_i
         "• Barcha mavjud animelar va qismlar sizning botingizda ham ochiladi\n"
         "• Qidiruv (nomi, kodi, janri va rasmi bo'yicha)\n"
         "• Manga va Shorts bo'limlari\n"
-        "• Foydalanuvchilar to'g'ridan-to'g'ri sizning botingizda foydalanishadi\n"
-        "• Bot ulash <b>mutlaqo bepul</b> va darhol ishga tushadi!\n"
+        "• Foydalanuvchilar to'g'ridan-to'g'ri sizning botingizda foydalanishadi\n\n"
+        f"💵 <b>Bot ulash narxi:</b> <code>{SPONSOR_BOT_PRICE} so'm</code> (bir martalik to'lov)\n"
     )
 
     if user_bots:
@@ -73,11 +78,100 @@ async def show_sponsor_menu(message_or_callback: Message | CallbackQuery, user_i
 
 @router.callback_query(F.data == "sponsor_add_bot")
 async def callback_sponsor_add_bot(callback: CallbackQuery, state: FSMContext):
+    """Bot qo'shish jarayonini boshlash: to'lovni tekshirish yoki to'lov havolasini berish"""
+    user_id = callback.from_user.id
+    is_admin = user_id in config.admins
+    has_paid = await db.has_active_sponsor_payment(user_id)
+
+    # Agar admin bo'lsa yoki allaqachon to'lov qilgan bo'lsa, to'g'ridan-to'g'ri token so'rashga o'tish
+    if is_admin or has_paid:
+        await ask_for_bot_token(callback, state)
+        return
+
+    # To'lov qilish talab etiladi: TezCheck orqali 50 so'mlik to'lov yaratish
+    await callback.answer("💳 To'lov havolasi tayyorlanmoqda...", show_alert=False)
+
+    tezcheck_url = None
+    bill_id = None
+
+    if tezcheck_client.is_enabled:
+        try:
+            bill_res = await tezcheck_client.create_bill(
+                amount_uzs=SPONSOR_BOT_PRICE,
+                title="Homiy bot ulash to'lovi",
+                external_reference=f"SPONSOR-{user_id}-{int(time.time())}"
+            )
+            if bill_res.get("ok"):
+                tezcheck_url = bill_res.get("payment_url")
+                bill_id = bill_res.get("bill_id")
+                await db.create_tezcheck_payment(
+                    bill_id=bill_id,
+                    user_id=user_id,
+                    plan_key="sponsor_bot",
+                    days=0,
+                    amount_uzs=SPONSOR_BOT_PRICE,
+                    payment_url=tezcheck_url,
+                    data={"used": False}
+                )
+        except Exception as e:
+            logger.error(f"TezCheck homiy bot to'lovida xatolik: {e}")
+
+    text = (
+        "💎 <b>Homiy bot ulash to'lovi</b>\n\n"
+        "Shaxsiy botingizni tizimga ulash uchun to'lovni amalga oshiring:\n\n"
+        f"💵 <b>To'lov summasi:</b> <code>{SPONSOR_BOT_PRICE} so'm</code>\n"
+        "⚡️ <b>Xizmat:</b> To'liq avtomatlashtirilgan anime bot kloni\n"
+        "💳 <b>To'lov tizimlari:</b> Click, Payme, Uzum Bank\n\n"
+        "👇 <b>Qadamlar:</b>\n"
+        "1️⃣ Quyidagi <b>«💳 To'lash»</b> tugmasi orqali to'lovni bajaring;\n"
+        "2️⃣ Botga qaytib, <b>«🔄 To'lovni tekshirish»</b> tugmasini bosing;\n"
+        "3️⃣ To'lov tasdiqlangach, @BotFather dan olgan tokenni kiritasiz."
+    )
+
+    kb = get_sponsor_payment_keyboard(bill_id=bill_id, tezcheck_url=tezcheck_url)
+    try:
+        await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+    except Exception:
+        await callback.message.answer(text, reply_markup=kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("check_sp_tz_"))
+async def handle_check_sponsor_payment(callback: CallbackQuery, state: FSMContext):
+    """Homiy bot ulash to'lovini TezCheck orqali tekshirish"""
+    bill_id = callback.data.replace("check_sp_tz_", "")
+    await callback.answer("🔄 To'lov holati tekshirilmoqda...", show_alert=False)
+
+    payment = await db.get_tezcheck_payment(bill_id)
+    if not payment:
+        await callback.answer("⚠️ Ushbu to'lov hisobi topilmadi.", show_alert=True)
+        return
+
+    # Agar allaqachon to'langan bo'lsa
+    if payment.get("status") == "paid":
+        await callback.answer("✅ To'lov tasdiqlangan!", show_alert=True)
+        await ask_for_bot_token(callback, state)
+        return
+
+    # TezCheck API orqali holatni so'rash
+    status_res = await tezcheck_client.get_bill_status(bill_id)
+    if status_res.get("is_paid"):
+        await db.update_tezcheck_payment_status(bill_id, "paid")
+        await callback.answer("✅ To'lov muvaffaqiyatli qabul qilindi!", show_alert=True)
+        await ask_for_bot_token(callback, state)
+    else:
+        await callback.answer(
+            "⏳ To'lov hali amalga oshirilmagan yoki tizimda kutilmoqda. "
+            "Iltimos, to'lovni yakunlab, qayta 'To'lovni tekshirish' tugmasini bosing!",
+            show_alert=True
+        )
+
+
+async def ask_for_bot_token(callback: CallbackQuery, state: FSMContext):
     """Bot tokenini so'rash yo'riqnomasi"""
     await state.set_state(SponsorBotState.waiting_for_token)
 
     text = (
-        "🤖 <b>Telegram Bot API Tokenini yuboring</b>\n\n"
+        "✅ <b>To'lov tasdiqlandi! Endi Telegram Bot Tokenini yuboring</b>\n\n"
         "O'z botingizni ulash uchun quyidagi 4 ta oddiy qadamni bajaring:\n\n"
         "1️⃣ Telegramda @BotFather ga kiring\n"
         "2️⃣ <code>/newbot</code> buyrug'ini yuboring\n"
@@ -86,7 +180,7 @@ async def callback_sponsor_add_bot(callback: CallbackQuery, state: FSMContext):
         "4️⃣ @BotFather taqdim etgan <b>HTTP API Token</b> ni nusxalab, shu yerga xabar sifatida yuboring.\n\n"
         "📌 <i>Token namunasi:</i>\n"
         "<code>7123456789:AAHk1_xyzabc...-90qwe</code>\n\n"
-        "<i>Token xavfsiz saqlanadi va faqat botingizni ishga tushirish uchun xizmat qiladi.</i>"
+        "<i>Bekor qilish uchun pastdagi tugmani bosing:</i>"
     )
 
     kb = get_sponsor_cancel_keyboard()
@@ -94,7 +188,6 @@ async def callback_sponsor_add_bot(callback: CallbackQuery, state: FSMContext):
         await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
     except Exception:
         await callback.message.answer(text, reply_markup=kb, parse_mode="HTML")
-    await callback.answer()
 
 
 @router.callback_query(F.data == "sponsor_cancel")
@@ -199,10 +292,13 @@ async def process_sponsor_bot_token(message: Message, state: FSMContext):
         bot_name=bot_info.first_name
     )
 
-    # 4. State holatini tozalash
+    # 4. To'lov slotini ishlatilgan deb belgilash
+    await db.consume_sponsor_payment(user_id)
+
+    # 5. State holatini tozalash
     await state.clear()
 
-    # 5. Muvaffaqiyat xabari
+    # 6. Muvaffaqiyat xabari
     success_builder = InlineKeyboardBuilder()
     success_builder.row(
         InlineKeyboardButton(

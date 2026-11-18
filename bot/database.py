@@ -1591,5 +1591,92 @@ class Database:
                 await db.commit()
                 return True
 
+    async def has_active_sponsor_payment(self, user_id: int) -> bool:
+        """Foydalanuvchida to'langan va hali ishlatilmagan homiy bot sloti bormi?"""
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                row = await conn.fetchrow("""
+                    SELECT bill_id, data FROM tezcheck_payments
+                    WHERE user_id = $1 AND plan_key = 'sponsor_bot' AND status = 'paid'
+                    ORDER BY id DESC LIMIT 1
+                """, user_id)
+                if not row:
+                    return False
+                data = row.get("data")
+                if isinstance(data, str):
+                    try:
+                        data = json.loads(data)
+                    except Exception:
+                        data = {}
+                return not (data or {}).get("used", False)
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                db.row_factory = aiosqlite.Row
+                cursor = await db.execute("""
+                    SELECT bill_id, data FROM tezcheck_payments
+                    WHERE user_id = ? AND plan_key = 'sponsor_bot' AND status = 'paid'
+                    ORDER BY id DESC LIMIT 1
+                """, (user_id,))
+                row = await cursor.fetchone()
+                if not row:
+                    return False
+                data = row["data"]
+                if isinstance(data, str):
+                    try:
+                        data = json.loads(data)
+                    except Exception:
+                        data = {}
+                return not (data or {}).get("used", False)
+
+    async def consume_sponsor_payment(self, user_id: int) -> bool:
+        """Homiy bot sloti ishlatilgan deb belgilash"""
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                row = await conn.fetchrow("""
+                    SELECT bill_id, data FROM tezcheck_payments
+                    WHERE user_id = $1 AND plan_key = 'sponsor_bot' AND status = 'paid'
+                    ORDER BY id DESC LIMIT 1
+                """, user_id)
+                if not row:
+                    return False
+                data = row.get("data") or {}
+                if isinstance(data, str):
+                    try:
+                        data = json.loads(data)
+                    except Exception:
+                        data = {}
+                data["used"] = True
+                await conn.execute("""
+                    UPDATE tezcheck_payments
+                    SET data = $1::jsonb, updated_at = CURRENT_TIMESTAMP
+                    WHERE bill_id = $2
+                """, json.dumps(data), row["bill_id"])
+                return True
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                db.row_factory = aiosqlite.Row
+                cursor = await db.execute("""
+                    SELECT bill_id, data FROM tezcheck_payments
+                    WHERE user_id = ? AND plan_key = 'sponsor_bot' AND status = 'paid'
+                    ORDER BY id DESC LIMIT 1
+                """, (user_id,))
+                row = await cursor.fetchone()
+                if not row:
+                    return False
+                data = row["data"] or {}
+                if isinstance(data, str):
+                    try:
+                        data = json.loads(data)
+                    except Exception:
+                        data = {}
+                data["used"] = True
+                await db.execute("""
+                    UPDATE tezcheck_payments
+                    SET data = ?, updated_at = CURRENT_TIMESTAMP
+                    WHERE bill_id = ?
+                """, (json.dumps(data), row["bill_id"]))
+                await db.commit()
+                return True
+
 
 db = Database()

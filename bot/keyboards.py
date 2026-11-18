@@ -749,7 +749,7 @@ def get_sponsor_menu_keyboard(has_bots: bool = False) -> InlineKeyboardMarkup:
     """Homiy bo'lish asosiy menyusi"""
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="➕ O'z botingizni ulash", callback_data="sponsor_add_bot", style="success")
+        InlineKeyboardButton(text="➕ O'z botingizni ulash (50 so'm)", callback_data="sponsor_add_bot", style="success")
     )
     if has_bots:
         builder.row(
@@ -757,6 +757,42 @@ def get_sponsor_menu_keyboard(has_bots: bool = False) -> InlineKeyboardMarkup:
         )
     builder.row(
         InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="btn_home", style="danger")
+    )
+    return builder.as_markup()
+
+
+def get_sponsor_payment_keyboard(bill_id: str, tezcheck_url: Optional[str] = None) -> InlineKeyboardMarkup:
+    """Homiy bot ulash uchun 50 so'mlik to'lov tugmalari"""
+    builder = InlineKeyboardBuilder()
+    if tezcheck_url:
+        builder.row(
+            InlineKeyboardButton(
+                text="💳 Click / Payme / Uzum orqali to'lash",
+                url=tezcheck_url,
+                style="success"
+            )
+        )
+        builder.row(
+            InlineKeyboardButton(
+                text="🔄 To'lovni tekshirish",
+                callback_data=f"check_sp_tz_{bill_id}",
+                style="primary"
+            )
+        )
+    else:
+        builder.row(
+            InlineKeyboardButton(
+                text="👨🏻‍💻 Admin orqali to'lash",
+                url="https://t.me/Jahongir02_02",
+                style="primary"
+            )
+        )
+    builder.row(
+        InlineKeyboardButton(
+            text="❌ Bekor qilish",
+            callback_data="sponsor_cancel",
+            style="danger"
+        )
     )
     return builder.as_markup()
 
