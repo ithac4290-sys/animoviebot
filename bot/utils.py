@@ -40,11 +40,16 @@ async def check_user_subscriptions(bot: Bot, user_id: int) -> Tuple[bool, List[D
 
     unsubscribed: List[Dict[str, Any]] = []
 
+    # Agar tekshiruvchi bot homiy bot bo'lsa, kanalda admin bo'lmasligi mumkin.
+    # Shuning uchun tekshiruvni kanalda admin bo'lgan asosiy bot orqali bajaramiz.
+    from bot.multibot import MultiBotManager
+    checker_bot = MultiBotManager.get_main_bot() or bot
+
     for channel in channels:
         raw_id = channel.get("channel_id", "")
         target_chat = clean_channel_id(raw_id)
         try:
-            member = await bot.get_chat_member(chat_id=target_chat, user_id=user_id)
+            member = await checker_bot.get_chat_member(chat_id=target_chat, user_id=user_id)
             if member.status in [
                 ChatMemberStatus.LEFT,
                 ChatMemberStatus.KICKED,
@@ -53,6 +58,10 @@ async def check_user_subscriptions(bot: Bot, user_id: int) -> Tuple[bool, List[D
                 unsubscribed.append(channel)
         except Exception as e:
             logger.warning(f"Obunani tekshirishda xatolik ({target_chat}, user: {user_id}): {e}")
+            # Agar bot kanalda admin bo'lmasa yoki kanal topilmasa, foydalanuvchini to'sib qo'ymaslik
+            err_msg = str(e).lower()
+            if "not a member" in err_msg or "chat not found" in err_msg or "bot was kicked" in err_msg:
+                continue
             unsubscribed.append(channel)
 
     if unsubscribed:

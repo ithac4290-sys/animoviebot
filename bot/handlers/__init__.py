@@ -3,13 +3,15 @@ from bot.handlers.users import router as users_router
 from bot.handlers.admin import router as admin_router
 from bot.handlers.inline_search import router as inline_router
 from bot.handlers.business import router as business_router
+from bot.handlers.sponsor import router as sponsor_router
 
 
 def setup_routers() -> Router:
     main_router = Router()
-    # Tartib muhim: avval admin, keyin business, keyin inline, keyin users
+    # Tartib muhim: avval admin, keyin business, keyin sponsor, keyin inline, keyin users
     main_router.include_router(admin_router)
     main_router.include_router(business_router)
+    main_router.include_router(sponsor_router)
     main_router.include_router(inline_router)
     main_router.include_router(users_router)
     return main_router

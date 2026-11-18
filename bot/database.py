@@ -169,6 +169,20 @@ class Database:
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
+            # 10. Homiy botlar jadvali (PostgreSQL)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS sponsor_bots (
+                    id SERIAL PRIMARY KEY,
+                    owner_id BIGINT NOT NULL,
+                    bot_token TEXT UNIQUE NOT NULL,
+                    bot_id BIGINT NOT NULL,
+                    bot_username TEXT NOT NULL,
+                    bot_name TEXT,
+                    is_active INTEGER DEFAULT 1,
+                    data JSONB DEFAULT '{}'::jsonb,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
             logger.info("PostgreSQL jadvallari tekshirildi va tayyor!")
 
     async def _init_sqlite_tables(self):
@@ -286,6 +300,20 @@ class Database:
                     connection_id TEXT NOT NULL,
                     chat_id INTEGER NOT NULL,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            # 10. Homiy botlar jadvali (SQLite)
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS sponsor_bots (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    owner_id INTEGER NOT NULL,
+                    bot_token TEXT UNIQUE NOT NULL,
+                    bot_id INTEGER NOT NULL,
+                    bot_username TEXT NOT NULL,
+                    bot_name TEXT,
+                    is_active INTEGER DEFAULT 1,
+                    data TEXT DEFAULT '{}',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
             await db.commit()
@@ -1413,6 +1441,155 @@ class Database:
                 """, (user_id,))
                 row = await cursor.fetchone()
                 return dict(row) if row else None
+
+    # ================= Homiy botlar (Sponsor Bots) =================
+
+    async def add_sponsor_bot(
+        self,
+        owner_id: int,
+        bot_token: str,
+        bot_id: int,
+        bot_username: str,
+        bot_name: Optional[str] = None,
+        data: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        """Yangi homiy botni saqlash yoki yangilash"""
+        data_json = json.dumps(data or {})
+        bot_username = bot_username.lstrip("@")
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                await conn.execute("""
+                    INSERT INTO sponsor_bots (owner_id, bot_token, bot_id, bot_username, bot_name, is_active, data)
+                    VALUES ($1, $2, $3, $4, $5, 1, $6::jsonb)
+                    ON CONFLICT(bot_token) DO UPDATE SET
+                        owner_id = EXCLUDED.owner_id,
+                        bot_id = EXCLUDED.bot_id,
+                        bot_username = EXCLUDED.bot_username,
+                        bot_name = EXCLUDED.bot_name,
+                        is_active = 1,
+                        data = EXCLUDED.data;
+                """, owner_id, bot_token, bot_id, bot_username, bot_name, data_json)
+                return True
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                await db.execute("""
+                    INSERT INTO sponsor_bots (owner_id, bot_token, bot_id, bot_username, bot_name, is_active, data)
+                    VALUES (?, ?, ?, ?, ?, 1, ?)
+                    ON CONFLICT(bot_token) DO UPDATE SET
+                        owner_id = excluded.owner_id,
+                        bot_id = excluded.bot_id,
+                        bot_username = excluded.bot_username,
+                        bot_name = excluded.bot_name,
+                        is_active = 1,
+                        data = excluded.data
+                """, (owner_id, bot_token, bot_id, bot_username, bot_name, data_json))
+                await db.commit()
+                return True
+
+    async def get_active_sponsor_bots(self) -> List[Dict[str, Any]]:
+        """Barcha faol homiy botlarni olish"""
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                rows = await conn.fetch("SELECT * FROM sponsor_bots WHERE is_active = 1 ORDER BY id ASC")
+                res = []
+                for r in rows:
+                    d = dict(r)
+                    if isinstance(d.get("data"), str):
+                        try:
+                            d["data"] = json.loads(d["data"])
+                        except Exception:
+                            pass
+                    res.append(d)
+                return res
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                db.row_factory = aiosqlite.Row
+                cursor = await db.execute("SELECT * FROM sponsor_bots WHERE is_active = 1 ORDER BY id ASC")
+                rows = await cursor.fetchall()
+                res = []
+                for r in rows:
+                    d = dict(r)
+                    if isinstance(d.get("data"), str):
+                        try:
+                            d["data"] = json.loads(d["data"])
+                        except Exception:
+                            pass
+                    res.append(d)
+                return res
+
+    async def get_user_sponsor_bots(self, owner_id: int) -> List[Dict[str, Any]]:
+        """Foydalanuvchining barcha homiy botlarini olish"""
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                rows = await conn.fetch("SELECT * FROM sponsor_bots WHERE owner_id = $1 ORDER BY id DESC", owner_id)
+                res = []
+                for r in rows:
+                    d = dict(r)
+                    if isinstance(d.get("data"), str):
+                        try:
+                            d["data"] = json.loads(d["data"])
+                        except Exception:
+                            pass
+                    res.append(d)
+                return res
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                db.row_factory = aiosqlite.Row
+                cursor = await db.execute("SELECT * FROM sponsor_bots WHERE owner_id = ? ORDER BY id DESC", (owner_id,))
+                rows = await cursor.fetchall()
+                res = []
+                for r in rows:
+                    d = dict(r)
+                    if isinstance(d.get("data"), str):
+                        try:
+                            d["data"] = json.loads(d["data"])
+                        except Exception:
+                            pass
+                    res.append(d)
+                return res
+
+    async def get_sponsor_bot_by_token(self, bot_token: str) -> Optional[Dict[str, Any]]:
+        """Token bo'yicha homiy botni topish"""
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                row = await conn.fetchrow("SELECT * FROM sponsor_bots WHERE bot_token = $1", bot_token)
+                return dict(row) if row else None
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                db.row_factory = aiosqlite.Row
+                cursor = await db.execute("SELECT * FROM sponsor_bots WHERE bot_token = ?", (bot_token,))
+                row = await cursor.fetchone()
+                return dict(row) if row else None
+
+    async def delete_sponsor_bot(self, bot_id: int, owner_id: Optional[int] = None) -> bool:
+        """Homiy botni o'chirish"""
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                if owner_id:
+                    await conn.execute("DELETE FROM sponsor_bots WHERE bot_id = $1 AND owner_id = $2", bot_id, owner_id)
+                else:
+                    await conn.execute("DELETE FROM sponsor_bots WHERE bot_id = $1", bot_id)
+                return True
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                if owner_id:
+                    await db.execute("DELETE FROM sponsor_bots WHERE bot_id = ? AND owner_id = ?", (bot_id, owner_id))
+                else:
+                    await db.execute("DELETE FROM sponsor_bots WHERE bot_id = ?", (bot_id,))
+                await db.commit()
+                return True
+
+    async def set_sponsor_bot_status(self, bot_id: int, is_active: int) -> bool:
+        """Homiy bot holatini yangilash (1=faol, 0=to'xtatilgan)"""
+        if self.is_postgres and self.pool:
+            async with self.pool.acquire() as conn:
+                await conn.execute("UPDATE sponsor_bots SET is_active = $1 WHERE bot_id = $2", is_active, bot_id)
+                return True
+        else:
+            async with aiosqlite.connect(self.sqlite_path) as db:
+                await db.execute("UPDATE sponsor_bots SET is_active = ? WHERE bot_id = ?", (is_active, bot_id))
+                await db.commit()
+                return True
 
 
 db = Database()

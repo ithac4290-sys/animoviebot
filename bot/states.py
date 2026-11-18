@@ -76,3 +76,7 @@ class AddChapterState(StatesGroup):
 class DeleteMangaState(StatesGroup):
     manga_id = State()        # O'chiriladigan manga ID
 
+
+class SponsorBotState(StatesGroup):
+    waiting_for_token = State()  # Homiy bot API tokenini kutish
+

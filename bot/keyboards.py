@@ -47,6 +47,11 @@ def get_main_menu_keyboard(bot_username: str, is_vip: bool = False, user_id: int
         InlineKeyboardButton(text="👑 𝗩𝗜𝗣 𝗢𝗯𝘂𝗻𝗮", callback_data="btn_vip", style="success")
     )
 
+    # 4-qator: 🤝 Homiy bo'lish
+    builder.row(
+        InlineKeyboardButton(text="🤝 𝗛𝗼𝗺𝗶𝘆 𝗯𝗼'𝗹𝗶𝘀𝗵", callback_data="btn_sponsor", style="primary")
+    )
+
     return builder.as_markup()
 
 
@@ -612,6 +617,9 @@ def get_cabinet_keyboard() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="🔄 Yangilash", callback_data="btn_cabinet", style="primary")
     )
     builder.row(
+        InlineKeyboardButton(text="🤝 Homiy bo'lish", callback_data="btn_sponsor", style="primary")
+    )
+    builder.row(
         InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="btn_home", style="danger")
     )
     return builder.as_markup()
@@ -733,3 +741,51 @@ def get_admin_vip_approval_keyboard(user_id: int, days: int) -> InlineKeyboardMa
         InlineKeyboardButton(text="❌ Rad etish", callback_data=f"reject_vip_{user_id}", style="danger")
     )
     return builder.as_markup()
+
+
+# ================= Homiy bo'lish tugmalari =================
+
+def get_sponsor_menu_keyboard(has_bots: bool = False) -> InlineKeyboardMarkup:
+    """Homiy bo'lish asosiy menyusi"""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="➕ O'z botingizni ulash", callback_data="sponsor_add_bot", style="success")
+    )
+    if has_bots:
+        builder.row(
+            InlineKeyboardButton(text="📋 Ulangan botlaringiz", callback_data="sponsor_my_bots", style="primary")
+        )
+    builder.row(
+        InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="btn_home", style="danger")
+    )
+    return builder.as_markup()
+
+
+def get_sponsor_cancel_keyboard() -> InlineKeyboardMarkup:
+    """Homiy tokeni kiritishni bekor qilish"""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="❌ Bekor qilish", callback_data="sponsor_cancel", style="danger")
+    )
+    return builder.as_markup()
+
+
+def get_my_bots_keyboard(bots: List[Dict[str, Any]]) -> InlineKeyboardMarkup:
+    """Foydalanuvchining ulangan botlari ro'yxati"""
+    builder = InlineKeyboardBuilder()
+    for b in bots:
+        uname = b.get("bot_username", "bot")
+        bid = b.get("bot_id")
+        builder.row(
+            InlineKeyboardButton(text=f"🤖 @{uname}", url=f"https://t.me/{uname}"),
+            InlineKeyboardButton(text="🗑 O'chirish", callback_data=f"sponsor_del_{bid}", style="danger")
+        )
+    builder.row(
+        InlineKeyboardButton(text="➕ Yangi bot qo'shish", callback_data="sponsor_add_bot", style="success")
+    )
+    builder.row(
+        InlineKeyboardButton(text="⬅️ Orqaga", callback_data="btn_sponsor", style="primary"),
+        InlineKeyboardButton(text="🏠 Bosh menyu", callback_data="btn_home", style="danger")
+    )
+    return builder.as_markup()
+
