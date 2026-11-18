@@ -108,27 +108,28 @@ async def main():
     MultiBotManager.init(bot, dp)
 
     # 8. Bot ma'lumotlarini olish va ishga tushirish
-    while True:
-        try:
-            bot_info = await bot.get_me()
-            logger.info(f"Bot muvaffaqiyatli ishga tushdi: @{bot_info.username} (ID: {bot_info.id})")
-            await bot.delete_webhook(drop_pending_updates=True)
+    try:
+        while True:
+            try:
+                bot_info = await bot.get_me()
+                logger.info(f"Bot muvaffaqiyatli ishga tushdi: @{bot_info.username} (ID: {bot_info.id})")
+                await bot.delete_webhook(drop_pending_updates=True)
 
-            # Bazadagi barcha faol homiy botlarni fonda ishga tushirish
-            await MultiBotManager.start_all_saved_bots()
+                # Bazadagi barcha faol homiy botlarni fonda ishga tushirish
+                await MultiBotManager.start_all_saved_bots()
 
-            allowed_updates = dp.resolve_used_update_types()
-            logger.info(f"Ruxsat berilgan update turlari: {allowed_updates}")
-            await dp.start_polling(bot, allowed_updates=allowed_updates)
-            break
-        except Exception as e:
-            logger.error(
-                f"Telegram serveriga ulanishda xatolik: {e}. "
-                f"Iltimos, BOT_TOKEN to'g'riligini tekshiring! 25 soniyadan so'ng qayta uriniladi..."
-            )
-            await asyncio.sleep(25)
-        finally:
-            await MultiBotManager.stop_all()
+                allowed_updates = dp.resolve_used_update_types()
+                logger.info(f"Ruxsat berilgan update turlari: {allowed_updates}")
+                await dp.start_polling(bot, allowed_updates=allowed_updates)
+                break
+            except Exception as e:
+                logger.error(
+                    f"Telegram serveriga ulanishda xatolik: {e}. "
+                    f"Iltimos, BOT_TOKEN to'g'riligini tekshiring! 25 soniyadan so'ng qayta uriniladi..."
+                )
+                await asyncio.sleep(25)
+    finally:
+        await MultiBotManager.stop_all()
 
 
 if __name__ == "__main__":

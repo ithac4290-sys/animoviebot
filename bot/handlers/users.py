@@ -52,6 +52,7 @@ def get_welcome_text(full_name: str) -> str:
         f"<blockquote>🎬 /top — Eng ommabop animelar ro'yxati\n"
         f"👨🏻‍💻 /help — Qo'llab-quvvatlash xizmati\n"
         f"👑 /vip — VIP Obuna va imtiyozlar\n"
+        f"🤝 /homiy — Homiy bo'lish (O'z botingizni ulash)\n"
         f"💡 /qollanma — Botdan foydalanish qo'llanmasi</blockquote>\n\n"
         f"🔥 <b>Botga to'g'ridan-to'g'ri anime kodi yoki nomini yozishingiz mumkin.</b>"
     )
